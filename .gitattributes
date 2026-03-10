@@ -1,0 +1,19 @@
+# Text files
+*.md text
+*.txt text
+*.json text
+*.html text
+*.css text
+*.js text
+*.yml text
+*.yaml text
+
+# Images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.svg text
+
+# Ensure consistent line endings
+* text=auto

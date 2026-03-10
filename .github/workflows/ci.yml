@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Validate manifest.json
+        run: |
+          python3 -c "import json; json.load(open('manifest.json'))" || exit 1
+      
+      - name: Check file structure
+        run: |
+          test -f manifest.json || exit 1
+          test -f popup.html || exit 1
+          test -f popup.js || exit 1
+          test -f background.js || exit 1
+          test -f styles.css || exit 1
+
+  validate:
+    name: Validate Extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check required files
+        run: |
+          files=("manifest.json" "popup.html" "popup.js" "background.js" "styles.css")
+          for file in "${files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "Missing required file: $file"
+              exit 1
+            fi
+          done
+      
+      - name: Validate manifest version
+        run: |
+          version=$(grep -o '"manifest_version": [0-9]' manifest.json | grep -o '[0-9]')
+          if [ "$version" != "3" ]; then
+            echo "Error: manifest_version must be 3"
+            exit 1
+          fi
+          echo "Manifest V3 validated ✓"
+      
+      - name: Check file sizes
+        run: |
+          max_size=500000  # 500KB
+          for file in *.js *.css *.html; do
+            if [ -f "$file" ]; then
+              size=$(wc -c < "$file")
+              if [ "$size" -gt "$max_size" ]; then
+                echo "Warning: $file is larger than 500KB ($size bytes)"
+              fi
+            fi
+          done
+
+  docs:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check documentation files
+        run: |
+          docs=("README.md" "CHANGELOG.md" "LICENSE")
+          for doc in "${docs[@]}"; do
+            if [ ! -f "$doc" ]; then
+              echo "Missing documentation: $doc"
+              exit 1
+            fi
+          done
+          echo "All required documentation present ✓"
+      
+      - name: Check for TODO comments
+        run: |
+          if grep -r "TODO" *.js *.html *.css 2>/dev/null; then
+            echo "Warning: Found TODO comments in code"
+          else
+            echo "No TODO comments found ✓"
+          fi
+
+  security:
+    name: Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check for sensitive patterns
+        run: |
+          patterns=("api_key" "apikey" "secret_key" "password" "token")
+          found=false
+          for pattern in "${patterns[@]}"; do
+            if grep -ri "$pattern" *.js 2>/dev/null | grep -v "// "; then
+              echo "Warning: Found potential sensitive pattern: $pattern"
+              found=true
+            fi
+          done
+          if [ "$found" = false ]; then
+            echo "No obvious sensitive patterns found ✓"
+          fi
+      
+      - name: Check permissions
+        run: |
+          echo "Checking manifest permissions..."
+          if grep -q '"webRequest"' manifest.json; then
+            echo "Warning: webRequest permission found (may not be needed)"
+          fi
+          echo "Permission check complete ✓"
