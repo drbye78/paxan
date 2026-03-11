@@ -193,7 +193,10 @@ async function handleMessage(request) {
         return { proxies };
         
       case 'testProxy':
-        return await testProxyConnectivity(request.proxy);
+        return await testProxyConnectivity(request.proxy, request.keepProxy);
+        
+      case 'quickTest':
+        return await quickLatencyTest(request.proxy);
         
       case 'updateProxyStats':
         await updateProxyStats(request.proxy, request.success, request.latency);
@@ -253,7 +256,8 @@ async function handleMessage(request) {
         return { success: true };
         
       case 'getOnboardingState':
-        return { completed: true, currentStepIndex: 0, version: '2.1.0' };
+        const onboarding = await chrome.storage.local.get(['onboarding']);
+        return onboarding.onboarding || { completed: false, currentStepIndex: 0, version: '2.1.0' };
         
       case 'startHealthMonitoring':
         if (request.proxy) {
@@ -346,7 +350,7 @@ function parseSpeed(speedStr) {
   return match ? parseInt(match[1]) : 9999;
 }
 
-async function testProxyConnectivity(proxy) {
+async function testProxyConnectivity(proxy, keepProxy = false) {
   return new Promise((resolve) => {
     const startTime = Date.now();
     const controller = new AbortController();
@@ -383,7 +387,9 @@ async function testProxyConnectivity(proxy) {
       const testNext = (index = 0) => {
         if (index >= testUrls.length) {
           clearTimeout(timeoutId);
-          chrome.proxy.settings.clear({ scope: 'regular' }, () => {});
+          if (!keepProxy) {
+            chrome.proxy.settings.clear({ scope: 'regular' }, () => {});
+          }
           resolve({
             success: false,
             latency: null,
@@ -402,7 +408,9 @@ async function testProxyConnectivity(proxy) {
         .then(response => {
           clearTimeout(timeoutId);
           const latency = Date.now() - startTime;
-          chrome.proxy.settings.clear({ scope: 'regular' }, () => {});
+          if (!keepProxy) {
+            chrome.proxy.settings.clear({ scope: 'regular' }, () => {});
+          }
           
           resolve({
             success: response.ok || response.status === 204,
@@ -420,6 +428,33 @@ async function testProxyConnectivity(proxy) {
       testNext();
     });
   });
+}
+
+async function quickLatencyTest(proxy) {
+  const startTime = Date.now();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3000);
+  
+  try {
+    const response = await fetch('https://httpbin.org/ip', {
+      method: 'GET',
+      signal: controller.signal,
+      cache: 'no-store'
+    });
+    clearTimeout(timeoutId);
+    
+    return {
+      success: response.ok,
+      latency: Date.now() - startTime
+    };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    return {
+      success: false,
+      latency: null,
+      error: error.message
+    };
+  }
 }
 
 async function setProxy(proxy) {
@@ -648,11 +683,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 // Restore proxy on startup
 chrome.runtime.onStartup.addListener(async () => {
   try {
-    const result = await chrome.storage.local.get(['activeProxy']);
-    if (result.activeProxy) {
-      await setProxy(result.activeProxy);
-      await startProxyMonitoring(result.activeProxy);
-      console.log('Restored proxy:', result.activeProxy.ipPort);
+    const { settings, activeProxy } = await chrome.storage.local.get(['settings', 'activeProxy']);
+    if (settings?.autoConnect && activeProxy) {
+      await setProxy(activeProxy);
+      await startProxyMonitoring(activeProxy);
+      console.log('Auto-connected to proxy:', activeProxy.ipPort);
     }
   } catch (error) {
     console.error('Error restoring proxy:', error);

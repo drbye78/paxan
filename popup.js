@@ -13,6 +13,7 @@ let settings = {
   theme: 'dark',
   autoFailover: true,
   testBeforeConnect: true,
+  autoConnect: false,
   notifications: true,
   refreshInterval: 300000
 };
@@ -87,6 +88,10 @@ let refreshBtn, disconnectBtn, themeBtn, statsBtn, favoritesBtn, settingsBtn;
 let countryFilter, typeFilter, proxyList, proxyCount, listTitle, loading;
 let quickConnectGrid, quickConnectSection, recommendedSection, recommendedList;
 let toastContainer, mainTabs, filterChips, settingsPanel, statsPanel;
+let proxySearch, bestProxyBtn;
+let speedGraphCanvas, speedGraphContainer, currentLatencyEl;
+let speedData = [];
+let speedGraphInterval = null;
 
 function initDOMElements() {
   statusIndicator = $('statusIndicator');
@@ -119,6 +124,11 @@ function initDOMElements() {
   filterChips = $('filterChips');
   settingsPanel = $('settingsPanel');
   statsPanel = $('statsPanel');
+  proxySearch = $('proxySearch');
+  bestProxyBtn = $('bestProxyBtn');
+  speedGraphCanvas = $('speedGraph');
+  speedGraphContainer = $('speedGraphContainer');
+  currentLatencyEl = $('currentLatency');
 }
 
 // Initialize
@@ -126,6 +136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initDOMElements();
   await loadSettings();
   applyTheme();
+  setupThemeWatcher();
   await loadFavorites();
   await loadProxyStats();
   await loadDailyStats();
@@ -140,6 +151,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupSettingsListeners();
   setupHealthListeners();
   setupMessageListener();
+  setupSearchListener();
   startAutoRefresh();
   
   // Check if onboarding should be shown
@@ -163,14 +175,19 @@ function setupEventListeners() {
   countryFilter.addEventListener('change', filterProxies);
   typeFilter.addEventListener('change', filterProxies);
   
+  // Best Proxy button
+  if (bestProxyBtn) {
+    bestProxyBtn.addEventListener('click', connectToBestProxy);
+  }
+  
   // Security controls
   $('dnsLeakToggle').addEventListener('click', toggleDnsLeakProtection);
   $('webRtcToggle').addEventListener('click', toggleWebRtcProtection);
   $('securityStatusBtn').addEventListener('click', showSecurityStatus);
   
   // Onboarding controls
-  $('startOnboardingBtn').addEventListener('click', startOnboarding);
-  $('skipOnboardingBtn').addEventListener('click', completeOnboarding);
+  $('startOnboardingBtn')?.addEventListener('click', startOnboarding);
+  $('skipOnboardingBtn')?.addEventListener('click', completeOnboarding);
 }
 
 function setupTabListeners() {
@@ -214,6 +231,13 @@ function setupSettingsListeners() {
     saveSettings();
   });
   
+  $('autoConnectToggle')?.addEventListener('click', function() {
+    settings.autoConnect = !settings.autoConnect;
+    this.classList.toggle('active', settings.autoConnect);
+    saveSettings();
+    showToast(`Auto-connect ${settings.autoConnect ? 'enabled' : 'disabled'}`, 'info');
+  });
+  
   $('notificationsToggle').addEventListener('click', function() {
     settings.notifications = !settings.notifications;
     this.classList.toggle('active', settings.notifications);
@@ -244,6 +268,7 @@ async function loadSettings() {
     $('refreshInterval').value = settings.refreshInterval.toString();
     $('autoFailoverToggle').classList.toggle('active', settings.autoFailover);
     $('testBeforeConnectToggle').classList.toggle('active', settings.testBeforeConnect);
+    $('autoConnectToggle')?.classList.toggle('active', settings.autoConnect);
     $('notificationsToggle').classList.toggle('active', settings.notifications);
   } catch (error) { console.error('Error loading settings:', error); }
 }
@@ -462,9 +487,11 @@ function hideOnboarding() {
 
 async function startOnboarding() {
   try {
-    await chrome.runtime.sendMessage({ action: 'startOnboarding' });
+    onboardingState.completed = false;
+    onboardingState.currentStepIndex = 0;
+    await chrome.storage.local.set({ onboarding: onboardingState });
     hideOnboarding();
-    showToast('Onboarding started! Check the extension for guidance.', 'info');
+    showOnboarding();
   } catch (error) {
     showToast('Failed to start onboarding', 'error');
   }
@@ -472,10 +499,10 @@ async function startOnboarding() {
 
 async function completeOnboarding() {
   try {
-    await chrome.runtime.sendMessage({ action: 'completeOnboarding' });
     onboardingState.completed = true;
+    await chrome.storage.local.set({ onboarding: onboardingState });
     hideOnboarding();
-    showToast('Onboarding skipped. You can access help anytime in Settings.', 'info');
+    showToast('Onboarding complete!', 'info');
   } catch (error) {
     showToast('Failed to complete onboarding', 'error');
   }
@@ -570,6 +597,24 @@ function applyTheme() {
   }
   document.documentElement.setAttribute('data-theme', theme);
   themeBtn.textContent = theme === 'dark' ? '🌙' : '☀️';
+}
+
+function setupThemeWatcher() {
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (settings.theme === 'auto') {
+        applyTheme();
+      }
+    });
+  }
+}
+
+function setupSearchListener() {
+  if (proxySearch) {
+    proxySearch.addEventListener('input', () => {
+      filterProxies();
+    });
+  }
 }
 
 function toggleTheme() {
@@ -753,8 +798,19 @@ async function filterProxies() {
   const selectedType = typeFilter.value;
   const activeChip = filterChips.querySelector('.chip-active');
   const speedFilter = activeChip?.dataset.filter === 'speed' ? activeChip.dataset.value : 'all';
+  const searchQuery = proxySearch?.value?.toLowerCase() || '';
   
   let filtered = proxies;
+  
+  // Apply search filter
+  if (searchQuery) {
+    filtered = filtered.filter(p => 
+      p.ipPort.toLowerCase().includes(searchQuery) ||
+      p.country.toLowerCase().includes(searchQuery) ||
+      p.type.toLowerCase().includes(searchQuery) ||
+      p.ip.toLowerCase().includes(searchQuery)
+    );
+  }
   
   if (currentTab === 'favorites') {
     filtered = filtered.filter(p => favorites.some(f => f.ipPort === p.ipPort));
@@ -807,6 +863,34 @@ function getRecommendedProxies(excludeProxy = null) {
     .map(p => ({ ...p, score: calculateProxyScore(p) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, 5);
+}
+
+function getBestProxy() {
+  const oneHourAgo = Date.now() - 3600000;
+  
+  return proxies
+    .map(p => {
+      const stats = proxyStats[p.ipPort] || {};
+      const recentSuccess = stats.lastSuccess && stats.lastSuccess > oneHourAgo;
+      const hasGoodSuccessRate = !stats.successRate || stats.successRate >= 50;
+      
+      return {
+        proxy: p,
+        score: (recentSuccess ? 100 : 0) + (hasGoodSuccessRate ? 50 : 0) - (p.speedMs / 10)
+      };
+    })
+    .filter(p => p.score > 50)
+    .sort((a, b) => b.score - a.score)[0]?.proxy;
+}
+
+async function connectToBestProxy() {
+  const best = getBestProxy();
+  if (best) {
+    showToast(`Connecting to best proxy: ${best.country}`, 'info');
+    await connectToProxy(best, { target: { closest: () => null, querySelector: () => null } });
+  } else {
+    showToast('No suitable proxy found', 'warning');
+  }
 }
 
 // Render recommended
@@ -989,6 +1073,7 @@ async function connectToProxy(proxy, event) {
     
     startConnectionTimer();
     startMonitoring();
+    startSpeedGraph();
     updateUI();
     filterProxies();
     renderQuickConnect();
@@ -1019,6 +1104,7 @@ async function disconnectProxy() {
     await chrome.storage.local.remove(['activeProxy', 'connectionStartTime']);
     stopConnectionTimer();
     stopMonitoring();
+    stopSpeedGraph();
     currentProxy = null;
     connectionStartTime = null;
     updateUI();
@@ -1258,4 +1344,87 @@ async function handleProxyError(error, proxy = null) {
     // Fallback error handling
     showToast(`Error: ${error?.message || error || 'Unknown error occurred'}`, 'error');
   }
+}
+
+// ===== Speed Graph =====
+function startSpeedGraph() {
+  if (!speedGraphCanvas || !currentProxy) return;
+  
+  speedData = [];
+  speedGraphContainer.style.display = 'block';
+  
+  speedGraphInterval = setInterval(async () => {
+    if (!currentProxy) {
+      stopSpeedGraph();
+      return;
+    }
+    
+    try {
+      const testResult = await chrome.runtime.sendMessage({ 
+        action: 'quickTest', 
+        proxy: currentProxy 
+      });
+      
+      if (testResult.success && testResult.latency) {
+        speedData.push(testResult.latency);
+        if (speedData.length > 30) speedData.shift();
+        drawSpeedGraph();
+        
+        if (currentLatencyEl) {
+          currentLatencyEl.textContent = testResult.latency + 'ms';
+        }
+      }
+    } catch (error) {
+      console.error('Speed test error:', error);
+    }
+  }, 2000);
+}
+
+function stopSpeedGraph() {
+  if (speedGraphInterval) {
+    clearInterval(speedGraphInterval);
+    speedGraphInterval = null;
+  }
+  if (speedGraphContainer) {
+    speedGraphContainer.style.display = 'none';
+  }
+  speedData = [];
+}
+
+function drawSpeedGraph() {
+  if (!speedGraphCanvas || speedData.length < 2) return;
+  
+  const ctx = speedGraphCanvas.getContext('2d');
+  const width = speedGraphCanvas.width;
+  const height = speedGraphCanvas.height;
+  
+  ctx.clearRect(0, 0, width, height);
+  
+  const maxLatency = Math.max(...speedData, 100);
+  const minLatency = 0;
+  const range = maxLatency - minLatency || 1;
+  
+  ctx.beginPath();
+  ctx.strokeStyle = '#64ffda';
+  ctx.lineWidth = 2;
+  
+  speedData.forEach((latency, index) => {
+    const x = (index / (speedData.length - 1)) * width;
+    const y = height - ((latency - minLatency) / range) * (height - 4) - 2;
+    
+    if (index === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  });
+  
+  ctx.stroke();
+  
+  // Fill under the line
+  ctx.lineTo(width, height);
+  ctx.lineTo(0, height);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(100, 255, 218, 0.15)';
+  ctx.fill();
 }

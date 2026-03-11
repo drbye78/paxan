@@ -50,12 +50,19 @@
         <span class="health-icon">❤️</span>
         <span class="health-text">Health: Offline</span>
       </div>
+      <div class="speed-graph-container" id="speedGraphContainer" style="display: none;">
+        <div class="speed-graph-header">
+          <span>📈 Speed</span>
+          <span class="current-latency" id="currentLatency">--ms</span>
+        </div>
+        <canvas id="speedGraph" width="280" height="50"></canvas>
+      </div>
     </div>
 
     <div class="quick-connect" id="quickConnect">
       <div class="section-header">
         <h3>🚀 Quick Connect</h3>
-        <span class="section-note">Fastest proxies</span>
+        <button class="btn btn-primary btn-sm" id="bestProxyBtn">⚡ Best Proxy</button>
       </div>
       <div class="quick-connect-grid" id="quickConnectGrid"></div>
     </div>
@@ -74,12 +81,17 @@
       <button class="tab" data-tab="recent">🕐 Recent</button>
     </div>
 
+    <div class="search-container">
+      <input type="text" id="proxySearch" class="search-input" placeholder="🔍 Search proxies...">
+    </div>
+
     <div class="filter-chips" id="filterChips">
-      <button class="chip chip-active" data-filter="speed" data-value="all">⚡ All Speeds</button>
+      <button class="chip chip-active" data-filter="speed" data-value="all">⚡ All</button>
       <button class="chip" data-filter="speed" data-value="fast">🚀 &lt;100ms</button>
       <button class="chip" data-filter="speed" data-value="medium">⚡ &lt;300ms</button>
       <button class="chip" data-filter="type" data-value="HTTPS">🔒 HTTPS</button>
       <button class="chip" data-filter="type" data-value="SOCKS5">🔌 SOCKS5</button>
+      <button class="chip" data-filter="type" data-value="SOCKS4">🌐 SOCKS4</button>
     </div>
 
     <div class="controls">
@@ -97,6 +109,7 @@
         <option value="">All Types</option>
         <option value="HTTPS">🔒 HTTPS</option>
         <option value="SOCKS5">🔌 SOCKS5</option>
+        <option value="SOCKS4">🌐 SOCKS4</option>
       </select>
     </div>
 
@@ -261,6 +274,17 @@
         </div>
         <div class="setting-control">
           <div class="toggle active" id="testBeforeConnectToggle">
+            <div class="toggle-knob"></div>
+          </div>
+        </div>
+      </div>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Auto-Connect on Startup</div>
+          <div class="setting-desc">Connect to last proxy when Chrome starts</div>
+        </div>
+        <div class="setting-control">
+          <div class="toggle" id="autoConnectToggle">
             <div class="toggle-knob"></div>
           </div>
         </div>
