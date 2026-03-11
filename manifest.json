@@ -1,15 +1,21 @@
 {
   "manifest_version": 3,
   "name": "ProxyMania VPN",
-  "version": "1.0.1",
+  "version": "2.1.0",
   "description": "Free VPN service using ProxyMania proxy servers",
   "permissions": [
     "proxy",
     "storage",
-    "tabs"
+    "tabs",
+    "scripting",
+    "alarms",
+    "notifications"
   ],
   "host_permissions": [
-    "https://proxymania.su/*"
+    "https://proxymania.su/*",
+    "https://httpbin.org/*",
+    "https://www.google.com/*",
+    "https://connectivitycheck.gstatic.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -27,5 +33,13 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/modules/webrtc-blocker.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ]
 }

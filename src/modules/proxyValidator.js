@@ -20,8 +20,8 @@ class ProxyValidator {
     // Load cached validation results
     await this.loadValidationResults();
     
-    // Setup periodic cleanup
-    setInterval(() => this.cleanupOldResults(), 3600000); // Clean every hour
+    // Note: Periodic cleanup disabled in MV3
+    // Cleanup should be triggered manually or via chrome.alarms
   }
 
   async loadValidationResults() {
@@ -458,34 +458,5 @@ if (typeof module !== 'undefined') {
   module.exports = ProxyValidator;
 }
 
-// Initialize proxy validator
-const proxyValidator = new ProxyValidator();
-
-// Message handlers for popup communication
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'validateProxy') {
-    proxyValidator.validateProxy(request.proxy, request.options)
-      .then(result => sendResponse(result))
-      .catch(error => sendResponse({ error: error.message }));
-    return true;
-  }
-  
-  if (request.action === 'validateProxies') {
-    proxyValidator.validateProxies(request.proxies, request.options)
-      .then(results => sendResponse({ results }))
-      .catch(error => sendResponse({ error: error.message }));
-    return true;
-  }
-  
-  if (request.action === 'getValidationStats') {
-    sendResponse(proxyValidator.getValidationStats());
-    return false;
-  }
-  
-  if (request.action === 'clearValidationCache') {
-    proxyValidator.clearValidationCache()
-      .then(() => sendResponse({ success: true }))
-      .catch(error => sendResponse({ error: error.message }));
-    return true;
-  }
-});
+// Note: This module requires explicit initialization after context is ready
+// Do not auto-initialize as it may run in service worker context

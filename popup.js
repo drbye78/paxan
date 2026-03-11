@@ -1,13 +1,5 @@
-// ProxyMania VPN - Complete Implementation (Phases 1-5+)
-// Enhanced with Security, Error Handling, and Onboarding
-
-// Import modules
-import './src/modules/security.js';
-import './src/modules/errorHandler.js';
-import './src/modules/onboarding.js';
-import './src/modules/health.js';
-import './src/modules/proxyValidator.js';
-import './src/modules/visualization.js';
+// ProxyMania VPN - Chrome Extension
+// MV3 Compatible Version 2.1.0
 
 let proxies = [];
 let currentProxy = null;
@@ -82,44 +74,56 @@ const countryFlags = {
 };
 
 function getFlag(country) {
+  if (!country) return '🌍';
   return countryFlags[country] || countryFlags[country.split(' ')[0]] || '🌍';
 }
 
-// DOM Elements
+// DOM Elements - initialized lazily
 const $ = (id) => document.getElementById(id);
-const statusIndicator = $('statusIndicator');
-const statusText = statusIndicator.querySelector('.status-text');
-const currentProxyEl = $('currentProxy');
-const currentProxyValue = currentProxyEl.querySelector('.value');
-const connectionTimer = $('connectionTimer');
-const timerValue = connectionTimer.querySelector('.timer-value');
-const testStatus = $('testStatus');
-const testText = testStatus.querySelector('.test-text');
-const monitoringStatus = $('monitoringStatus');
-const refreshBtn = $('refreshBtn');
-const disconnectBtn = $('disconnectBtn');
-const themeBtn = $('themeBtn');
-const statsBtn = $('statsBtn');
-const favoritesBtn = $('favoritesBtn');
-const settingsBtn = $('settingsBtn');
-const countryFilter = $('countryFilter');
-const typeFilter = $('typeFilter');
-const proxyList = $('proxyList');
-const proxyCount = $('proxyCount');
-const listTitle = $('listTitle');
-const loading = $('loading');
-const quickConnectGrid = $('quickConnectGrid');
-const quickConnectSection = $('quickConnect');
-const recommendedSection = $('recommendedSection');
-const recommendedList = $('recommendedList');
-const toastContainer = $('toastContainer');
-const mainTabs = $('mainTabs');
-const filterChips = $('filterChips');
-const settingsPanel = $('settingsPanel');
-const statsPanel = $('statsPanel');
+
+let statusIndicator, statusText, currentProxyEl, currentProxyValue;
+let connectionTimer, timerValue, testStatus, testText, monitoringStatus;
+let refreshBtn, disconnectBtn, themeBtn, statsBtn, favoritesBtn, settingsBtn;
+let countryFilter, typeFilter, proxyList, proxyCount, listTitle, loading;
+let quickConnectGrid, quickConnectSection, recommendedSection, recommendedList;
+let toastContainer, mainTabs, filterChips, settingsPanel, statsPanel;
+
+function initDOMElements() {
+  statusIndicator = $('statusIndicator');
+  statusText = statusIndicator?.querySelector('.status-text');
+  currentProxyEl = $('currentProxy');
+  currentProxyValue = currentProxyEl?.querySelector('.value');
+  connectionTimer = $('connectionTimer');
+  timerValue = connectionTimer?.querySelector('.timer-value');
+  testStatus = $('testStatus');
+  testText = testStatus?.querySelector('.test-text');
+  monitoringStatus = $('monitoringStatus');
+  refreshBtn = $('refreshBtn');
+  disconnectBtn = $('disconnectBtn');
+  themeBtn = $('themeBtn');
+  statsBtn = $('statsBtn');
+  favoritesBtn = $('favoritesBtn');
+  settingsBtn = $('settingsBtn');
+  countryFilter = $('countryFilter');
+  typeFilter = $('typeFilter');
+  proxyList = $('proxyList');
+  proxyCount = $('proxyCount');
+  listTitle = $('listTitle');
+  loading = $('loading');
+  quickConnectGrid = $('quickConnectGrid');
+  quickConnectSection = $('quickConnect');
+  recommendedSection = $('recommendedSection');
+  recommendedList = $('recommendedList');
+  toastContainer = $('toastContainer');
+  mainTabs = $('mainTabs');
+  filterChips = $('filterChips');
+  settingsPanel = $('settingsPanel');
+  statsPanel = $('statsPanel');
+}
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
+  initDOMElements();
   await loadSettings();
   applyTheme();
   await loadFavorites();
@@ -134,8 +138,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupTabListeners();
   setupFilterChipListeners();
   setupSettingsListeners();
-  setupSecurityListeners();
-  setupOnboardingListeners();
   setupHealthListeners();
   setupMessageListener();
   startAutoRefresh();
@@ -428,7 +430,7 @@ function showOnboarding() {
           </div>
           <span class="progress-text">Step 1 of 7</span>
         </div>
-        <button class="onboarding-skip" id="skipOnboardingBtn" title="Skip Tutorial">Skip</button>
+        <button class="onboarding-skip" title="Skip Tutorial">Skip</button>
       </div>
       
       <div class="onboarding-content">
@@ -438,7 +440,7 @@ function showOnboarding() {
       </div>
       
       <div class="onboarding-actions">
-        <button class="onboarding-btn onboarding-btn-primary" id="startOnboardingBtn">Get Started</button>
+        <button class="onboarding-btn onboarding-btn-primary">Get Started</button>
         <button class="onboarding-btn onboarding-btn-secondary">Back</button>
       </div>
     </div>
@@ -447,8 +449,8 @@ function showOnboarding() {
   document.body.appendChild(overlay);
   
   // Add event listeners
-  overlay.querySelector('#skipOnboardingBtn').addEventListener('click', completeOnboarding);
-  overlay.querySelector('#startOnboardingBtn').addEventListener('click', startOnboarding);
+  overlay.querySelector('.onboarding-skip').addEventListener('click', completeOnboarding);
+  overlay.querySelector('.onboarding-btn-primary').addEventListener('click', startOnboarding);
 }
 
 function hideOnboarding() {
@@ -746,7 +748,7 @@ function populateCountryFilter() {
 }
 
 // Filter proxies
-function filterProxies() {
+async function filterProxies() {
   const selectedCountry = countryFilter.value;
   const selectedType = typeFilter.value;
   const activeChip = filterChips.querySelector('.chip-active');
@@ -757,12 +759,14 @@ function filterProxies() {
   if (currentTab === 'favorites') {
     filtered = filtered.filter(p => favorites.some(f => f.ipPort === p.ipPort));
   } else if (currentTab === 'recent') {
-    chrome.storage.local.get(['recentlyUsed'], (result) => {
+    try {
+      const result = await chrome.storage.local.get(['recentlyUsed']);
       const recent = result.recentlyUsed || [];
-      filtered = filtered.filter(p => recent.some(r => r.proxy.ipPort === p.ipPort));
-      applyFilters(filtered, selectedCountry, selectedType, speedFilter);
-    });
-    return;
+      filtered = filtered.filter(p => recent.some(r => r.proxy && r.proxy.ipPort === p.ipPort));
+    } catch (error) {
+      console.error('Error loading recent proxies:', error);
+      filtered = [];
+    }
   }
   
   applyFilters(filtered, selectedCountry, selectedType, speedFilter);
@@ -850,11 +854,11 @@ function renderProxyList(proxyItems) {
     showEmptyState(currentTab === 'favorites' ? 'noFavorites' : 'noResults');
     return;
   }
-  proxyItems.forEach(proxy => proxyList.appendChild(createProxyItem(proxy)));
+  proxyItems.forEach(proxy => proxyList.appendChild(createProxyItem(proxy, proxyItems)));
 }
 
 // Create proxy item
-function createProxyItem(proxy) {
+function createProxyItem(proxy, proxyItemsList) {
   const item = document.createElement('div');
   item.className = 'proxy-item' + (currentProxy?.ipPort === proxy.ipPort ? ' active' : '');
   const stats = proxyStats[proxy.ipPort] || {};
@@ -889,7 +893,7 @@ function createProxyItem(proxy) {
   item.querySelector('.fav-btn').addEventListener('click', async (e) => {
     e.stopPropagation();
     await toggleFavorite(proxy);
-    renderProxyList(proxyItems);
+    renderProxyList(proxyItemsList);
     renderRecommended();
   });
   
@@ -960,7 +964,6 @@ async function connectToProxy(proxy, event) {
   const proxyItem = event.target.closest('.proxy-item') || event.target;
   proxyItem.classList.add('connecting');
   const connectBtn = event.target.querySelector('.connect-btn') || event.target;
-  const originalText = connectBtn.textContent;
   connectBtn.textContent = '🧪 Testing...';
   testStatus.style.display = 'block';
   testText.textContent = 'Testing proxy connectivity...';
@@ -1043,7 +1046,7 @@ async function toggleFavorite(proxy) {
 async function addToRecentlyUsed(proxy) {
   try {
     const { recentlyUsed = [] } = await chrome.storage.local.get(['recentlyUsed']);
-    const filtered = recentlyUsed.filter(r => r.proxy.ipPort !== proxy.ipPort);
+    const filtered = recentlyUsed.filter(r => r && r.proxy && r.proxy.ipPort !== proxy.ipPort);
     filtered.unshift({ proxy: { ...proxy }, lastUsed: Date.now() });
     await chrome.storage.local.set({ recentlyUsed: filtered.slice(0, 10) });
   } catch (error) { console.error(error); }
@@ -1243,66 +1246,16 @@ async function clearAllData() {
 
 // Enhanced error handling
 async function handleProxyError(error, proxy = null) {
-  if (errorHandler) {
-    await chrome.runtime.sendMessage({
-      action: 'handleProxyError',
-      error: error,
-      proxy: proxy
-    });
-  } else {
+  try {
+    if (typeof errorHandler !== 'undefined') {
+      await chrome.runtime.sendMessage({
+        action: 'handleProxyError',
+        error: error?.message || String(error),
+        proxy: proxy
+      });
+    }
+  } catch (e) {
     // Fallback error handling
-    showToast(`Error: ${error.message || 'Unknown error occurred'}`, 'error');
+    showToast(`Error: ${error?.message || error || 'Unknown error occurred'}`, 'error');
   }
-}
-
-// Enhanced proxy item with health indicators
-function createProxyItem(proxy) {
-  const item = document.createElement('div');
-  item.className = 'proxy-item' + (currentProxy?.ipPort === proxy.ipPort ? ' active' : '');
-  const stats = proxyStats[proxy.ipPort] || {};
-  const flag = getFlag(proxy.country);
-  const isFav = favorites.some(f => f.ipPort === proxy.ipPort);
-  const workingStatus = getWorkingStatus(proxy);
-  
-  // Get health data if available
-  const healthData = healthStatus.latencyHistory?.find(h => h.proxy === proxy.ipPort) || {};
-  
-  item.innerHTML = `
-    <div class="proxy-info">
-      <div class="proxy-ip">
-        <span class="proxy-flag">${flag}</span>
-        <span>${proxy.ipPort}</span>
-        ${isFav ? '<span class="fav-indicator">⭐</span>' : ''}
-      </div>
-      <div class="proxy-details">
-        <span>${proxy.country}</span>
-        <span class="proxy-type">${proxy.type}</span>
-        <span class="proxy-speed">⚡ ${proxy.speedMs}ms</span>
-        ${stats.successRate ? `<span class="proxy-rate">✓ ${stats.successRate}%</span>` : ''}
-        ${workingStatus !== 'unknown' ? `<span class="proxy-status ${workingStatus}">${workingStatus === 'good' ? '✓' : '⚠'}</span>` : ''}
-        ${healthData.quality ? `<span class="proxy-health ${healthData.quality}">${healthData.quality}</span>` : ''}
-      </div>
-      ${stats.avgLatency && stats.latencies?.length ? renderSparkline(stats.latencies) : ''}
-    </div>
-    <div class="proxy-actions">
-      <button class="icon-btn fav-btn ${isFav ? 'active' : ''}">${isFav ? '⭐' : '☆'}</button>
-      <button class="connect-btn ${currentProxy?.ipPort === proxy.ipPort ? 'active' : ''}">
-        ${currentProxy?.ipPort === proxy.ipPort ? 'Connected' : 'Connect'}
-      </button>
-    </div>
-  `;
-  
-  item.querySelector('.fav-btn').addEventListener('click', async (e) => {
-    e.stopPropagation();
-    await toggleFavorite(proxy);
-    renderProxyList(proxyItems);
-    renderRecommended();
-  });
-  
-  item.querySelector('.connect-btn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    connectToProxy(proxy, { target: item });
-  });
-  
-  return item;
 }

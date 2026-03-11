@@ -19,11 +19,9 @@ class VisualizationManager {
     // Load historical data
     await this.loadHistoricalData();
     
-    // Setup periodic data collection
-    setInterval(() => this.collectMetrics(), 30000); // Every 30 seconds
-    
-    // Setup chart updates
-    setInterval(() => this.updateCharts(), 5000); // Every 5 seconds
+    // Note: Periodic updates disabled in MV3
+    // In popup context, use requestAnimationFrame or window.setInterval
+    // In background context, use chrome.alarms API
   }
 
   async loadHistoricalData() {
@@ -245,6 +243,11 @@ class VisualizationManager {
 
   // SVG utility functions
   createSVG(width, height) {
+    // Only create SVG in popup context
+    if (typeof document === 'undefined') {
+      return null;
+    }
+    
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('width', width);
     svg.setAttribute('height', height);
@@ -261,6 +264,11 @@ class VisualizationManager {
   }
 
   createLinePath(data, xScale, yScale, xAccessor, yAccessor) {
+    // Only create SVG elements in popup context
+    if (typeof document === 'undefined') {
+      return null;
+    }
+    
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     let d = '';
     
@@ -286,6 +294,11 @@ class VisualizationManager {
   }
 
   createAreaPath(data, xScale, yScale, xAccessor, yAccessor) {
+    // Only create SVG elements in popup context
+    if (typeof document === 'undefined') {
+      return null;
+    }
+    
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     let d = '';
     
@@ -314,6 +327,11 @@ class VisualizationManager {
   }
 
   createQualityLinePath(data, xScale, yScale, xAccessor, yAccessor) {
+    // Only create SVG elements in popup context
+    if (typeof document === 'undefined') {
+      return null;
+    }
+    
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     let d = '';
     
@@ -339,6 +357,11 @@ class VisualizationManager {
   }
 
   drawGridLines(svg, width, height, margin, yMax) {
+    // Only create SVG elements in popup context
+    if (typeof document === 'undefined') {
+      return;
+    }
+    
     const gridGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     gridGroup.setAttribute('class', 'grid-lines');
     
@@ -360,6 +383,11 @@ class VisualizationManager {
   }
 
   drawQualityBands(svg, width, height, margin) {
+    // Only create SVG elements in popup context
+    if (typeof document === 'undefined') {
+      return;
+    }
+    
     const bandsGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     bandsGroup.setAttribute('class', 'quality-bands');
     
@@ -385,6 +413,11 @@ class VisualizationManager {
   }
 
   drawDataPoints(svg, data, xScale, yScale, margin) {
+    // Only create SVG elements in popup context
+    if (typeof document === 'undefined') {
+      return;
+    }
+    
     const pointsGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     pointsGroup.setAttribute('class', 'data-points');
     
@@ -417,6 +450,11 @@ class VisualizationManager {
   }
 
   drawBars(svg, data, xScale, yScale, margin, chartWidth) {
+    // Only create SVG elements in popup context
+    if (typeof document === 'undefined') {
+      return;
+    }
+    
     const barsGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     barsGroup.setAttribute('class', 'bars');
     
@@ -443,6 +481,11 @@ class VisualizationManager {
   }
 
   drawAxes(svg, data, xScale, yScale, margin, chartWidth, chartHeight) {
+    // Only create SVG elements in popup context
+    if (typeof document === 'undefined') {
+      return;
+    }
+    
     // X-axis
     const xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     xAxis.setAttribute('x1', margin.left);
@@ -465,6 +508,11 @@ class VisualizationManager {
   }
 
   drawQualityIndicators(svg, data, xScale, yScale, margin) {
+    // Only create SVG elements in popup context
+    if (typeof document === 'undefined') {
+      return;
+    }
+    
     const indicatorsGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     indicatorsGroup.setAttribute('class', 'quality-indicators');
     
@@ -587,26 +635,5 @@ if (typeof module !== 'undefined') {
   module.exports = VisualizationManager;
 }
 
-// Initialize visualization manager
-const visualizationManager = new VisualizationManager();
-
-// Message handlers for popup communication
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'getSummaryStats') {
-    sendResponse(visualizationManager.getSummaryStats());
-    return false;
-  }
-  
-  if (request.action === 'exportChartData') {
-    const data = visualizationManager.exportChartData(request.type);
-    sendResponse(data);
-    return false;
-  }
-  
-  if (request.action === 'clearChartData') {
-    visualizationManager.clearChartData()
-      .then(() => sendResponse({ success: true }))
-      .catch(error => sendResponse({ error: error.message }));
-    return true;
-  }
-});
+// Note: This module requires explicit initialization after DOMContentLoaded
+// Do not auto-initialize as it may run in service worker context

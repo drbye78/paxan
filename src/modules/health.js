@@ -1,25 +1,23 @@
-// Health Monitoring Module - Connection Quality & Health Tracking
-// Phase 2: Intelligence & Quality Assurance
+// Health Monitoring Module - Simplified for MV3
+// Removed duplicate message handlers (now handled by background.js)
 
 class HealthMonitor {
   constructor() {
     this.monitoringActive = false;
-    this.monitoringInterval = null;
     this.currentProxy = null;
     this.healthData = {
       connectionQuality: 'excellent',
       lastCheck: null,
       qualityHistory: [],
       latencyHistory: [],
-      packetLoss: 0,
-      jitter: 0
+      avgLatency: 0
     };
     
     this.qualityThresholds = {
-      excellent: { latency: 0, packetLoss: 0, jitter: 0 },
-      good: { latency: 100, packetLoss: 1, jitter: 10 },
-      fair: { latency: 300, packetLoss: 5, jitter: 30 },
-      poor: { latency: 500, packetLoss: 10, jitter: 50 }
+      excellent: { latency: 100, packetLoss: 1 },
+      good: { latency: 300, packetLoss: 5 },
+      fair: { latency: 500, packetLoss: 10 },
+      poor: { latency: 9999, packetLoss: 50 }
     };
     
     this.init();
@@ -27,7 +25,6 @@ class HealthMonitor {
 
   async init() {
     await this.loadHealthData();
-    this.setupHealthMonitoring();
   }
 
   async loadHealthData() {
@@ -49,306 +46,43 @@ class HealthMonitor {
     }
   }
 
-  setupHealthMonitoring() {
-    // Listen for proxy connection changes
-    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-      if (request.action === 'startHealthMonitoring') {
-        this.startHealthMonitoring(request.proxy);
-        sendResponse({ success: true });
-        return false;
-      }
-      
-      if (request.action === 'stopHealthMonitoring') {
-        this.stopHealthMonitoring();
-        sendResponse({ success: true });
-        return false;
-      }
-      
-      if (request.action === 'getHealthStatus') {
-        sendResponse(this.getHealthStatus());
-        return false;
-      }
-    });
-  }
-
   startHealthMonitoring(proxy) {
-    this.stopHealthMonitoring(); // Clear any existing monitoring
-    
+    this.stopHealthMonitoring();
     this.currentProxy = proxy;
     this.monitoringActive = true;
-    
-    // Initial health check
-    this.performHealthCheck();
-    
-    // Start periodic monitoring
-    this.monitoringInterval = setInterval(() => {
-      this.performHealthCheck();
-    }, 30000); // Check every 30 seconds
-    
-    console.log('Started health monitoring for:', proxy.ipPort);
+    console.log('Health monitoring started for:', proxy?.ipPort);
   }
 
   stopHealthMonitoring() {
-    if (this.monitoringInterval) {
-      clearInterval(this.monitoringInterval);
-      this.monitoringInterval = null;
-    }
     this.monitoringActive = false;
     this.currentProxy = null;
-    console.log('Stopped health monitoring');
+    console.log('Health monitoring stopped');
   }
 
-  async performHealthCheck() {
-    if (!this.currentProxy || !this.monitoringActive) return;
-    
-    try {
-      const healthResult = await this.measureConnectionHealth(this.currentProxy);
-      
-      // Update health data
-      this.updateHealthData(healthResult);
-      
-      // Calculate connection quality
-      const quality = this.calculateConnectionQuality(healthResult);
-      this.healthData.connectionQuality = quality;
-      
-      // Store in history
-      this.addToHistory(healthResult);
-      
-      // Check for degradation
-      this.checkForDegradation(healthResult);
-      
-      // Save data
-      await this.saveHealthData();
-      
-      // Notify popup of health status
-      chrome.runtime.sendMessage({
-        action: 'healthStatusUpdate',
-        health: this.healthData
-      }).catch(() => {});
-      
-    } catch (error) {
-      console.error('Health check failed:', error);
-      this.handleHealthCheckError(error);
-    }
-  }
-
-  async measureConnectionHealth(proxy) {
-    const startTime = Date.now();
-    const testResults = [];
-    
-    // Perform multiple ping tests for accuracy
-    for (let i = 0; i < 5; i++) {
-      const result = await this.performPingTest(proxy);
-      if (result.success) {
-        testResults.push(result);
-      }
-      await this.sleep(100); // Small delay between tests
-    }
-    
-    if (testResults.length === 0) {
-      return {
-        success: false,
-        latency: null,
-        packetLoss: 100,
-        jitter: null,
-        timestamp: Date.now()
-      };
-    }
-    
-    // Calculate statistics
-    const latencies = testResults.map(r => r.latency);
-    const avgLatency = latencies.reduce((a, b) => a + b, 0) / latencies.length;
-    const minLatency = Math.min(...latencies);
-    const maxLatency = Math.max(...latencies);
-    const jitter = maxLatency - minLatency;
-    const packetLoss = ((5 - testResults.length) / 5) * 100;
-    
-    return {
-      success: true,
-      latency: Math.round(avgLatency),
-      minLatency: minLatency,
-      maxLatency: maxLatency,
-      jitter: jitter,
-      packetLoss: packetLoss,
-      timestamp: Date.now()
-    };
-  }
-
-  async performPingTest(proxy) {
-    return new Promise((resolve) => {
-      const startTime = Date.now();
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-      
-      const testConfig = {
-        mode: 'fixed_servers',
-        rules: {
-          singleProxy: {
-            scheme: proxy.type === 'SOCKS5' ? 'socks5' : 'http',
-            host: proxy.ip,
-            port: proxy.port
-          },
-          bypassList: ['localhost', '127.0.0.1', '::1']
-        }
-      };
-      
-      chrome.proxy.settings.set({ value: testConfig, scope: 'regular' }, async () => {
-        try {
-          const response = await fetch('https://httpbin.org/ip', {
-            method: 'GET',
-            signal: controller.signal,
-            cache: 'no-store'
-          });
-          
-          clearTimeout(timeoutId);
-          
-          // Restore original proxy settings
-          await this.restoreProxySettings();
-          
-          const latency = Date.now() - startTime;
-          
-          resolve({
-            success: response.ok,
-            latency: latency,
-            status: response.status
-          });
-          
-        } catch (error) {
-          clearTimeout(timeoutId);
-          
-          // Restore original proxy settings
-          await this.restoreProxySettings();
-          
-          resolve({
-            success: false,
-            latency: null,
-            error: error.message
-          });
-        }
-      });
-    });
-  }
-
-  async restoreProxySettings() {
-    // Restore to current active proxy or clear if none
-    try {
-      const result = await chrome.storage.local.get(['activeProxy']);
-      if (result.activeProxy) {
-        await chrome.runtime.sendMessage({
-          action: 'setProxy',
-          proxy: result.activeProxy
-        });
-      } else {
-        await chrome.runtime.sendMessage({ action: 'clearProxy' });
-      }
-    } catch (error) {
-      console.error('Failed to restore proxy settings:', error);
-    }
-  }
-
-  calculateConnectionQuality(healthResult) {
-    const { latency, packetLoss, jitter } = healthResult;
-    
-    if (!latency || packetLoss > 50) {
-      return 'poor';
-    }
-    
-    // Check against thresholds
+  calculateConnectionQuality(latency, packetLoss = 0) {
+    if (!latency || packetLoss > 50) return 'poor';
     if (latency <= this.qualityThresholds.excellent.latency && 
-        packetLoss <= this.qualityThresholds.excellent.packetLoss &&
-        jitter <= this.qualityThresholds.excellent.jitter) {
-      return 'excellent';
-    } else if (latency <= this.qualityThresholds.good.latency && 
-               packetLoss <= this.qualityThresholds.good.packetLoss &&
-               jitter <= this.qualityThresholds.good.jitter) {
-      return 'good';
-    } else if (latency <= this.qualityThresholds.fair.latency && 
-               packetLoss <= this.qualityThresholds.fair.packetLoss &&
-               jitter <= this.qualityThresholds.fair.jitter) {
-      return 'fair';
-    } else {
-      return 'poor';
-    }
+        packetLoss <= this.qualityThresholds.excellent.packetLoss) return 'excellent';
+    if (latency <= this.qualityThresholds.good.latency && 
+        packetLoss <= this.qualityThresholds.good.packetLoss) return 'good';
+    if (latency <= this.qualityThresholds.fair.latency && 
+        packetLoss <= this.qualityThresholds.fair.packetLoss) return 'fair';
+    return 'poor';
   }
 
-  updateHealthData(healthResult) {
-    this.healthData.lastCheck = healthResult.timestamp;
+  updateHealthData(latency, quality) {
+    this.healthData.lastCheck = Date.now();
+    this.healthData.connectionQuality = quality;
     
-    // Update averages for display
-    if (healthResult.success) {
-      this.healthData.avgLatency = this.calculateMovingAverage(
-        this.healthData.latencyHistory,
-        healthResult.latency
-      );
-    }
-  }
-
-  addToHistory(healthResult) {
-    // Add to latency history (keep last 20)
-    if (healthResult.success) {
-      this.healthData.latencyHistory.push(healthResult.latency);
+    if (latency) {
+      this.healthData.latencyHistory.push(latency);
       if (this.healthData.latencyHistory.length > 20) {
         this.healthData.latencyHistory.shift();
       }
+      
+      const sum = this.healthData.latencyHistory.reduce((a, b) => a + b, 0);
+      this.healthData.avgLatency = Math.round(sum / this.healthData.latencyHistory.length);
     }
-    
-    // Add to quality history (keep last 10)
-    this.healthData.qualityHistory.push({
-      quality: this.healthData.connectionQuality,
-      timestamp: healthResult.timestamp
-    });
-    if (this.healthData.qualityHistory.length > 10) {
-      this.healthData.qualityHistory.shift();
-    }
-  }
-
-  calculateMovingAverage(history, newValue) {
-    const sum = history.reduce((a, b) => a + b, 0);
-    return Math.round((sum + newValue) / (history.length + 1));
-  }
-
-  checkForDegradation(healthResult) {
-    const currentQuality = this.healthData.connectionQuality;
-    
-    // Check for quality degradation
-    if (currentQuality === 'poor') {
-      chrome.runtime.sendMessage({
-        action: 'connectionDegraded',
-        type: 'quality',
-        quality: currentQuality,
-        latency: healthResult.latency,
-        packetLoss: healthResult.packetLoss
-      }).catch(() => {});
-    }
-    
-    // Check for high latency
-    if (healthResult.latency && healthResult.latency > 500) {
-      chrome.runtime.sendMessage({
-        action: 'connectionDegraded',
-        type: 'latency',
-        latency: healthResult.latency
-      }).catch(() => {});
-    }
-    
-    // Check for high packet loss
-    if (healthResult.packetLoss > 10) {
-      chrome.runtime.sendMessage({
-        action: 'connectionDegraded',
-        type: 'packetLoss',
-        packetLoss: healthResult.packetLoss
-      }).catch(() => {});
-    }
-  }
-
-  handleHealthCheckError(error) {
-    // Log error but don't stop monitoring
-    console.error('Health check error:', error);
-    
-    // Notify of monitoring issue
-    chrome.runtime.sendMessage({
-      action: 'healthCheckError',
-      error: error.message
-    }).catch(() => {});
   }
 
   getHealthStatus() {
@@ -362,57 +96,6 @@ class HealthMonitor {
       qualityHistory: this.healthData.qualityHistory.slice(-5)
     };
   }
-
-  sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  // Public API methods
-  getConnectionQuality() {
-    return this.healthData.connectionQuality;
-  }
-
-  getLatencyHistory() {
-    return this.healthData.latencyHistory;
-  }
-
-  getQualityHistory() {
-    return this.healthData.qualityHistory;
-  }
-
-  getAverageLatency() {
-    return this.healthData.avgLatency || 0;
-  }
-
-  isMonitoring() {
-    return this.monitoringActive;
-  }
 }
 
-// Export for use in background.js
-if (typeof module !== 'undefined') {
-  module.exports = HealthMonitor;
-}
-
-// Initialize health monitor
 const healthMonitor = new HealthMonitor();
-
-// Message handlers for popup communication
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'startHealthMonitoring') {
-    healthMonitor.startHealthMonitoring(request.proxy);
-    sendResponse({ success: true });
-    return false;
-  }
-  
-  if (request.action === 'stopHealthMonitoring') {
-    healthMonitor.stopHealthMonitoring();
-    sendResponse({ success: true });
-    return false;
-  }
-  
-  if (request.action === 'getHealthStatus') {
-    sendResponse(healthMonitor.getHealthStatus());
-    return false;
-  }
-});
