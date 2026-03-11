@@ -30,24 +30,29 @@ Welcome to the ProxyMania VPN user guide. This document provides detailed instru
 
 ```
 ┌─────────────────────────────────────┐
-│  🛡️ ProxyMania VPN                 │
-│     Free Proxy Service              │
+│  🛡️ ProxyMania VPN          🌙 📊 ⭐ ⚙ │
 ├─────────────────────────────────────┤
 │  ● Disconnected                     │
-│  Current Proxy: None                │
+│  [⚡ Connect]              🔄        │
 ├─────────────────────────────────────┤
-│  [🔄 Refresh]  [❌ Disconnect]      │
+│  Quick Connect                      │
+│  [Best Proxy]                       │
+│  ┌────┐ ┌────┐ ┌────┐ ┌────┐       │
+│  │ 🇩🇪 │ │ 🇫🇷 │ │ 🇬🇧 │ │ 🇯🇵 │       │
+│  └────┘ └────┘ └────┘ └────┘       │
 ├─────────────────────────────────────┤
-│  [Country ▼]  [Type ▼]             │
+│  [All] [Favorites] [Recent]        │
+│  🔍 Search proxies...               │
+│  [All ▼] [All ▼]                   │
 ├─────────────────────────────────────┤
 │  Available Proxies           [54]   │
 │  ┌─────────────────────────────┐   │
-│  │ 192.168.1.1:8080            │   │
-│  │ 🌍 USA  HTTPS  ⚡ 45ms  ✓   │   │
+│  │ 🇺🇸 192.168.1.1            │   │
+│  │ USA • HTTPS • ⚡ 45ms • ✓  │   │
 │  │                    [Connect]│   │
 │  └─────────────────────────────┘   │
 ├─────────────────────────────────────┤
-│  Proxies from ProxyMania            │
+│  Powered by ProxyMania              │
 │  Use at your own risk               │
 └─────────────────────────────────────┘
 ```

@@ -4,6 +4,44 @@ All notable changes to ProxyMania VPN Chrome Extension are documented in this fi
 
 ---
 
+## [2.1.0] - 2024-03-11 - UI Refactoring & Bug Fixes
+
+### ⚠️ Important Update
+
+This release includes significant UI refactoring and bug fixes for Chrome MV3 compatibility.
+
+### Added
+
+- **Modern SVG Icons** - Replaced emoji icons with professional Heroicons-style SVG icons
+- **Complete UI Overhaul** - New card-based layout with slide-in panels
+- **Test Status Display** - Visual feedback during proxy testing phase
+- **Monitoring Status Indicator** - Shows when proxy health is being monitored
+- **Recommended Section** - Displays top 3 recommended proxies
+
+### Fixed
+
+- **Chrome MV3 Compatibility** - Replaced setInterval with chrome.alarms in service worker
+- **DOMParser Error** - Fixed DOMParser not available in service worker (switched to regex parsing)
+- **Null Reference Errors** - Added null guards for DOM elements that may not exist
+- **Speed Graph Bug** - Fixed speed graph clearing proxy connection every 2 seconds (added quickTest action)
+- **Onboarding Bug** - Fixed onboarding showing every time (now saves state to storage)
+- **Double Disconnect Button** - Fixed duplicate disconnect buttons showing after connection
+
+### Technical Changes
+
+#### New Storage Keys
+```javascript
+{
+  onboardingState: { completed: boolean, currentStepIndex: number, version: string },
+  healthStatus: { active: boolean, quality: string, avgLatency: number, lastCheck: Date }
+}
+```
+
+#### Null Safety Improvements
+All DOM element references now use optional chaining (?.) or explicit null checks to prevent TypeErrors during initialization.
+
+---
+
 ## [2.0.0] - 2024-03-11 - Complete Implementation
 
 ### 🎉 All Phases Complete!

@@ -1,6 +1,6 @@
 # ProxyMania VPN - Chrome Extension
 
-[![Version](https://img.shields.io/badge/version-2.0.0-blue?style=flat-square)](https://github.com)
+[![Version](https://img.shields.io/badge/version-2.1.0-blue?style=flat-square)](https://github.com)
 [![Manifest V3](https://img.shields.io/badge/manifest-v3-green?style=flat-square)](https://developer.chrome.com/docs/extensions/mv3/intro/)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
@@ -163,23 +163,25 @@ Click 📊 to view:
 ```
 proxy-vpn-extension/
 ├── manifest.json          # Extension config (MV3)
-├── popup.html             # UI structure
-├── popup.js               # Main logic (865 lines)
-├── background.js          # Service worker (450 lines)
-├── styles.css             # Styling (902 lines)
+├── popup.html             # UI structure (349 lines)
+├── popup.js               # Main logic (~1494 lines)
+├── background.js          # Service worker (~695 lines)
+├── styles.css             # Styling (~1200 lines)
 │
 ├── icons/
 │   ├── icon16.png
 │   ├── icon48.png
 │   └── icon128.png
 │
-└── docs/
-    ├── README.md          # This file
-    ├── USER_GUIDE.md      # User manual
-    ├── DEVELOPER_GUIDE.md # Dev docs
-    ├── API.md             # API reference
-    ├── CHANGELOG.md       # Version history
-    └── ROADMAP.md         # Future plans
+└── src/
+    └── modules/
+        ├── webrtc-blocker.js
+        ├── security.js
+        ├── health.js
+        ├── errorHandler.js
+        ├── onboarding.js
+        ├── visualization.js
+        └── proxyValidator.js
 ```
 
 ---

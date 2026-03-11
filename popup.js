@@ -82,22 +82,25 @@ function getFlag(country) {
 // DOM Elements - initialized lazily
 const $ = (id) => document.getElementById(id);
 
-let statusIndicator, statusText, currentProxyEl, currentProxyValue;
+let statusIndicator, statusText, currentProxyDisplay, proxyFlag, proxyAddress, proxyCountry;
 let connectionTimer, timerValue, testStatus, testText, monitoringStatus;
-let refreshBtn, disconnectBtn, themeBtn, statsBtn, favoritesBtn, settingsBtn;
+let refreshBtn, disconnectBtn, connectBtn, themeBtn, statsBtn, favoritesBtn, settingsBtn;
 let countryFilter, typeFilter, proxyList, proxyCount, listTitle, loading;
 let quickConnectGrid, quickConnectSection, recommendedSection, recommendedList;
 let toastContainer, mainTabs, filterChips, settingsPanel, statsPanel;
 let proxySearch, bestProxyBtn;
-let speedGraphCanvas, speedGraphContainer, currentLatencyEl;
+let speedGraphCanvas, speedGraphSection, currentLatencyEl;
+let healthIndicator, securityIndicator;
 let speedData = [];
 let speedGraphInterval = null;
 
 function initDOMElements() {
-  statusIndicator = $('statusIndicator');
+  statusIndicator = $('statusBadge');
   statusText = statusIndicator?.querySelector('.status-text');
-  currentProxyEl = $('currentProxy');
-  currentProxyValue = currentProxyEl?.querySelector('.value');
+  currentProxyDisplay = $('currentProxyDisplay');
+  proxyFlag = $('proxyFlag');
+  proxyAddress = $('proxyAddress');
+  proxyCountry = $('proxyCountry');
   connectionTimer = $('connectionTimer');
   timerValue = connectionTimer?.querySelector('.timer-value');
   testStatus = $('testStatus');
@@ -105,6 +108,7 @@ function initDOMElements() {
   monitoringStatus = $('monitoringStatus');
   refreshBtn = $('refreshBtn');
   disconnectBtn = $('disconnectBtn');
+  connectBtn = $('connectBtn');
   themeBtn = $('themeBtn');
   statsBtn = $('statsBtn');
   favoritesBtn = $('favoritesBtn');
@@ -116,7 +120,7 @@ function initDOMElements() {
   listTitle = $('listTitle');
   loading = $('loading');
   quickConnectGrid = $('quickConnectGrid');
-  quickConnectSection = $('quickConnect');
+  quickConnectSection = $('quickConnectSection');
   recommendedSection = $('recommendedSection');
   recommendedList = $('recommendedList');
   toastContainer = $('toastContainer');
@@ -127,8 +131,10 @@ function initDOMElements() {
   proxySearch = $('proxySearch');
   bestProxyBtn = $('bestProxyBtn');
   speedGraphCanvas = $('speedGraph');
-  speedGraphContainer = $('speedGraphContainer');
+  speedGraphSection = $('speedGraphSection');
   currentLatencyEl = $('currentLatency');
+  healthIndicator = $('healthIndicator');
+  securityIndicator = $('securityIndicator');
 }
 
 // Initialize
@@ -149,7 +155,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupTabListeners();
   setupFilterChipListeners();
   setupSettingsListeners();
-  setupHealthListeners();
   setupMessageListener();
   setupSearchListener();
   startAutoRefresh();
@@ -161,17 +166,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function setupEventListeners() {
+  // Main action buttons
   refreshBtn.addEventListener('click', loadProxies);
   disconnectBtn.addEventListener('click', disconnectProxy);
+  connectBtn?.addEventListener('click', handleConnectClick);
   themeBtn.addEventListener('click', toggleTheme);
+  
+  // Header buttons
   statsBtn.addEventListener('click', () => showPanel('stats'));
   favoritesBtn.addEventListener('click', () => switchToTab('favorites'));
   settingsBtn.addEventListener('click', () => showPanel('settings'));
-  $('settingsClose').addEventListener('click', () => hidePanel('settings'));
-  $('statsClose').addEventListener('click', () => hidePanel('stats'));
-  $('importBtn').addEventListener('click', importProxies);
-  $('exportBtn').addEventListener('click', exportProxies);
-  $('clearDataBtn').addEventListener('click', clearAllData);
+  
+  // Panel close buttons
+  $('settingsClose')?.addEventListener('click', () => hidePanel('settings'));
+  $('statsClose')?.addEventListener('click', () => hidePanel('stats'));
+  
+  // Settings panel
+  $('importBtn')?.addEventListener('click', importProxies);
+  $('exportBtn')?.addEventListener('click', exportProxies);
+  $('clearDataBtn')?.addEventListener('click', clearAllData);
+  
+  // Filters
   countryFilter.addEventListener('change', filterProxies);
   typeFilter.addEventListener('change', filterProxies);
   
@@ -180,14 +195,18 @@ function setupEventListeners() {
     bestProxyBtn.addEventListener('click', connectToBestProxy);
   }
   
-  // Security controls
-  $('dnsLeakToggle').addEventListener('click', toggleDnsLeakProtection);
-  $('webRtcToggle').addEventListener('click', toggleWebRtcProtection);
-  $('securityStatusBtn').addEventListener('click', showSecurityStatus);
-  
-  // Onboarding controls
-  $('startOnboardingBtn')?.addEventListener('click', startOnboarding);
-  $('skipOnboardingBtn')?.addEventListener('click', completeOnboarding);
+  // Security toggles
+  $('dnsLeakToggle')?.addEventListener('click', toggleDnsLeakProtection);
+  $('webRtcToggle')?.addEventListener('click', toggleWebRtcProtection);
+}
+
+function handleConnectClick() {
+  if (currentProxy) {
+    disconnectProxy();
+  } else {
+    // Open proxy list to select a proxy
+    switchToTab('all');
+  }
 }
 
 function setupTabListeners() {
@@ -295,14 +314,23 @@ async function loadSecurityStatus() {
 }
 
 function updateSecurityUI() {
-  const securityIndicator = $('securityIndicator');
   const dnsToggle = $('dnsLeakToggle');
   const webRtcToggle = $('webRtcToggle');
   
   if (securityIndicator) {
-    securityIndicator.classList.remove('secure', 'warning', 'breach');
-    securityIndicator.classList.add(securityStatus.status);
-    securityIndicator.textContent = securityStatus.status.toUpperCase();
+    securityIndicator.classList.toggle('active', securityStatus.status === 'secure');
+    const indicatorText = securityIndicator.querySelector('.indicator-text');
+    if (indicatorText) {
+      indicatorText.textContent = securityStatus.status === 'secure' ? 'Secure' : 'Warning';
+    }
+  }
+  
+  if (healthIndicator) {
+    healthIndicator.classList.toggle('active', healthStatus.active);
+    const indicatorText = healthIndicator.querySelector('.indicator-text');
+    if (indicatorText) {
+      indicatorText.textContent = healthStatus.active ? healthStatus.quality : 'Offline';
+    }
   }
   
   if (dnsToggle) {
@@ -596,7 +624,9 @@ function applyTheme() {
     theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
   document.documentElement.setAttribute('data-theme', theme);
-  themeBtn.textContent = theme === 'dark' ? '🌙' : '☀️';
+  themeBtn.innerHTML = theme === 'dark' 
+    ? '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+    : '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
 }
 
 function setupThemeWatcher() {
@@ -627,16 +657,16 @@ function toggleTheme() {
 // Panel Management
 function showPanel(name) {
   if (name === 'settings') {
-    settingsPanel.style.display = 'block';
+    if (settingsPanel) settingsPanel.style.display = 'block';
   } else if (name === 'stats') {
     updateStatsDisplay();
-    statsPanel.style.display = 'block';
+    if (statsPanel) statsPanel.style.display = 'block';
   }
 }
 
 function hidePanel(name) {
-  if (name === 'settings') settingsPanel.style.display = 'none';
-  else if (name === 'stats') statsPanel.style.display = 'none';
+  if (name === 'settings' && settingsPanel) settingsPanel.style.display = 'none';
+  else if (name === 'stats' && statsPanel) statsPanel.style.display = 'none';
 }
 
 // Stats Management
@@ -734,8 +764,8 @@ async function loadCurrentProxy() {
     currentProxy = result.activeProxy || null;
     if (currentProxy && result.connectionStartTime) {
       connectionStartTime = result.connectionStartTime;
-      startConnectionTimer();
-      startMonitoring();
+      if (connectionTimer) startConnectionTimer();
+      if (monitoringStatus) startMonitoring();
     }
     updateUI();
   } catch (error) { console.error('Error loading current proxy:', error); }
@@ -897,10 +927,11 @@ async function connectToBestProxy() {
 function renderRecommended() {
   const recommended = getRecommendedProxies();
   if (!recommended.length || recommended[0].score < 60) {
-    recommendedSection.style.display = 'none';
+    if (recommendedSection) recommendedSection.style.display = 'none';
     return;
   }
-  recommendedSection.style.display = 'block';
+  if (recommendedSection) recommendedSection.style.display = 'block';
+  if (!recommendedList) return;
   recommendedList.innerHTML = recommended.slice(0, 3).map(proxy => {
     const stats = proxyStats[proxy.ipPort] || {};
     return `
@@ -1049,8 +1080,10 @@ async function connectToProxy(proxy, event) {
   proxyItem.classList.add('connecting');
   const connectBtn = event.target.querySelector('.connect-btn') || event.target;
   connectBtn.textContent = '🧪 Testing...';
-  testStatus.style.display = 'block';
-  testText.textContent = 'Testing proxy connectivity...';
+  if (testStatus) {
+    testStatus.style.display = 'block';
+    if (testText) testText.textContent = 'Testing proxy connectivity...';
+  }
   
   try {
     if (settings.testBeforeConnect) {
@@ -1058,7 +1091,7 @@ async function connectToProxy(proxy, event) {
       await chrome.runtime.sendMessage({ action: 'updateProxyStats', proxy, success: testResult.success, latency: testResult.latency });
       await loadProxyStats();
       if (!testResult.success) throw new Error('Proxy test failed');
-      testText.textContent = `✓ Test passed (${testResult.latency}ms)`;
+      if (testText) testText.textContent = `✓ Test passed (${testResult.latency}ms)`;
       await new Promise(r => setTimeout(r, 500));
     }
     
@@ -1092,7 +1125,7 @@ async function connectToProxy(proxy, event) {
     }
   } finally {
     proxyItem.classList.remove('connecting');
-    testStatus.style.display = 'none';
+    if (testStatus) testStatus.style.display = 'none';
   }
 }
 
@@ -1143,7 +1176,9 @@ function startMonitoring() {
   if (currentProxy && !monitoringActive) {
     chrome.runtime.sendMessage({ action: 'startMonitoring', proxy: currentProxy });
     monitoringActive = true;
-    monitoringStatus.style.display = 'flex';
+    if (monitoringStatus) {
+      monitoringStatus.style.display = 'flex';
+    }
   }
 }
 
@@ -1151,13 +1186,17 @@ function stopMonitoring() {
   if (monitoringActive) {
     chrome.runtime.sendMessage({ action: 'stopMonitoring' });
     monitoringActive = false;
-    monitoringStatus.style.display = 'none';
+    if (monitoringStatus) {
+      monitoringStatus.style.display = 'none';
+    }
   }
 }
 
 // Timer
 function startConnectionTimer() {
-  connectionTimer.style.display = 'flex';
+  if (connectionTimer) {
+    connectionTimer.style.display = 'flex';
+  }
   updateTimerDisplay();
   if (timerInterval) clearInterval(timerInterval);
   timerInterval = setInterval(updateTimerDisplay, 1000);
@@ -1190,24 +1229,49 @@ function updateUI() {
   if (currentProxy) {
     statusIndicator.classList.add('connected');
     statusText.textContent = 'Connected';
-    currentProxyValue.textContent = `${getFlag(currentProxy.country)} ${currentProxy.ipPort}`;
-    disconnectBtn.disabled = false;
+    
+    if (currentProxyDisplay) {
+      currentProxyDisplay.style.display = 'block';
+      if (proxyFlag) proxyFlag.textContent = getFlag(currentProxy.country);
+      if (proxyAddress) proxyAddress.textContent = currentProxy.ipPort;
+      if (proxyCountry) proxyCountry.textContent = currentProxy.country;
+    }
+    
+    if (connectBtn) {
+      connectBtn.innerHTML = `<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/></svg><span>Disconnect</span>`;
+      connectBtn.classList.remove('btn-primary');
+      connectBtn.classList.add('btn-danger');
+    }
+    if (disconnectBtn) disconnectBtn.style.display = 'none';
+    if (connectionTimer) connectionTimer.style.display = 'flex';
+    if (monitoringStatus) monitoringStatus.style.display = 'flex';
   } else {
     statusIndicator.classList.remove('connected');
     statusText.textContent = 'Disconnected';
-    currentProxyValue.textContent = 'None';
-    disconnectBtn.disabled = true;
-    connectionTimer.style.display = 'none';
-    monitoringStatus.style.display = 'none';
+    
+    if (currentProxyDisplay) {
+      currentProxyDisplay.style.display = 'none';
+    }
+    
+    if (connectBtn) {
+      connectBtn.innerHTML = `<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg><span>Connect</span>`;
+      connectBtn.classList.remove('btn-danger');
+      connectBtn.classList.add('btn-primary');
+    }
+    if (disconnectBtn) disconnectBtn.style.display = 'none';
+    if (connectionTimer) connectionTimer.style.display = 'none';
+    if (monitoringStatus) monitoringStatus.style.display = 'none';
     monitoringActive = false;
   }
   
-  // Update security indicator
   updateSecurityUI();
 }
 
 function updateProxyCount() { proxyCount.textContent = proxies.length; }
-function showLoading(show) { loading.classList.toggle('show', show); if (show) proxyList.innerHTML = ''; }
+function showLoading(show) { 
+  if (loading) loading.classList.toggle('show', show); 
+  if (show && proxyList) proxyList.innerHTML = ''; 
+}
 
 // Empty state
 function showEmptyState(type) {
@@ -1351,7 +1415,7 @@ function startSpeedGraph() {
   if (!speedGraphCanvas || !currentProxy) return;
   
   speedData = [];
-  speedGraphContainer.style.display = 'block';
+  speedGraphSection.style.display = 'block';
   
   speedGraphInterval = setInterval(async () => {
     if (!currentProxy) {
@@ -1385,8 +1449,8 @@ function stopSpeedGraph() {
     clearInterval(speedGraphInterval);
     speedGraphInterval = null;
   }
-  if (speedGraphContainer) {
-    speedGraphContainer.style.display = 'none';
+  if (speedGraphSection) {
+    speedGraphSection.style.display = 'none';
   }
   speedData = [];
 }
