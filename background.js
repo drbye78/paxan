@@ -1,4 +1,11 @@
-// ProxyMania VPN - Background Script (Phase 2)
+// ProxyMania VPN - Background Script (Phase 2+)
+// Enhanced with Security, Error Handling, and Onboarding
+
+// Import modules
+import './src/modules/security.js';
+import './src/modules/errorHandler.js';
+import './src/modules/onboarding.js';
+import './src/modules/health.js';
 
 // Proxy Failover Manager
 class ProxyFailoverManager {
@@ -31,97 +38,172 @@ class ProxyFailoverManager {
 const failoverManager = new ProxyFailoverManager();
 
 // Listen for messages from popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'setProxy') {
-    setProxy(request.proxy)
-      .then(() => sendResponse({ success: true }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true;
+chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+  try {
+    // Enhanced error handling for all operations
+    switch (request.action) {
+      case 'setProxy':
+        await setProxy(request.proxy);
+        sendResponse({ success: true });
+        break;
+        
+      case 'clearProxy':
+        await clearProxy();
+        sendResponse({ success: true });
+        break;
+        
+      case 'getProxy':
+        const config = await getProxy();
+        sendResponse({ config });
+        break;
+        
+      case 'fetchProxies':
+        const proxies = await fetchProxies();
+        sendResponse({ proxies });
+        break;
+        
+      case 'testProxy':
+        const result = await testProxyConnectivity(request.proxy);
+        sendResponse(result);
+        break;
+        
+      case 'updateProxyStats':
+        await updateProxyStats(request.proxy, request.success, request.latency);
+        sendResponse({ success: true });
+        break;
+        
+      case 'getProxyStats':
+        const stats = await getProxyStats();
+        sendResponse({ stats });
+        break;
+        
+      case 'startMonitoring':
+        await startProxyMonitoring(request.proxy);
+        sendResponse({ success: true });
+        break;
+        
+      case 'stopMonitoring':
+        stopProxyMonitoring();
+        sendResponse({ success: true });
+        break;
+        
+      case 'setFailoverProxies':
+        failoverManager.setProxies(request.proxies, request.currentProxy);
+        sendResponse({ success: true });
+        break;
+        
+      case 'getNextFailoverProxy':
+        const proxy = failoverManager.getNextProxy();
+        sendResponse({ proxy });
+        break;
+        
+      case 'resetFailover':
+        failoverManager.reset();
+        sendResponse({ success: true });
+        break;
+        
+      // Security module messages
+      case 'toggleDnsLeakProtection':
+        const dnsResult = await securityManager.toggleDnsLeakProtection(request.enabled);
+        sendResponse(dnsResult);
+        break;
+        
+      case 'toggleWebRtcProtection':
+        const webRtcResult = await securityManager.toggleWebRtcProtection(request.enabled);
+        sendResponse(webRtcResult);
+        break;
+        
+      case 'getSecurityStatus':
+        const securityStatus = securityManager.getSecurityStatus();
+        sendResponse(securityStatus);
+        break;
+        
+      case 'resetSecurityAlerts':
+        securityManager.resetSecurityAlerts();
+        sendResponse({ success: true });
+        break;
+        
+      // Error handling messages
+      case 'handleProxyError':
+        await errorHandler.handleProxyError(request.error, request.proxy);
+        sendResponse({ success: true });
+        break;
+        
+      case 'clearErrorLogs':
+        const clearResult = await errorHandler.clearErrorLogs();
+        sendResponse(clearResult);
+        break;
+        
+      case 'getStoredErrors':
+        const errors = await errorHandler.getStoredErrors();
+        sendResponse({ errors });
+        break;
+        
+      // Onboarding messages
+      case 'startOnboarding':
+        onboardingManager.startOnboarding();
+        sendResponse({ success: true });
+        break;
+        
+      case 'completeOnboarding':
+        onboardingManager.completeOnboarding();
+        sendResponse({ success: true });
+        break;
+        
+      case 'getOnboardingState':
+        const onboardingState = {
+          completed: onboardingManager.isCompleted,
+          currentStepIndex: onboardingManager.currentStepIndex,
+          version: onboardingManager.version
+        };
+        sendResponse(onboardingState);
+        break;
+        
+      default:
+        sendResponse({ success: false, error: 'Unknown action' });
+    }
+  } catch (error) {
+    // Enhanced error handling
+    console.error('Background script error:', error);
+    
+    // Handle specific error types
+    if (error.message.includes('proxy')) {
+      await errorHandler.handleProxyError(error);
+    } else if (error.message.includes('network')) {
+      await errorHandler.handleNetworkError(error);
+    } else if (error.message.includes('storage')) {
+      await errorHandler.handleStorageError(error);
+    } else {
+      await errorHandler.handleProxyError(error);
+    }
+    
+    sendResponse({ success: false, error: error.message });
   }
   
-  if (request.action === 'clearProxy') {
-    clearProxy()
-      .then(() => sendResponse({ success: true }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true;
-  }
-  
-  if (request.action === 'getProxy') {
-    getProxy()
-      .then(config => sendResponse({ config }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true;
-  }
-  
-  if (request.action === 'fetchProxies') {
-    fetchProxies()
-      .then(proxies => sendResponse({ proxies }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true;
-  }
-  
-  if (request.action === 'testProxy') {
-    testProxyConnectivity(request.proxy)
-      .then(result => sendResponse(result))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true;
-  }
-  
-  if (request.action === 'updateProxyStats') {
-    updateProxyStats(request.proxy, request.success, request.latency)
-      .then(() => sendResponse({ success: true }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true;
-  }
-  
-  if (request.action === 'getProxyStats') {
-    getProxyStats()
-      .then(stats => sendResponse({ stats }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true;
-  }
-  
-  if (request.action === 'startMonitoring') {
-    startProxyMonitoring(request.proxy)
-      .then(() => sendResponse({ success: true }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true;
-  }
-  
-  if (request.action === 'stopMonitoring') {
-    stopProxyMonitoring();
-    sendResponse({ success: true });
-    return false;
-  }
-  
-  if (request.action === 'setFailoverProxies') {
-    failoverManager.setProxies(request.proxies, request.currentProxy);
-    sendResponse({ success: true });
-    return false;
-  }
-  
-  if (request.action === 'getNextFailoverProxy') {
-    const proxy = failoverManager.getNextProxy();
-    sendResponse({ proxy });
-    return false;
-  }
-  
-  if (request.action === 'resetFailover') {
-    failoverManager.reset();
-    sendResponse({ success: true });
-    return false;
-  }
+  return true;
 });
 
 // Fetch proxies from ProxyMania
 async function fetchProxies() {
-  const response = await fetch('https://proxymania.su/free-proxy');
-  if (!response.ok) {
-    throw new Error('Failed to fetch proxies: ' + response.statusText);
+  try {
+    const response = await fetch('https://proxymania.su/free-proxy');
+    if (!response.ok) {
+      throw new Error('Failed to fetch proxies: ' + response.statusText);
+    }
+    const html = await response.text();
+    const proxies = parseProxies(html);
+    
+    // Enhanced proxy validation
+    const validatedProxies = proxies.filter(proxy => {
+      return proxy.ip && proxy.port && proxy.country && proxy.type;
+    });
+    
+    console.log(`Fetched ${validatedProxies.length} valid proxies`);
+    return validatedProxies;
+  } catch (error) {
+    console.error('Error fetching proxies:', error);
+    throw error;
   }
-  const html = await response.text();
-  const proxies = parseProxies(html);
-  return proxies;
 }
 
 // Parse proxies from HTML
@@ -172,14 +254,14 @@ function parseSpeed(speedStr) {
   return match ? parseInt(match[1]) : 9999;
 }
 
-// Test proxy connectivity - REAL TEST
+// Test proxy connectivity - Enhanced with Security Checks
 async function testProxyConnectivity(proxy) {
   return new Promise((resolve) => {
     const startTime = Date.now();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     
-    // Create a test configuration
+    // Enhanced test configuration with security bypasses
     const testConfig = {
       mode: 'fixed_servers',
       rules: {
@@ -188,46 +270,71 @@ async function testProxyConnectivity(proxy) {
           host: proxy.ip,
           port: proxy.port
         },
-        bypassList: []
+        bypassList: [
+          'localhost', '127.0.0.1', '::1', '*.local',
+          '192.168.*', '10.*', '172.16.*', '172.17.*',
+          '172.18.*', '172.19.*', '172.20.*', '172.21.*',
+          '172.22.*', '172.23.*', '172.24.*', '172.25.*',
+          '172.26.*', '172.27.*', '172.28.*', '172.29.*',
+          '172.30.*', '172.31.*',
+          // Security bypasses
+          'chrome-extension://*', 'chrome://*',
+          'https://proxymania.su'
+        ]
       }
     };
     
     // Set the proxy temporarily for testing
     chrome.proxy.settings.set({ value: testConfig, scope: 'regular' }, () => {
-      // Test with a lightweight request
-      fetch('http://www.google.com/generate_204', {
-        method: 'HEAD',
-        signal: controller.signal,
-        cache: 'no-store'
-      })
-      .then(response => {
-        clearTimeout(timeoutId);
-        const latency = Date.now() - startTime;
+      // Enhanced test with multiple endpoints
+      const testUrls = [
+        'http://www.google.com/generate_204',
+        'https://httpbin.org/ip',
+        'http://connectivitycheck.gstatic.com/generate_204'
+      ];
+      
+      const testNext = (index = 0) => {
+        if (index >= testUrls.length) {
+          clearTimeout(timeoutId);
+          clearProxyInternal();
+          resolve({
+            success: false,
+            latency: null,
+            status: null,
+            working: false,
+            error: 'All test endpoints failed'
+          });
+          return;
+        }
         
-        // Restore previous proxy settings
-        clearProxyInternal();
-        
-        resolve({
-          success: response.ok || response.status === 204,
-          latency: latency,
-          status: response.status,
-          working: response.ok || response.status === 204
+        fetch(testUrls[index], {
+          method: 'HEAD',
+          signal: controller.signal,
+          cache: 'no-store',
+          timeout: 3000
+        })
+        .then(response => {
+          clearTimeout(timeoutId);
+          const latency = Date.now() - startTime;
+          
+          // Restore previous proxy settings
+          clearProxyInternal();
+          
+          resolve({
+            success: response.ok || response.status === 204,
+            latency: latency,
+            status: response.status,
+            working: response.ok || response.status === 204,
+            endpoint: testUrls[index]
+          });
+        })
+        .catch(error => {
+          // Try next endpoint
+          testNext(index + 1);
         });
-      })
-      .catch(error => {
-        clearTimeout(timeoutId);
-        
-        // Restore previous proxy settings
-        clearProxyInternal();
-        
-        resolve({
-          success: false,
-          latency: null,
-          status: null,
-          working: false,
-          error: error.message
-        });
-      });
+      };
+      
+      testNext();
     });
   });
 }
@@ -237,7 +344,7 @@ function clearProxyInternal() {
   chrome.proxy.settings.clear({ scope: 'regular' }, () => {});
 }
 
-// Set proxy configuration
+// Set proxy configuration - Enhanced with Security
 async function setProxy(proxy) {
   return new Promise((resolve, reject) => {
     const proxyConfig = {
@@ -254,7 +361,12 @@ async function setProxy(proxy) {
           '172.18.*', '172.19.*', '172.20.*', '172.21.*',
           '172.22.*', '172.23.*', '172.24.*', '172.25.*',
           '172.26.*', '172.27.*', '172.28.*', '172.29.*',
-          '172.30.*', '172.31.*'
+          '172.30.*', '172.31.*',
+          // Security bypasses for extension functionality
+          'chrome-extension://*', 'chrome://*',
+          'https://proxymania.su',
+          // DNS leak prevention bypasses
+          'https://dns.google/*', 'https://cloudflare-dns.com/*'
         ]
       }
     };
@@ -263,9 +375,16 @@ async function setProxy(proxy) {
       { value: proxyConfig, scope: 'regular' },
       (result) => {
         if (chrome.runtime.lastError) {
+          console.error('Failed to set proxy:', chrome.runtime.lastError.message);
           reject(new Error(chrome.runtime.lastError.message));
         } else {
           console.log('Proxy set successfully:', proxy.ipPort);
+          
+          // Update security status
+          if (securityManager) {
+            securityManager.resetSecurityAlerts();
+          }
+          
           resolve(result);
         }
       }
@@ -273,16 +392,26 @@ async function setProxy(proxy) {
   });
 }
 
-// Clear proxy configuration
+// Clear proxy configuration - Enhanced with Security Reset
 async function clearProxy() {
   return new Promise((resolve, reject) => {
     chrome.proxy.settings.clear(
       { scope: 'regular' },
       (result) => {
         if (chrome.runtime.lastError) {
+          console.error('Failed to clear proxy:', chrome.runtime.lastError.message);
           reject(new Error(chrome.runtime.lastError.message));
         } else {
           console.log('Proxy cleared successfully');
+          
+          // Reset security monitoring
+          if (securityManager) {
+            securityManager.resetSecurityAlerts();
+          }
+          
+          // Stop monitoring
+          stopProxyMonitoring();
+          
           resolve(result);
         }
       }
@@ -369,21 +498,35 @@ async function getProxyStats() {
   }
 }
 
-// Continuous monitoring while connected
+// Continuous monitoring while connected - Enhanced with Security & Health
 let monitoringInterval = null;
 let currentMonitoringProxy = null;
+let monitoringStartTime = null;
 
 async function startProxyMonitoring(proxy) {
   stopProxyMonitoring(); // Clear any existing interval
   
   currentMonitoringProxy = proxy;
+  monitoringStartTime = Date.now();
   
+  // Start enhanced monitoring
   monitoringInterval = setInterval(async () => {
     try {
+      // Basic connectivity test
       const result = await testProxyConnectivity(proxy);
       
       // Update stats
       await updateProxyStats(proxy, result.success, result.latency);
+      
+      // Enhanced monitoring with security checks
+      if (securityManager) {
+        await securityManager.performSecurityCheck();
+      }
+      
+      // Health monitoring
+      if (healthMonitor) {
+        await healthMonitor.performHealthCheck();
+      }
       
       // Notify popup if degraded
       if (!result.success || (result.latency && result.latency > 500)) {
@@ -394,11 +537,17 @@ async function startProxyMonitoring(proxy) {
             country: proxy.country
           },
           latency: result.latency,
-          success: result.success
+          success: result.success,
+          monitoringTime: Date.now() - monitoringStartTime
         }).catch(() => {}); // Ignore if popup is closed
       }
     } catch (error) {
       console.error('Monitoring error:', error);
+      
+      // Handle monitoring errors
+      if (errorHandler) {
+        await errorHandler.handleProxyError(error, proxy);
+      }
     }
   }, 30000); // Check every 30 seconds
   
@@ -412,6 +561,12 @@ function stopProxyMonitoring() {
     console.log('Stopped proxy monitoring');
   }
   currentMonitoringProxy = null;
+  monitoringStartTime = null;
+  
+  // Stop health monitoring
+  if (healthMonitor) {
+    healthMonitor.stopHealthMonitoring();
+  }
 }
 
 // Restore proxy on extension startup
@@ -421,9 +576,15 @@ chrome.runtime.onStartup.addListener(async () => {
     if (result.activeProxy) {
       await setProxy(result.activeProxy);
       console.log('Restored proxy:', result.activeProxy.ipPort);
+      
+      // Restart monitoring
+      startProxyMonitoring(result.activeProxy);
     }
   } catch (error) {
     console.error('Error restoring proxy:', error);
+    if (errorHandler) {
+      await errorHandler.handleProxyError(error, result.activeProxy);
+    }
   }
 });
 
@@ -431,12 +592,41 @@ chrome.runtime.onStartup.addListener(async () => {
 chrome.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === 'install') {
     console.log('ProxyMania VPN installed');
+    
+    // Initialize default settings
+    await chrome.storage.local.set({
+      settings: {
+        theme: 'dark',
+        autoFailover: true,
+        testBeforeConnect: true,
+        notifications: true,
+        refreshInterval: 300000
+      },
+      security: {
+        dnsLeakProtection: true,
+        webRtcProtection: true,
+        securityStatus: 'secure'
+      },
+      onboarding: {
+        completed: false,
+        currentStepIndex: 0,
+        version: '2.1.0'
+      },
+      healthData: {
+        connectionQuality: 'excellent',
+        lastCheck: null,
+        qualityHistory: [],
+        latencyHistory: [],
+        avgLatency: 0
+      }
+    });
   } else if (details.reason === 'update') {
     console.log('ProxyMania VPN updated');
     try {
       const result = await chrome.storage.local.get(['activeProxy']);
       if (result.activeProxy) {
         await setProxy(result.activeProxy);
+        startProxyMonitoring(result.activeProxy);
       }
     } catch (error) {
       console.error('Error restoring proxy after update:', error);

@@ -1,4 +1,13 @@
-// ProxyMania VPN - Complete Implementation (Phases 1-5)
+// ProxyMania VPN - Complete Implementation (Phases 1-5+)
+// Enhanced with Security, Error Handling, and Onboarding
+
+// Import modules
+import './src/modules/security.js';
+import './src/modules/errorHandler.js';
+import './src/modules/onboarding.js';
+import './src/modules/health.js';
+import './src/modules/proxyValidator.js';
+import './src/modules/visualization.js';
 
 let proxies = [];
 let currentProxy = null;
@@ -20,6 +29,23 @@ let dailyStats = {
   connectionTime: 0,
   attempts: 0,
   successes: 0
+};
+let securityStatus = {
+  status: 'secure',
+  dnsLeakProtection: true,
+  webRtcProtection: true,
+  lastCheck: null
+};
+let onboardingState = {
+  completed: false,
+  currentStepIndex: 0,
+  version: '2.1.0'
+};
+let healthStatus = {
+  active: false,
+  quality: 'excellent',
+  avgLatency: 0,
+  lastCheck: null
 };
 
 // Country flag mapping
@@ -99,14 +125,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadFavorites();
   await loadProxyStats();
   await loadDailyStats();
+  await loadSecurityStatus();
+  await loadOnboardingState();
+  await loadHealthStatus();
   loadCurrentProxy();
   loadProxies();
   setupEventListeners();
   setupTabListeners();
   setupFilterChipListeners();
   setupSettingsListeners();
+  setupSecurityListeners();
+  setupOnboardingListeners();
+  setupHealthListeners();
   setupMessageListener();
   startAutoRefresh();
+  
+  // Check if onboarding should be shown
+  if (!onboardingState.completed) {
+    showOnboarding();
+  }
 });
 
 function setupEventListeners() {
@@ -123,6 +160,15 @@ function setupEventListeners() {
   $('clearDataBtn').addEventListener('click', clearAllData);
   countryFilter.addEventListener('change', filterProxies);
   typeFilter.addEventListener('change', filterProxies);
+  
+  // Security controls
+  $('dnsLeakToggle').addEventListener('click', toggleDnsLeakProtection);
+  $('webRtcToggle').addEventListener('click', toggleWebRtcProtection);
+  $('securityStatusBtn').addEventListener('click', showSecurityStatus);
+  
+  // Onboarding controls
+  $('startOnboardingBtn').addEventListener('click', startOnboarding);
+  $('skipOnboardingBtn').addEventListener('click', completeOnboarding);
 }
 
 function setupTabListeners() {
@@ -176,6 +222,13 @@ function setupSettingsListeners() {
 function setupMessageListener() {
   chrome.runtime.onMessage.addListener((message) => {
     if (message.action === 'proxyDegraded') handleProxyDegraded(message);
+    if (message.action === 'securityAlert') handleSecurityAlert(message);
+    if (message.action === 'securityStatusUpdate') updateSecurityStatus(message);
+    if (message.action === 'healthStatusUpdate') updateHealthStatus(message);
+    if (message.action === 'connectionDegraded') handleConnectionDegraded(message);
+    if (message.action === 'showOnboarding') showOnboardingStep(message.step);
+    if (message.action === 'hideOnboarding') hideOnboarding();
+    if (message.action === 'showOnboardingStep') showOnboardingStep(message.step);
   });
 }
 
@@ -191,6 +244,317 @@ async function loadSettings() {
     $('testBeforeConnectToggle').classList.toggle('active', settings.testBeforeConnect);
     $('notificationsToggle').classList.toggle('active', settings.notifications);
   } catch (error) { console.error('Error loading settings:', error); }
+}
+
+// Security Management
+async function loadSecurityStatus() {
+  try {
+    const result = await chrome.storage.local.get(['security']);
+    if (result.security) {
+      securityStatus = { ...securityStatus, ...result.security };
+    }
+    
+    // Update UI based on security status
+    updateSecurityUI();
+    
+    // Request current security status from background
+    chrome.runtime.sendMessage({ action: 'getSecurityStatus' })
+      .then(status => {
+        securityStatus = status;
+        updateSecurityUI();
+      })
+      .catch(console.error);
+  } catch (error) { console.error('Error loading security status:', error); }
+}
+
+function updateSecurityUI() {
+  const securityIndicator = $('securityIndicator');
+  const dnsToggle = $('dnsLeakToggle');
+  const webRtcToggle = $('webRtcToggle');
+  
+  if (securityIndicator) {
+    securityIndicator.classList.remove('secure', 'warning', 'breach');
+    securityIndicator.classList.add(securityStatus.status);
+    securityIndicator.textContent = securityStatus.status.toUpperCase();
+  }
+  
+  if (dnsToggle) {
+    dnsToggle.classList.toggle('active', securityStatus.dnsLeakProtection);
+  }
+  
+  if (webRtcToggle) {
+    webRtcToggle.classList.toggle('active', securityStatus.webRtcProtection);
+  }
+}
+
+// Health Management
+async function loadHealthStatus() {
+  try {
+    const result = await chrome.storage.local.get(['healthData']);
+    if (result.healthData) {
+      healthStatus = { ...healthStatus, ...result.healthData };
+    }
+    
+    // Request current health status from background
+    chrome.runtime.sendMessage({ action: 'getHealthStatus' })
+      .then(status => {
+        healthStatus = status;
+        updateHealthUI();
+      })
+      .catch(console.error);
+  } catch (error) { console.error('Error loading health status:', error); }
+}
+
+function updateHealthUI() {
+  const healthIndicator = $('healthIndicator');
+  const qualityBadge = $('qualityBadge');
+  const latencyValue = $('latencyValue');
+  
+  if (healthIndicator) {
+    healthIndicator.classList.remove('excellent', 'good', 'fair', 'poor');
+    healthIndicator.classList.add(healthStatus.quality || 'excellent');
+    healthIndicator.textContent = healthStatus.active ? 'Health: ' + (healthStatus.quality || 'Excellent') : 'Health: Offline';
+  }
+  
+  if (qualityBadge) {
+    qualityBadge.classList.remove('excellent', 'good', 'fair', 'poor');
+    qualityBadge.classList.add(healthStatus.quality || 'excellent');
+    qualityBadge.textContent = healthStatus.quality || 'Excellent';
+  }
+  
+  if (latencyValue) {
+    latencyValue.textContent = healthStatus.avgLatency ? healthStatus.avgLatency + 'ms' : '0ms';
+  }
+}
+
+function setupHealthListeners() {
+  // Health monitoring controls
+  $('startHealthBtn').addEventListener('click', startHealthMonitoring);
+  $('stopHealthBtn').addEventListener('click', stopHealthMonitoring);
+  $('checkHealthBtn').addEventListener('click', checkHealthStatus);
+}
+
+async function startHealthMonitoring() {
+  if (currentProxy) {
+    try {
+      await chrome.runtime.sendMessage({ action: 'startHealthMonitoring', proxy: currentProxy });
+      showToast('Health monitoring started', 'info');
+    } catch (error) {
+      showToast('Failed to start health monitoring', 'error');
+    }
+  } else {
+    showToast('Connect to a proxy first', 'warning');
+  }
+}
+
+async function stopHealthMonitoring() {
+  try {
+    await chrome.runtime.sendMessage({ action: 'stopHealthMonitoring' });
+    showToast('Health monitoring stopped', 'info');
+  } catch (error) {
+    showToast('Failed to stop health monitoring', 'error');
+  }
+}
+
+async function checkHealthStatus() {
+  try {
+    const status = await chrome.runtime.sendMessage({ action: 'getHealthStatus' });
+    showToast(`Quality: ${status.quality} | Avg Latency: ${status.avgLatency}ms`, 'info');
+  } catch (error) {
+    showToast('Failed to get health status', 'error');
+  }
+}
+
+async function toggleDnsLeakProtection() {
+  const enabled = !securityStatus.dnsLeakProtection;
+  try {
+    const result = await chrome.runtime.sendMessage({
+      action: 'toggleDnsLeakProtection',
+      enabled: enabled
+    });
+    
+    if (result.success) {
+      securityStatus.dnsLeakProtection = enabled;
+      updateSecurityUI();
+      showToast(`DNS leak protection ${enabled ? 'enabled' : 'disabled'}`, 'info');
+    }
+  } catch (error) {
+    showToast('Failed to toggle DNS leak protection', 'error');
+  }
+}
+
+async function toggleWebRtcProtection() {
+  const enabled = !securityStatus.webRtcProtection;
+  try {
+    const result = await chrome.runtime.sendMessage({
+      action: 'toggleWebRtcProtection',
+      enabled: enabled
+    });
+    
+    if (result.success) {
+      securityStatus.webRtcProtection = enabled;
+      updateSecurityUI();
+      showToast(`WebRTC protection ${enabled ? 'enabled' : 'disabled'}`, 'info');
+    }
+  } catch (error) {
+    showToast('Failed to toggle WebRTC protection', 'error');
+  }
+}
+
+function showSecurityStatus() {
+  showToast(`Security: ${securityStatus.status} | DNS: ${securityStatus.dnsLeakProtection ? 'ON' : 'OFF'} | WebRTC: ${securityStatus.webRtcProtection ? 'ON' : 'OFF'}`, 'info');
+}
+
+// Onboarding Management
+async function loadOnboardingState() {
+  try {
+    const result = await chrome.storage.local.get(['onboarding']);
+    if (result.onboarding) {
+      onboardingState = { ...onboardingState, ...result.onboarding };
+    }
+  } catch (error) { console.error('Error loading onboarding state:', error); }
+}
+
+function showOnboarding() {
+  const overlay = document.createElement('div');
+  overlay.id = 'onboarding-overlay';
+  overlay.className = 'onboarding-overlay';
+  overlay.innerHTML = `
+    <div class="onboarding-container">
+      <div class="onboarding-header">
+        <div class="onboarding-progress">
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: 0%"></div>
+          </div>
+          <span class="progress-text">Step 1 of 7</span>
+        </div>
+        <button class="onboarding-skip" id="skipOnboardingBtn" title="Skip Tutorial">Skip</button>
+      </div>
+      
+      <div class="onboarding-content">
+        <div class="onboarding-image">🛡️</div>
+        <h3 class="onboarding-title">Welcome to ProxyMania VPN</h3>
+        <div class="onboarding-text">Your free VPN service using ProxyMania proxy servers. Let's get you started!</div>
+      </div>
+      
+      <div class="onboarding-actions">
+        <button class="onboarding-btn onboarding-btn-primary" id="startOnboardingBtn">Get Started</button>
+        <button class="onboarding-btn onboarding-btn-secondary">Back</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(overlay);
+  
+  // Add event listeners
+  overlay.querySelector('#skipOnboardingBtn').addEventListener('click', completeOnboarding);
+  overlay.querySelector('#startOnboardingBtn').addEventListener('click', startOnboarding);
+}
+
+function hideOnboarding() {
+  const overlay = document.getElementById('onboarding-overlay');
+  if (overlay) {
+    overlay.remove();
+  }
+}
+
+async function startOnboarding() {
+  try {
+    await chrome.runtime.sendMessage({ action: 'startOnboarding' });
+    hideOnboarding();
+    showToast('Onboarding started! Check the extension for guidance.', 'info');
+  } catch (error) {
+    showToast('Failed to start onboarding', 'error');
+  }
+}
+
+async function completeOnboarding() {
+  try {
+    await chrome.runtime.sendMessage({ action: 'completeOnboarding' });
+    onboardingState.completed = true;
+    hideOnboarding();
+    showToast('Onboarding skipped. You can access help anytime in Settings.', 'info');
+  } catch (error) {
+    showToast('Failed to complete onboarding', 'error');
+  }
+}
+
+function showOnboardingStep(step) {
+  // Update onboarding overlay with current step
+  const overlay = document.getElementById('onboarding-overlay');
+  if (overlay) {
+    const content = overlay.querySelector('.onboarding-content');
+    const progress = overlay.querySelector('.progress-text');
+    const progressFill = overlay.querySelector('.progress-fill');
+    
+    if (content) {
+      content.innerHTML = `
+        <div class="onboarding-image">${step.image}</div>
+        <h3 class="onboarding-title">${step.title}</h3>
+        <div class="onboarding-text">${step.content}</div>
+      `;
+    }
+    
+    if (progress) {
+      progress.textContent = `Step ${step.id === 'complete' ? 7 : step.id === 'welcome' ? 1 : step.id === 'connectivity' ? 2 : step.id === 'security' ? 3 : step.id === 'connecting' ? 4 : step.id === 'filters' ? 5 : 6} of 7`;
+    }
+    
+    if (progressFill) {
+      const stepIndex = step.id === 'complete' ? 7 : step.id === 'welcome' ? 1 : step.id === 'connectivity' ? 2 : step.id === 'security' ? 3 : step.id === 'connecting' ? 4 : step.id === 'filters' ? 5 : 6;
+      progressFill.style.width = `${(stepIndex / 7) * 100}%`;
+    }
+  }
+}
+
+// Security event handlers
+function handleSecurityAlert(message) {
+  const { type, details } = message;
+  
+  if (type === 'dnsLeak') {
+    showToast('⚠️ DNS leak detected! Protection is active.', 'warning');
+  } else if (type === 'webRtcLeak') {
+    showToast('⚠️ WebRTC leak detected! Protection is active.', 'warning');
+  }
+  
+  // Update security status
+  securityStatus.status = 'warning';
+  updateSecurityUI();
+}
+
+function updateSecurityStatus(message) {
+  securityStatus = { ...securityStatus, ...message };
+  updateSecurityUI();
+  
+  if (message.status === 'breach') {
+    showToast('🚨 Security breach detected! Check connection status.', 'error');
+  }
+}
+
+function handleConnectionDegraded(message) {
+  const { type, quality, latency, packetLoss } = message;
+  
+  if (type === 'quality' && quality === 'poor') {
+    showToast('⚠️ Connection quality degraded to poor', 'warning');
+  } else if (type === 'latency' && latency > 500) {
+    showToast(`⚠️ High latency detected: ${latency}ms`, 'warning');
+  } else if (type === 'packetLoss' && packetLoss > 10) {
+    showToast(`⚠️ High packet loss: ${packetLoss}%`, 'warning');
+  }
+  
+  // Update health status
+  if (healthStatus) {
+    healthStatus.quality = quality || 'poor';
+    updateHealthUI();
+  }
+}
+
+function updateHealthStatus(message) {
+  healthStatus = { ...healthStatus, ...message };
+  updateHealthUI();
+  
+  if (message.quality === 'poor') {
+    showToast('🚨 Connection quality is poor. Consider switching proxies.', 'error');
+  }
 }
 
 function saveSettings() {
@@ -748,6 +1112,9 @@ function updateUI() {
     monitoringStatus.style.display = 'none';
     monitoringActive = false;
   }
+  
+  // Update security indicator
+  updateSecurityUI();
 }
 
 function updateProxyCount() { proxyCount.textContent = proxies.length; }
@@ -778,14 +1145,36 @@ function showToast(message, type = 'info') {
 }
 
 // Handle degradation
-function handleProxyDegraded({ proxy, latency, success }) {
+function handleProxyDegraded(message) {
+  const { proxy, latency, success, monitoringTime } = message;
+  
   if (!success) {
     showToast(`⚠️ Proxy ${proxy.ipPort} stopped working`, 'warning');
-    const next = getRecommendedProxies(proxy)[0];
-    if (next) showToast('Try: ' + next.country + ' (' + next.speedMs + 'ms)', 'info');
+    
+    // Auto-failover if enabled
+    if (settings.autoFailover) {
+      chrome.runtime.sendMessage({ action: 'getNextFailoverProxy' })
+        .then(result => {
+          if (result.proxy) {
+            showToast('Auto-failover: Trying ' + result.proxy.country, 'info');
+            connectToProxy(result.proxy, { target: document.body });
+          }
+        })
+        .catch(error => {
+          showToast('Auto-failover failed: ' + error.message, 'error');
+        });
+    }
   } else if (latency > 500) {
     showToast(`⚠️ High latency (${latency}ms)`, 'warning');
   }
+  
+  // Log degradation event
+  console.log('Proxy degradation detected:', {
+    proxy: proxy.ipPort,
+    latency: latency,
+    success: success,
+    monitoringTime: monitoringTime
+  });
 }
 
 // Auto refresh
@@ -852,14 +1241,68 @@ async function clearAllData() {
   }
 }
 
-// Handle proxy degradation
-function handleProxyDegraded(message) {
-  const { proxy, latency, success } = message;
-  if (!success) {
-    showToast(`⚠️ Proxy ${proxy.ipPort} stopped working`, 'warning');
-    const next = getRecommendedProxies(proxy)[0];
-    if (next) showToast('Try: ' + next.country + ' (' + next.speedMs + 'ms)', 'info');
-  } else if (latency > 500) {
-    showToast(`⚠️ High latency (${latency}ms)`, 'warning');
+// Enhanced error handling
+async function handleProxyError(error, proxy = null) {
+  if (errorHandler) {
+    await chrome.runtime.sendMessage({
+      action: 'handleProxyError',
+      error: error,
+      proxy: proxy
+    });
+  } else {
+    // Fallback error handling
+    showToast(`Error: ${error.message || 'Unknown error occurred'}`, 'error');
   }
+}
+
+// Enhanced proxy item with health indicators
+function createProxyItem(proxy) {
+  const item = document.createElement('div');
+  item.className = 'proxy-item' + (currentProxy?.ipPort === proxy.ipPort ? ' active' : '');
+  const stats = proxyStats[proxy.ipPort] || {};
+  const flag = getFlag(proxy.country);
+  const isFav = favorites.some(f => f.ipPort === proxy.ipPort);
+  const workingStatus = getWorkingStatus(proxy);
+  
+  // Get health data if available
+  const healthData = healthStatus.latencyHistory?.find(h => h.proxy === proxy.ipPort) || {};
+  
+  item.innerHTML = `
+    <div class="proxy-info">
+      <div class="proxy-ip">
+        <span class="proxy-flag">${flag}</span>
+        <span>${proxy.ipPort}</span>
+        ${isFav ? '<span class="fav-indicator">⭐</span>' : ''}
+      </div>
+      <div class="proxy-details">
+        <span>${proxy.country}</span>
+        <span class="proxy-type">${proxy.type}</span>
+        <span class="proxy-speed">⚡ ${proxy.speedMs}ms</span>
+        ${stats.successRate ? `<span class="proxy-rate">✓ ${stats.successRate}%</span>` : ''}
+        ${workingStatus !== 'unknown' ? `<span class="proxy-status ${workingStatus}">${workingStatus === 'good' ? '✓' : '⚠'}</span>` : ''}
+        ${healthData.quality ? `<span class="proxy-health ${healthData.quality}">${healthData.quality}</span>` : ''}
+      </div>
+      ${stats.avgLatency && stats.latencies?.length ? renderSparkline(stats.latencies) : ''}
+    </div>
+    <div class="proxy-actions">
+      <button class="icon-btn fav-btn ${isFav ? 'active' : ''}">${isFav ? '⭐' : '☆'}</button>
+      <button class="connect-btn ${currentProxy?.ipPort === proxy.ipPort ? 'active' : ''}">
+        ${currentProxy?.ipPort === proxy.ipPort ? 'Connected' : 'Connect'}
+      </button>
+    </div>
+  `;
+  
+  item.querySelector('.fav-btn').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    await toggleFavorite(proxy);
+    renderProxyList(proxyItems);
+    renderRecommended();
+  });
+  
+  item.querySelector('.connect-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    connectToProxy(proxy, { target: item });
+  });
+  
+  return item;
 }

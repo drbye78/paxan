@@ -26,6 +26,10 @@
         <span class="status-dot"></span>
         <span class="status-text">Disconnected</span>
       </div>
+      <div class="security-indicator" id="securityIndicator">
+        <span class="security-icon">🔒</span>
+        <span class="security-text">Secure</span>
+      </div>
       <div class="current-proxy" id="currentProxy">
         <span class="label">Current Proxy:</span>
         <span class="value">None</span>
@@ -41,6 +45,10 @@
       <div class="monitoring-status" id="monitoringStatus" style="display: none;">
         <span class="monitoring-icon">📡</span>
         <span class="monitoring-text">Monitoring active</span>
+      </div>
+      <div class="health-indicator" id="healthIndicator">
+        <span class="health-icon">❤️</span>
+        <span class="health-text">Health: Offline</span>
       </div>
     </div>
 
@@ -77,6 +85,8 @@
     <div class="controls">
       <button id="refreshBtn" class="btn btn-secondary">🔄 Refresh</button>
       <button id="disconnectBtn" class="btn btn-danger" disabled>❌ Disconnect</button>
+      <button id="securityStatusBtn" class="btn btn-info">🔒 Security</button>
+      <button id="healthStatusBtn" class="btn btn-success">❤️ Health</button>
     </div>
 
     <div class="filters">
@@ -88,6 +98,84 @@
         <option value="HTTPS">🔒 HTTPS</option>
         <option value="SOCKS5">🔌 SOCKS5</option>
       </select>
+    </div>
+
+    <!-- Security Panel -->
+    <div class="settings-panel" id="securityPanel" style="display: none;">
+      <div class="settings-header">
+        <h2>🔒 Security Settings</h2>
+        <button class="settings-close" id="securityClose">&times;</button>
+      </div>
+      
+      <div class="setting-group">
+        <h3>Protection Features</h3>
+        <div class="setting">
+          <div>
+            <div class="setting-label">DNS Leak Protection</div>
+            <div class="setting-desc">Prevent DNS requests from bypassing proxy</div>
+          </div>
+          <div class="setting-control">
+            <div class="toggle active" id="dnsLeakToggle">
+              <div class="toggle-knob"></div>
+            </div>
+          </div>
+        </div>
+        <div class="setting">
+          <div>
+            <div class="setting-label">WebRTC Leak Protection</div>
+            <div class="setting-desc">Prevent WebRTC from exposing real IP</div>
+          </div>
+          <div class="setting-control">
+            <div class="toggle active" id="webRtcToggle">
+              <div class="toggle-knob"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <h3>Security Status</h3>
+        <div class="security-status-display">
+          <div class="status-item">
+            <span class="status-label">Overall Status:</span>
+            <span class="status-value" id="securityStatusValue">Secure</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Last Check:</span>
+            <span class="status-value" id="securityLastCheck">Never</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">DNS Protection:</span>
+            <span class="status-value" id="dnsStatus">Active</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">WebRTC Protection:</span>
+            <span class="status-value" id="webRtcStatus">Active</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <h3>Security Actions</h3>
+        <div class="setting">
+          <div>
+            <div class="setting-label">Check Security Status</div>
+            <div class="setting-desc">Run comprehensive security check</div>
+          </div>
+          <div class="setting-control">
+            <button class="btn btn-secondary" id="checkSecurityBtn" style="padding: 8px 16px;">🔍 Check</button>
+          </div>
+        </div>
+        <div class="setting">
+          <div>
+            <div class="setting-label">Reset Security Alerts</div>
+            <div class="setting-desc">Clear any security warnings</div>
+          </div>
+          <div class="setting-control">
+            <button class="btn btn-warning" id="resetSecurityBtn" style="padding: 8px 16px;">⚠️ Reset</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="proxy-list-container">
@@ -195,6 +283,43 @@
     </div>
 
     <div class="setting-group">
+      <h3>Onboarding</h3>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Show Onboarding</div>
+          <div class="setting-desc">Interactive tutorial for new users</div>
+        </div>
+        <div class="setting-control">
+          <button class="btn btn-secondary" id="startOnboardingBtn" style="padding: 8px 16px;">🎓 Start</button>
+          <button class="btn btn-secondary" id="skipOnboardingBtn" style="padding: 8px 16px; margin-left: 8px;">⏭️ Skip</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <h3>Health Monitoring</h3>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Start Health Monitoring</div>
+          <div class="setting-desc">Monitor connection quality and performance</div>
+        </div>
+        <div class="setting-control">
+          <button class="btn btn-success" id="startHealthBtn" style="padding: 8px 16px;">❤️ Start</button>
+          <button class="btn btn-warning" id="stopHealthBtn" style="padding: 8px 16px; margin-left: 8px;">🛑 Stop</button>
+        </div>
+      </div>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Check Health Status</div>
+          <div class="setting-desc">Get current connection health metrics</div>
+        </div>
+        <div class="setting-control">
+          <button class="btn btn-info" id="checkHealthBtn" style="padding: 8px 16px;">📊 Check</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="setting-group">
       <h3>Data Management</h3>
       <div class="setting">
         <div>
@@ -252,6 +377,42 @@
     </div>
 
     <div class="stats-panel">
+      <h3>Security Statistics</h3>
+      <div class="security-stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="statSecurityChecks">0</div>
+          <div class="stat-label">Security Checks</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statLeaksBlocked">0</div>
+          <div class="stat-label">Leaks Blocked</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statProtectionTime">0%</div>
+          <div class="stat-label">Protection Active</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-panel">
+      <h3>Connection Health</h3>
+      <div class="health-stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="statConnectionQuality">Excellent</div>
+          <div class="stat-label">Quality</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statAvgLatency">0ms</div>
+          <div class="stat-label">Avg Latency</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statLastCheck">Never</div>
+          <div class="stat-label">Last Check</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-panel">
       <h3>Top Countries</h3>
       <div id="topCountriesList"></div>
     </div>
@@ -259,6 +420,14 @@
     <div class="stats-panel">
       <h3>Connection History</h3>
       <div id="connectionHistoryList"></div>
+    </div>
+
+    <div class="stats-panel">
+      <h3>Health History</h3>
+      <div class="health-history-container">
+        <div id="healthQualityChart" class="health-chart"></div>
+        <div id="healthLatencyChart" class="health-chart"></div>
+      </div>
     </div>
   </div>
 
