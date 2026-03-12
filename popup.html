@@ -149,7 +149,7 @@
       </div>
     </div>
 
-    <!-- Smart Filters Bar (Task 5) -->
+    <!-- Smart Filters Bar with Integrated Tabs -->
     <div class="smart-filters">
       <div class="search-wrapper">
         <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -159,30 +159,30 @@
         <input type="text" id="proxySearch" class="search-input" placeholder="Search by country, IP, or type...">
         <kbd class="search-shortcut">/</kbd>
       </div>
+      <div class="tab-chips" id="tabChips">
+        <button class="chip chip-active" data-tab="all">All</button>
+        <button class="chip" data-tab="favorites">⭐</button>
+        <button class="chip" data-tab="recent">🕐</button>
+      </div>
       <div class="filter-chips" id="filterChips">
-        <button class="chip chip-active" data-filter="speed" data-value="all">🌍 All</button>
+        <button class="chip chip-active" data-filter="speed" data-value="all">All</button>
         <button class="chip" data-filter="speed" data-value="best">⭐ Best</button>
         <button class="chip" data-filter="speed" data-value="fast">⚡ &lt;100ms</button>
-        <button class="chip" data-filter="type" data-value="HTTPS">🔒 HTTPS</button>
-        <button class="chip" data-filter="type" data-value="SOCKS5">🔌 SOCKS5</button>
+        <button class="chip" data-filter="type" data-value="HTTPS">HTTPS</button>
+        <button class="chip" data-filter="type" data-value="SOCKS5">SOCKS5</button>
       </div>
     </div>
 
-    <!-- Quick Connect Section -->
+    <!-- Quick Connect Section (collapsible) -->
     <section class="section" id="quickConnectSection">
-      <div class="section-header">
+      <button class="section-toggle" id="quickConnectToggle">
         <h3 class="section-title">Quick Connect</h3>
-        <button class="btn btn-ghost btn-sm" id="bestProxyBtn">Find Best</button>
-      </div>
+        <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
       <div class="quick-connect-grid" id="quickConnectGrid"></div>
     </section>
-
-    <!-- Tabs (simplified) -->
-    <div class="tabs" id="mainTabs">
-      <button class="tab tab-active" data-tab="all">All Proxies</button>
-      <button class="tab" data-tab="favorites">⭐ Favorites</button>
-      <button class="tab" data-tab="recent">🕐 Recent</button>
-    </div>
 
     <!-- Proxy List Container -->
     <div class="proxy-list-container">
@@ -213,8 +213,8 @@
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- Footer -->
-    <footer class="footer">
+    <!-- Footer (minimal, collapsible) -->
+    <footer class="footer" id="footer" style="display: none;">
       <span>Powered by <a href="https://proxymania.su/free-proxy" target="_blank">ProxyMania</a></span>
     </footer>
 

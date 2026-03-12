@@ -578,6 +578,44 @@ body {
   gap: 6px;
 }
 
+/* Tab Chips (integrated with filters) */
+.tab-chips {
+  display: flex;
+  gap: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.tab-chips .chip {
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+/* Section Toggle */
+.section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 0;
+}
+
+.section-toggle .toggle-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  transition: transform var(--transition);
+}
+
+.section-toggle[aria-expanded="true"] .toggle-icon {
+  transform: rotate(180deg);
+}
+
 .chip {
   padding: 6px 12px;
   background: var(--bg-tertiary);
@@ -631,6 +669,10 @@ body {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
+}
+
+.quick-connect-grid.collapsed {
+  display: none;
 }
 
 .quick-connect-btn {

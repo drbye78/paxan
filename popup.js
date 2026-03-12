@@ -195,10 +195,12 @@ function initDOMElements() {
   // Quick connect
   quickConnectGrid = $('quickConnectGrid');
   quickConnectSection = $('quickConnectSection');
+  quickConnectToggle = $('quickConnectToggle');
   bestProxyBtn = $('bestProxyBtn');
   
-  // Tabs
-  mainTabs = $('mainTabs');
+  // Tabs (now integrated in filter bar)
+  tabChips = $('tabChips');
+  mainTabs = $('mainTabs'); // Keep for backward compatibility
   
   // Toast
   toastContainer = $('toastContainer');
@@ -493,7 +495,12 @@ function handleConnectClick() {
 }
 
 function setupTabListeners() {
-  mainTabs.querySelectorAll('.tab').forEach(tab => {
+  // Use tabChips if available, otherwise fall back to mainTabs
+  const tabContainer = tabChips || mainTabs;
+  if (!tabContainer) return;
+  
+  const tabs = tabContainer.querySelectorAll('.tab, [data-tab]');
+  tabs.forEach(tab => {
     tab.addEventListener('click', () => switchToTab(tab.dataset.tab));
   });
 }
@@ -1832,9 +1839,15 @@ function applyFilters(filtered, country, type, speed) {
   if (type) filtered = filtered.filter(p => p.type === type);
   if (speed === 'fast') filtered = filtered.filter(p => p.speedMs < 100);
   if (speed === 'medium') filtered = filtered.filter(p => p.speedMs < 300);
-
+  
+  // Calculate scores and sort
   filtered = filtered.map(p => ({ ...p, score: calculateProxyScore(p) }))
     .sort((a, b) => b.score - a.score);
+  
+  // "Best" filter - show only top 10 by score (score >= 60)
+  if (speed === 'best') {
+    filtered = filtered.filter(p => p.score >= 60);
+  }
 
   renderProxyList(filtered);
 }
@@ -2041,7 +2054,17 @@ function renderQuickConnect() {
 // Switch tab
 function switchToTab(tabName) {
   currentTab = tabName;
-  mainTabs.querySelectorAll('.tab').forEach(t => t.classList.toggle('tab-active', t.dataset.tab === tabName));
+  
+  // Update old tabs if they exist
+  if (mainTabs) {
+    mainTabs.querySelectorAll('.tab').forEach(t => t.classList.toggle('tab-active', t.dataset.tab === tabName));
+  }
+  
+  // Update new tab chips if they exist
+  if (tabChips) {
+    tabChips.querySelectorAll('.chip').forEach(t => t.classList.toggle('chip-active', t.dataset.tab === tabName));
+  }
+  
   listTitle.textContent = { all: 'Available Proxies', favorites: '⭐ Favorites', recent: '🕐 Recently Used' }[tabName];
   filterProxies();
 }
