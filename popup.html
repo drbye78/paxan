@@ -102,7 +102,7 @@
         </svg>
       </button>
 
-      <div class="connection-details" id="connectionDetails">
+      <div class="connection-details" id="connectionDetails" data-expanded="false" style="display: none;">
         <!-- Status Indicators -->
         <div class="status-indicators">
           <div class="indicator" id="healthIndicator">
@@ -181,7 +181,7 @@
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </button>
-      <div class="quick-connect-grid" id="quickConnectGrid"></div>
+      <div class="quick-connect-grid" id="quickConnectGrid" style="display: none;"></div>
     </section>
 
     <!-- Proxy List Container -->
@@ -303,6 +303,15 @@
               <option value="0">Disabled</option>
             </select>
           </div>
+          <div class="setting">
+            <div class="setting-info">
+              <span class="setting-label">Proxy Source</span>
+            </div>
+            <select id="proxySource" class="dropdown dropdown-sm">
+              <option value="proxymania">ProxyMania</option>
+              <option value="proxyscrape">ProxyScrape</option>
+            </select>
+          </div>
         </div>
 
         <div class="setting-group">
@@ -368,6 +377,16 @@
               <option value="900000">15 min</option>
               <option value="1800000">30 min</option>
             </select>
+          </div>
+          <div class="setting">
+            <div class="setting-info">
+              <span class="setting-label">Country Blacklist</span>
+              <span class="setting-desc">Exclude proxies from these countries</span>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="manageBlacklistBtn">Manage</button>
+          </div>
+          <div class="blacklist-container" id="blacklistContainer" style="display: none;">
+            <div id="blacklistChips"></div>
           </div>
         </div>
 

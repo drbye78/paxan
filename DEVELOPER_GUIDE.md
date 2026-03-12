@@ -67,19 +67,20 @@ code .
 │  │  popup.js    │                │   (Service Worker)       │  │
 │  │  styles.css  │                │                          │  │
 │  └──────────────┘                │  ┌────────────────────┐  │  │
-│         │                        │  │  Chrome APIs       │  │  │
+│         │                          │  │  Chrome APIs       │  │  │
 │         │ UI Updates             │  │  - proxy.settings  │  │  │
-│         ▼                        │  │  - storage.local   │  │  │
+│         ▼                          │  │  - storage.local   │  │  │
 │  ┌──────────────┐                │  │  - runtime         │  │  │
 │  │   DOM Render │                │  └────────────────────┘  │  │
 │  └──────────────┘                └──────────────────────────┘  │
 │         │                                      │                │
 │         │                                      │ HTTP Fetch     │
 │         │                                      ▼                │
-│         │                        ┌──────────────────────────┐  │
-│         │                        │   External: ProxyMania   │  │
-│         │                        │   proxymania.su          │  │
-│         │                        └──────────────────────────┘  │
+│         │                        ┌─────────────────────────────┐  │
+│         │                        │   External Sources:        │  │
+│         │                        │   - ProxyMania (proxymania.su)│
+│         │                        │   - ProxyScrape (api.proxyscrape.com)│
+│         │                        └─────────────────────────────┘  │
 │         │                                                      │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -127,29 +128,35 @@ Extension configuration and permissions.
 
 #### `background.js`
 Service worker handling:
-- Proxy fetching from ProxyMania
-- HTML parsing
+- Proxy fetching from ProxyMania or ProxyScrape
+- HTML/CSV parsing
 - Chrome proxy configuration
 - Message handling from popup
 
 **Key Functions:**
-- `fetchProxies()` - Fetches and parses proxy list
+- `fetchProxies()` - Fetches from selected source (ProxyMania or ProxyScrape)
+- `fetchProxyMania()` - Fetches from proxymania.su (multiple pages)
+- `fetchProxyScrape()` - Fetches from api.proxyscrape.com (CSV format)
 - `setProxy(proxy)` - Configures Chrome proxy
 - `clearProxy()` - Removes proxy configuration
 - `testProxy(proxy)` - Checks proxy health
+- `parseProxyMania(html)` - Parses HTML table
+- `parseProxyScrapeCSV(csv)` - Parses CSV format
 
 #### `popup.js`
 Popup UI logic:
-- Displaying proxy list
-- Filtering and sorting
+- Displaying proxy list with caching
+- Filtering (country, type, speed, blacklist)
 - User interaction handling
-- Cache management
+- Settings management
 
 **Key Functions:**
-- `loadProxies()` - Loads from cache then refreshes
+- `loadProxies(forceRefresh)` - Loads from cache with 5-min TTL, optional force refresh
 - `connectToProxy(proxy, event)` - Connects to selected proxy
-- `filterProxies()` - Applies country/type filters
+- `filterProxies()` - Applies all filters including country blacklist
 - `renderProxyList(proxies)` - Renders proxy items
+- `switchToTab(tabName)` - Switches between All/Favorites/Recent
+- `calculateProxyScore(proxy)` - Enhanced scoring with historical data
 
 #### `popup.html`
 UI structure with:
@@ -210,6 +217,18 @@ chrome.runtime.sendMessage({
 ```javascript
 // chrome.storage.local structure
 {
+  // Settings
+  settings: {
+    theme: 'dark' | 'light' | 'auto',
+    autoFailover: boolean,
+    testBeforeConnect: boolean,
+    autoConnect: boolean,
+    notifications: boolean,
+    refreshInterval: number,      // milliseconds
+    proxySource: 'proxymania' | 'proxyscrape',
+    countryBlacklist: string[]     // country names to exclude
+  },
+
   // Currently active proxy
   activeProxy: {
     ip: "192.168.1.1",
@@ -217,9 +236,8 @@ chrome.runtime.sendMessage({
     ipPort: "192.168.1.1:8080",
     country: "Germany",
     type: "HTTPS",
-    anonymity: "High",
     speed: "45 ms",
-    lastCheck: "только что",
+    lastCheck: "Recently",
     speedMs: 45
   },
   
@@ -227,7 +245,27 @@ chrome.runtime.sendMessage({
   proxies: [/* array of proxy objects */],
   
   // Cache timestamp (milliseconds)
-  proxiesTimestamp: 1234567890000
+  proxiesTimestamp: 1234567890000,
+  
+  // Proxy statistics
+  proxyStats: {
+    "ip:port": {
+      attempts: number,
+      successes: number,
+      failures: number,
+      latencies: number[],
+      successRate: number,
+      avgLatency: number,
+      lastSuccess: number,
+      lastFailure: number
+    }
+  },
+  
+  // Favorites
+  favorites: [/* array of favorite proxies */],
+  
+  // Recently used
+  recentlyUsed: [{ proxy: Proxy, lastUsed: number }]
 }
 ```
 
@@ -239,10 +277,9 @@ interface Proxy {
   port: number;         // Port number
   ipPort: string;       // Combined "ip:port"
   country: string;      // Country name
-  type: 'HTTPS' | 'SOCKS5';
-  anonymity: string;    // Anonymity level (Russian)
+  type: 'HTTPS' | 'SOCKS5' | 'SOCKS4';
   speed: string;        // Speed string (e.g., "45 ms")
-  lastCheck: string;    // Last check time (Russian)
+  lastCheck: string;    // Last check time
   speedMs: number;      // Speed in milliseconds (parsed)
 }
 ```

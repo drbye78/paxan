@@ -51,7 +51,7 @@ chrome.runtime.sendMessage({
 
 ### fetchProxies
 
-Fetches the latest proxy list from ProxyMania.
+Fetches the latest proxy list from configured source (ProxyMania or ProxyScrape).
 
 **Direction:** popup.js → background.js
 
@@ -72,15 +72,16 @@ Fetches the latest proxy list from ProxyMania.
       ipPort: "192.168.1.1:8080",
       country: "Germany",
       type: "HTTPS",
-      anonymity: "Высокая",
       speed: "45 ms",
-      lastCheck: "только что",
+      lastCheck: "Recently",
       speedMs: 45
     },
-    // ... more proxies
+    // ... more proxies (100-500)
   ]
 }
 ```
+
+**Note:** The source is determined by `settings.proxySource` ('proxymania' or 'proxyscrape'). ProxyMania fetches multiple pages (up to 5), ProxyScrape uses CSV API.
 
 **Response (Error):**
 ```javascript
@@ -241,7 +242,7 @@ Tests proxy health based on last verification time.
   proxy: {
     ip: "192.168.1.1",
     port: 8080,
-    lastCheck: "только что",
+    lastCheck: "Recently",
     speedMs: 45
   }
 }
@@ -275,10 +276,75 @@ The extension uses `chrome.storage.local` for persistence.
 
 ```typescript
 interface StorageData {
+  // Settings
+  settings: {
+    theme: 'dark' | 'light' | 'auto';
+    autoFailover: boolean;
+    testBeforeConnect: boolean;
+    autoConnect: boolean;
+    notifications: boolean;
+    refreshInterval: number;      // milliseconds
+    proxySource: 'proxymania' | 'proxyscrape';
+    countryBlacklist: string[];   // excluded countries
+  };
+  
+  // Currently active proxy
   activeProxy: Proxy | null;
+  connectionStartTime: number;
+  
+  // Cached proxy list
   proxies: Proxy[];
   proxiesTimestamp: number;
+  
+  // Proxy statistics (historical)
+  proxyStats: {
+    [ipPort: string]: {
+      attempts: number;
+      successes: number;
+      failures: number;
+      latencies: number[];
+      successRate: number;
+      avgLatency: number;
+      lastSuccess: number;
+      lastFailure: number;
+    }
+  };
+  
+  // Favorites
+  favorites: Proxy[];
+  
+  // Recently used
+  recentlyUsed: Array<{ proxy: Proxy; lastUsed: number }>;
 }
+```
+
+---
+
+### settings
+
+User preferences and configuration.
+
+**Type:** `Object`
+
+**Keys:**
+- `theme`: 'dark' | 'light' | 'auto'
+- `autoFailover`: boolean
+- `testBeforeConnect`: boolean
+- `autoConnect`: boolean
+- `notifications`: boolean
+- `refreshInterval`: number (milliseconds)
+- `proxySource`: 'proxymania' | 'proxyscrape'
+- `countryBlacklist`: string[]
+
+**Example:**
+```javascript
+await chrome.storage.local.set({
+  settings: {
+    theme: 'dark',
+    proxySource: 'proxyscrape',
+    countryBlacklist: ['Russia', 'China']
+  }
+});
 ```
 
 ---
@@ -435,27 +501,44 @@ Complete proxy object structure.
 interface Proxy {
   // Network information
   ip: string;           // IP address (e.g., "192.168.1.1")
-  port: number;         // Port number (e.g., 8080)
-  ipPort: string;       // Combined format (e.g., "192.168.1.1:8080")
+  port: number;        // Port number (e.g., 8080)
+  ipPort: string;      // Combined format (e.g., "192.168.1.1:8080")
   
   // Location
-  country: string;      // Country name (e.g., "Germany")
+  country: string;     // Country name (e.g., "Germany")
   
   // Protocol
-  type: 'HTTPS' | 'SOCKS5';
-  
-  // Anonymity (from ProxyMania, in Russian)
-  anonymity: string;    // e.g., "Высокая" (High), "Средняя" (Medium)
+  type: 'HTTPS' | 'SOCKS5' | 'SOCKS4';
   
   // Performance
-  speed: string;        // Display format (e.g., "45 ms")
-  speedMs: number;      // Numeric value for sorting (e.g., 45)
+  speed: string;       // Display format (e.g., "45 ms")
+  speedMs: number;     // Numeric value for sorting (e.g., 45)
   
   // Verification
-  lastCheck: string;    // Time since last check (Russian)
-                        // "только что" = just now
-                        // "1 мин" = 1 minute ago
-                        // "2 мин" = 2 minutes ago
+  lastCheck: string;  // Time since last check (e.g., "Recently")
+  
+  // Optional: Historical data (added from cache merge)
+  historicalSuccessRate?: number;
+  historicalAvgLatency?: number;
+  historicalAttempts?: number;
+  historicalBonus?: number;
+}
+```
+
+### ProxyStats
+
+Historical statistics for a proxy.
+
+```typescript
+interface ProxyStats {
+  attempts: number;       // Total connection attempts
+  successes: number;     // Successful connections
+  failures: number;      // Failed connections
+  latencies: number[];  // Last 20 latency measurements
+  successRate: number;  // Percentage (0-100)
+  avgLatency: number;   // Average of latencies
+  lastSuccess: number;  // Timestamp of last success
+  lastFailure: number;  // Timestamp of last failure
 }
 ```
 
@@ -556,6 +639,66 @@ async function setProxy(proxy) {
 
 ---
 
+## Proxy Sources
+
+### Supported Sources
+
+| Source | URL | Format | Proxy Count |
+|--------|-----|--------|-------------|
+| ProxyMania | `proxymania.su/free-proxy` | HTML (multiple pages) | 100-300 |
+| ProxyScrape | `api.proxyscrape.com` | CSV | 100-500 |
+
+### fetchProxies (with source selection)
+
+The main fetch function checks settings and routes to the appropriate source:
+
+```javascript
+async function fetchProxies() {
+  const result = await chrome.storage.local.get(['settings']);
+  const proxySource = result.settings?.proxySource || 'proxymania';
+  
+  switch (proxySource) {
+    case 'proxyscrape':
+      return await fetchProxyScrape();
+    case 'proxymania':
+    default:
+      return await fetchProxyMania();
+  }
+}
+```
+
+### ProxyMania Fetcher
+
+Fetches multiple pages (up to 5):
+
+```javascript
+async function fetchProxyMania() {
+  const allProxies = [];
+  for (let page = 1; page <= 5; page++) {
+    const url = page === 1 
+      ? 'https://proxymania.su/free-proxy' 
+      : `https://proxymania.su/free-proxy?page=${page}`;
+    // ... fetch and parse
+  }
+  return allProxies;
+}
+```
+
+### ProxyScrape Fetcher
+
+Uses the free API endpoint:
+
+```javascript
+async function fetchProxyScrape() {
+  const url = 'https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&format=csv';
+  const response = await fetch(url);
+  const csvText = await response.text();
+  return parseProxyScrapeCSV(csvText);
+}
+```
+
+---
+
 ## Utility Functions
 
 ### parseSpeed
@@ -584,11 +727,11 @@ Determines proxy health status.
 function getWorkingStatus(proxy) {
   if (!proxy.lastCheck) return 'unknown';
   
+  const lastCheck = proxy.lastCheck.toLowerCase();
   const recentlyChecked = 
-    proxy.lastCheck.includes('только что') || 
-    proxy.lastCheck.includes('1 мин') ||
-    proxy.lastCheck.includes('2 мин') ||
-    proxy.lastCheck.includes('3 мин');
+    lastCheck.includes('recent') || 
+    lastCheck.includes('just now') ||
+    lastCheck.includes('minute');
   
   return recentlyChecked ? 'good' : 'warning';
 }

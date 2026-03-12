@@ -1,10 +1,10 @@
 # ProxyMania VPN - Chrome Extension
 
-[![Version](https://img.shields.io/badge/version-2.2.0-blue?style=flat-square)](https://github.com)
+[![Version](https://img.shields.io/badge/version-2.3.0-blue?style=flat-square)](https://github.com)
 [![Manifest V3](https://img.shields.io/badge/manifest-v3-green?style=flat-square)](https://developer.chrome.com/docs/extensions/mv3/intro/)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
-A professional-grade free VPN service Chrome extension that routes your traffic through proxy servers from [ProxyMania](https://proxymania.su/free-proxy). Features intelligent proxy selection, real-time monitoring, and a beautiful modern UI.
+A professional-grade free VPN service Chrome extension that routes your traffic through proxy servers from [ProxyMania](https://proxymania.su/free-proxy) or [ProxyScrape](https://proxyscrape.com/). Features intelligent proxy selection, real-time monitoring, and a beautiful modern UI.
 
 ![Features](https://img.shields.io/badge/features-proxy%20testing%20%7C%20auto--failover%20%7C%20smart%20recommendations-green?style=flat-square)
 
@@ -20,18 +20,17 @@ A professional-grade free VPN service Chrome extension that routes your traffic 
 
 ## 🎯 Features
 
-### New in v2.2.0
-- 🟢 **Connection Quality Badge** - Real-time quality indicator (Excellent/Good/Fair/Poor) with latency & packet loss
-- 🌐 **IP Detector** - Shows your real IP vs proxy IP with one-click verification
-- ↩️ **Undo Disconnect** - 5-second window to reconnect after disconnecting
-- 🎯 **Per-Site Proxy Rules** - Auto-switch proxies for specific websites (e.g., netflix.com → USA)
-- 🔄 **Auto-Rotation** - Automatically rotate to fresh proxies at configurable intervals (5-30 min)
-- ⌨️ **Keyboard Shortcuts** - Power user shortcuts (Ctrl+K search, Ctrl+D disconnect, etc.)
+### New in v2.3.0
+- 🌐 **Multiple Proxy Sources** - Choose between ProxyMania or ProxyScrape
+- 💾 **Smart Caching** - 5-minute cache for faster loading
+- 🚫 **Country Blacklist** - Exclude unwanted countries from proxy list
+- 🎯 **Enhanced Best Proxy** - Improved algorithm using historical connection data
+- 🔧 **Connection Failure UI** - Visual feedback when connection fails
 
 ### Core Features
 - 🧪 **Real Proxy Testing** - Tests connectivity before connecting (5s timeout)
 - 🔄 **Auto-Failover** - Automatically switches to backup proxy on failure
-- ⭐ **Smart Recommendations** - AI-powered scoring (speed + reliability + freshness)
+- ⭐ **Smart Recommendations** - AI-powered scoring (speed + reliability + freshness + history)
 - 📊 **Success Rate Tracking** - Tracks connection attempts per proxy
 - 📡 **Live Monitoring** - Checks proxy health every 30 seconds
 - ⏱️ **Connection Timer** - Live session duration display
@@ -205,10 +204,10 @@ Click 📊 to view:
 ```
 proxy-vpn-extension/
 ├── manifest.json          # Extension config (MV3)
-├── popup.html             # UI structure (349 lines)
-├── popup.js               # Main logic (~1494 lines)
-├── background.js          # Service worker (~695 lines)
-├── styles.css             # Styling (~1200 lines)
+├── popup.html             # UI structure (438 lines)
+├── popup.js               # Main logic (~2780 lines)
+├── background.js         # Service worker (~1000 lines)
+├── styles.css            # Styling (~1650 lines)
 │
 ├── icons/
 │   ├── icon16.png

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "ProxyMania VPN",
-  "version": "2.2.0",
-  "description": "Free VPN service using ProxyMania proxy servers",
+  "version": "2.3.0",
+  "description": "Free VPN service using proxy servers from multiple sources",
   "permissions": [
     "proxy",
     "storage",
@@ -13,6 +13,8 @@
   ],
   "host_permissions": [
     "https://proxymania.su/*",
+    "https://proxyscrape.com/*",
+    "https://api.proxyscrape.com/*",
     "https://httpbin.org/*",
     "https://www.google.com/*",
     "https://connectivitycheck.gstatic.com/*"

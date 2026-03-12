@@ -15,7 +15,9 @@ let settings = {
   testBeforeConnect: true,
   autoConnect: false,
   notifications: true,
-  refreshInterval: 300000
+  refreshInterval: 300000,
+  proxySource: 'proxymania',
+  countryBlacklist: []
 };
 let dailyStats = {
   proxiesUsed: 0,
@@ -122,6 +124,7 @@ let statusIndicator, statusText, currentProxyDisplay, proxyFlag, proxyAddress, p
 let connectionTimer, timerValue, testStatus, testText;
 let countryFilter, typeFilter, proxyList, proxyCount, listTitle, loading;
 let quickConnectGrid, quickConnectSection, recommendedSection, recommendedList;
+let manageBlacklistBtn, blacklistContainer, blacklistChips;
 let toastContainer, mainTabs, filterChips, settingsPanel, statsPanel;
 let proxySearch, bestProxyBtn;
 let speedGraphCanvas, speedGraphSection, currentLatencyEl;
@@ -207,8 +210,12 @@ function initDOMElements() {
   
   // Settings elements
   themeSelect = $('themeSelect');
+  proxySourceSelect = $('proxySource');
   rotationToggle = $('rotationToggle');
   rotationIntervalSelect = $('rotationInterval');
+  manageBlacklistBtn = $('manageBlacklistBtn');
+  blacklistContainer = $('blacklistContainer');
+  blacklistChips = $('blacklistChips');
   ipCheckBtn = $('ipCheckBtn');
   ipRealValue = $('ipRealValue');
   ipProxyValue = $('ipProxyValue');
@@ -285,6 +292,11 @@ function setupEventListeners() {
     detailsToggle.addEventListener('click', toggleDetails);
   }
   
+  // Quick Connect toggle
+  if (quickConnectToggle) {
+    quickConnectToggle.addEventListener('click', toggleQuickConnect);
+  }
+  
   // IP Detector expand
   if (ipDetectorSection) {
     ipDetectorSection.addEventListener('click', (e) => {
@@ -344,6 +356,11 @@ function setupEventListeners() {
     rotationIntervalSelect.addEventListener('change', updateRotationInterval);
   }
   
+  // Country Blacklist
+  if (manageBlacklistBtn) {
+    manageBlacklistBtn.addEventListener('click', toggleBlacklistPanel);
+  }
+  
   // Theme select
   if (themeSelect) {
     themeSelect.addEventListener('change', (e) => {
@@ -383,6 +400,17 @@ function toggleDetails() {
   detailsExpanded = !detailsExpanded;
   connectionDetails.setAttribute('data-expanded', detailsExpanded);
   detailsToggle.setAttribute('aria-expanded', detailsExpanded);
+  connectionDetails.style.display = detailsExpanded ? 'block' : 'none';
+}
+
+// Toggle Quick Connect
+function toggleQuickConnect() {
+  if (!quickConnectGrid) return;
+  const isExpanded = quickConnectGrid.style.display !== 'none';
+  quickConnectGrid.style.display = isExpanded ? 'none' : 'grid';
+  if (quickConnectToggle) {
+    quickConnectToggle.setAttribute('aria-expanded', !isExpanded);
+  }
 }
 
 // Toggle IP Detector
@@ -499,7 +527,7 @@ function setupTabListeners() {
   const tabContainer = tabChips || mainTabs;
   if (!tabContainer) return;
   
-  const tabs = tabContainer.querySelectorAll('.tab, [data-tab]');
+  const tabs = tabContainer.querySelectorAll('[data-tab]');
   tabs.forEach(tab => {
     tab.addEventListener('click', () => switchToTab(tab.dataset.tab));
   });
@@ -527,6 +555,13 @@ function setupSettingsListeners() {
     settings.refreshInterval = parseInt(e.target.value);
     saveSettings();
     startAutoRefresh();
+  });
+  
+  $('proxySource').addEventListener('change', (e) => {
+    settings.proxySource = e.target.value;
+    saveSettings();
+    showToast(`Proxy source changed to ${e.target.options[e.target.selectedIndex].text}`, 'info');
+    loadProxies(true); // Force refresh when source changes
   });
   
   $('autoFailoverToggle').addEventListener('click', function() {
@@ -576,6 +611,7 @@ async function loadSettings() {
     
     $('themeSelect').value = settings.theme;
     $('refreshInterval').value = settings.refreshInterval.toString();
+    $('proxySource').value = settings.proxySource || 'proxymania';
     $('autoFailoverToggle').classList.toggle('active', settings.autoFailover);
     $('testBeforeConnectToggle').classList.toggle('active', settings.testBeforeConnect);
     $('autoConnectToggle')?.classList.toggle('active', settings.autoConnect);
@@ -1279,6 +1315,82 @@ async function updateRotationInterval(e) {
   showToast(`Rotation interval: ${autoRotation.interval / 60000} min`, 'info');
 }
 
+// Country Blacklist Management
+function toggleBlacklistPanel() {
+  if (!blacklistContainer) return;
+  const isVisible = blacklistContainer.style.display !== 'none';
+  blacklistContainer.style.display = isVisible ? 'none' : 'block';
+  
+  if (!isVisible) {
+    renderBlacklistChips();
+  }
+}
+
+function renderBlacklistChips() {
+  if (!blacklistChips) return;
+  
+  const blacklist = settings.countryBlacklist || [];
+  const availableCountries = [...new Set(proxies.map(p => p.country))].sort();
+  const availableToAdd = availableCountries.filter(c => !blacklist.includes(c));
+  
+  let html = blacklist.map(country => `
+    <span class="chip chip-active blacklist-chip">
+      ${getFlag(country)} ${country}
+      <button class="remove-btn" data-country="${country}">×</button>
+    </span>
+  `).join('');
+  
+  // Add dropdown to add countries
+  if (availableToAdd.length > 0) {
+    html += `
+      <select class="blacklist-add-select" id="blacklistAddSelect">
+        <option value="">+ Add country...</option>
+        ${availableToAdd.map(c => `<option value="${c}">${getFlag(c)} ${c}</option>`).join('')}
+      </select>
+    `;
+  }
+  
+  blacklistChips.innerHTML = html;
+  
+  // Add click handlers for remove buttons
+  blacklistChips.querySelectorAll('.remove-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const country = btn.dataset.country;
+      removeFromBlacklist(country);
+    });
+  });
+  
+  // Add handler for add dropdown
+  const addSelect = $('blacklistAddSelect');
+  if (addSelect) {
+    addSelect.addEventListener('change', (e) => {
+      if (e.target.value) {
+        addToBlacklist(e.target.value);
+        e.target.value = '';
+      }
+    });
+  }
+}
+
+async function removeFromBlacklist(country) {
+  settings.countryBlacklist = settings.countryBlacklist.filter(c => c !== country);
+  saveSettings();
+  renderBlacklistChips();
+  filterProxies();
+  showToast(`Removed ${country} from blacklist`, 'info');
+}
+
+async function addToBlacklist(country) {
+  if (!settings.countryBlacklist.includes(country)) {
+    settings.countryBlacklist.push(country);
+    saveSettings();
+    renderBlacklistChips();
+    filterProxies();
+    showToast(`Added ${country} to blacklist`, 'info');
+  }
+}
+
 function startAutoRotation() {
   if (autoRotation.timer) clearInterval(autoRotation.timer);
 
@@ -1630,11 +1742,11 @@ function toggleTheme() {
 // Panel Management
 function showPanel(name) {
   if (name === 'settings') {
-    if (settingsPanel) settingsPanel.style.display = 'block';
+    if (settingsPanel) settingsPanel.style.display = 'flex';
     renderSiteRules(); // Feature 4: Show site rules
   } else if (name === 'stats') {
     updateStatsDisplay();
-    if (statsPanel) statsPanel.style.display = 'block';
+    if (statsPanel) statsPanel.style.display = 'flex';
   }
 }
 
@@ -1745,12 +1857,21 @@ async function loadCurrentProxy() {
 }
 
 // Load proxies
-async function loadProxies() {
-  showLoading(true);
+async function loadProxies(forceRefresh = false) {
+  const CACHE_MAX_AGE = 5 * 60 * 1000; // 5 minutes
   
+  // If force refresh, clear cache first
+  if (forceRefresh) {
+    await chrome.storage.local.remove(['proxies', 'proxiesTimestamp']);
+  }
+  
+  // Try to load cached proxies first
   try {
-    const cached = await chrome.storage.local.get(['proxies', 'proxiesTimestamp']);
-    if (cached.proxies?.length > 0) {
+    const cached = await chrome.storage.local.get(['proxies', 'proxiesTimestamp', 'proxyStats']);
+    const cacheAge = cached.proxiesTimestamp ? Date.now() - cached.proxiesTimestamp : Infinity;
+    const isCacheFresh = cacheAge < CACHE_MAX_AGE;
+    
+    if (cached.proxies?.length > 0 && !forceRefresh) {
       proxies = cached.proxies;
       await loadProxyStats();
       populateCountryFilter();
@@ -1759,14 +1880,34 @@ async function loadProxies() {
       renderQuickConnect();
       renderRecommended();
       showLoading(false);
+      
+      // If cache is fresh, skip fetching
+      if (isCacheFresh) {
+        console.log('Using fresh cache, skipping fetch');
+        return;
+      }
+      
+      // Cache is stale - show indicator and refresh in background
+      showToast(`Using cached proxies (refreshing...)`, 'info');
+    } else {
+      showLoading(true);
     }
-  } catch (error) { console.error('Error loading cached:', error); }
+  } catch (error) { 
+    console.error('Error loading cached:', error); 
+    showLoading(true); // Show loading on error to trigger fetch
+  }
   
+  // Fetch fresh proxies
   try {
+    showLoading(true);
     const response = await chrome.runtime.sendMessage({ action: 'fetchProxies' });
     if (response?.proxies) {
-      proxies = response.proxies;
-      await chrome.storage.local.set({ proxies, proxiesTimestamp: Date.now() });
+      // Merge new proxies with existing stats
+      proxies = await mergeProxiesWithStats(response.proxies);
+      await chrome.storage.local.set({ 
+        proxies, 
+        proxiesTimestamp: Date.now() 
+      });
       await loadProxyStats();
       populateCountryFilter();
       filterProxies();
@@ -1776,10 +1917,55 @@ async function loadProxies() {
       if (proxies.length > 0) showToast(`Loaded ${proxies.length} proxies`, 'info');
     }
   } catch (error) {
-    if (!proxies.length) showEmptyState('noProxies');
-    else showToast('Using cached proxies', 'warning');
+    // Check if offline
+    if (!navigator.onLine || error.message?.includes('Failed to fetch')) {
+      if (!proxies.length) {
+        showEmptyState('noProxies');
+        showToast('You appear to be offline', 'warning');
+      } else {
+        showToast('Offline - using cached proxies', 'warning');
+      }
+    } else {
+      if (!proxies.length) showEmptyState('noProxies');
+      else showToast('Using cached proxies', 'warning');
+    }
   } finally {
     showLoading(false);
+  }
+}
+
+// Merge new proxies with existing historical stats
+async function mergeProxiesWithStats(newProxies) {
+  try {
+    const { proxyStats = {} } = await chrome.storage.local.get(['proxyStats']);
+    
+    return newProxies.map(proxy => {
+      const historicalStats = proxyStats[proxy.ipPort];
+      
+      if (historicalStats) {
+        // Use historical avgLatency if current speedMs is missing or seems wrong
+        const effectiveSpeedMs = proxy.speedMs > 5000 && historicalStats.avgLatency 
+          ? historicalStats.avgLatency 
+          : proxy.speedMs;
+        
+        // Boost score for proxies with good historical success rate
+        const historicalBonus = historicalStats.successRate > 80 ? 5 : 0;
+        
+        return {
+          ...proxy,
+          speedMs: effectiveSpeedMs,
+          historicalSuccessRate: historicalStats.successRate,
+          historicalAvgLatency: historicalStats.avgLatency,
+          historicalAttempts: historicalStats.attempts,
+          historicalBonus
+        };
+      }
+      
+      return proxy;
+    });
+  } catch (error) {
+    console.error('Error merging proxies with stats:', error);
+    return newProxies;
   }
 }
 
@@ -1805,6 +1991,12 @@ async function filterProxies() {
   const searchQuery = proxySearch?.value?.toLowerCase() || '';
 
   let filtered = proxies;
+
+  // Apply country blacklist filter
+  const blacklist = settings.countryBlacklist || [];
+  if (blacklist.length > 0) {
+    filtered = filtered.filter(p => !blacklist.includes(p.country));
+  }
 
   // Apply search filter
   if (searchQuery) {
@@ -1855,17 +2047,36 @@ function applyFilters(filtered, country, type, speed) {
 // Calculate proxy score
 function calculateProxyScore(proxy) {
   const stats = proxyStats[proxy.ipPort] || { successRate: 50, avgLatency: 100 };
-  const speedScore = Math.max(0, 100 - proxy.speedMs / 5);
+  
+  // Use historical avgLatency if available and current seems wrong
+  const latencyToUse = proxy.historicalAvgLatency && proxy.speedMs > 5000 
+    ? proxy.historicalAvgLatency 
+    : proxy.speedMs;
+  
+  const speedScore = Math.max(0, 100 - latencyToUse / 5);
   const reliabilityScore = stats.successRate || 50;
+  
   let freshnessScore = 50;
   if (proxy.lastCheck) {
-    if (proxy.lastCheck.includes('только что')) freshnessScore = 100;
-    else if (proxy.lastCheck.includes('1 мин')) freshnessScore = 90;
-    else if (proxy.lastCheck.includes('2 мин')) freshnessScore = 80;
-    else if (proxy.lastCheck.includes('3 мин')) freshnessScore = 70;
+    const lastCheck = proxy.lastCheck.toLowerCase();
+    // Russian
+    if (lastCheck.includes('только что') || lastCheck.includes('1 мин')) freshnessScore = 100;
+    else if (lastCheck.includes('2 мин')) freshnessScore = 90;
+    else if (lastCheck.includes('3 мин')) freshnessScore = 80;
+    else if (lastCheck.includes('4 мин') || lastCheck.includes('5 мин')) freshnessScore = 70;
+    // English
+    else if (lastCheck.includes('recent') || lastCheck.includes('just now')) freshnessScore = 100;
+    else if (lastCheck.includes('minute')) freshnessScore = 80;
   }
+  
+  // Boost for favorites and good historical performance
   const favoriteBonus = favorites.some(f => f.ipPort === proxy.ipPort) ? 10 : 0;
-  return (speedScore * 0.4) + (reliabilityScore * 0.4) + (freshnessScore * 0.2) + favoriteBonus;
+  const historicalBonus = proxy.historicalBonus || 0;
+  
+  // Extra boost for proxies with proven track record (many attempts)
+  const experienceBonus = (proxy.historicalAttempts > 10) ? 5 : 0;
+  
+  return (speedScore * 0.35) + (reliabilityScore * 0.35) + (freshnessScore * 0.15) + favoriteBonus + historicalBonus + experienceBonus;
 }
 
 // Get recommended proxies
@@ -1899,7 +2110,14 @@ async function connectToBestProxy() {
   const best = getBestProxy();
   if (best) {
     showToast(`Connecting to best proxy: ${best.country}`, 'info');
-    await connectToProxy(best, { target: { closest: () => null, querySelector: () => null } });
+    // Create a mock event object that works with connectToProxy
+    const mockEvent = {
+      target: document.createElement('div'),
+      stopPropagation: () => {}
+    };
+    mockEvent.target.closest = () => null;
+    mockEvent.target.querySelector = () => null;
+    await connectToProxy(best, mockEvent);
   } else {
     showToast('No suitable proxy found', 'warning');
   }
@@ -2021,7 +2239,8 @@ function renderSparkline(latencies) {
 // Get working status
 function getWorkingStatus(proxy) {
   if (!proxy.lastCheck) return 'unknown';
-  const recent = ['только что', '1 мин', '2 мин', '3 мин'].some(t => proxy.lastCheck.includes(t));
+  const lastCheck = proxy.lastCheck.toLowerCase();
+  const recent = ['только что', '1 мин', '2 мин', '3 мин', 'recent', 'just now', 'minute'].some(t => lastCheck.includes(t));
   return recent ? 'good' : 'warning';
 }
 
@@ -2113,8 +2332,27 @@ async function connectToProxy(proxy, event) {
     renderRecommended();
     showToast(`Connected to ${proxy.country} (${proxy.speedMs}ms)`, 'success');
   } catch (error) {
+    // Reset button text on failure
+    if (connectBtn && connectBtn.textContent) {
+      connectBtn.textContent = '✕ Failed';
+      connectBtn.classList.add('btn-failed');
+    }
+    // Mark proxy item as failed
+    proxyItem?.classList.remove('connecting');
+    proxyItem?.classList.add('failed');
+    
     showToast(`Connection failed: ${error.message}`, 'error');
     updateDailyStats({ attempts: dailyStats.attempts + 1 });
+    
+    // Reset button after 2 seconds
+    setTimeout(() => {
+      if (connectBtn && connectBtn.textContent) {
+        connectBtn.textContent = 'Connect';
+        connectBtn.classList.remove('btn-failed');
+      }
+      proxyItem?.classList.remove('failed');
+    }, 2000);
+    
     if (settings.autoFailover) {
       const result = await chrome.runtime.sendMessage({ action: 'getNextFailoverProxy' });
       if (result.proxy) {
@@ -2304,8 +2542,15 @@ function showEmptyState(type) {
     actionBtn.addEventListener('click', () => {
       if (type === 'noProxies') loadProxies();
       else if (type === 'noResults') {
-        countryFilter.value = '';
-        typeFilter.value = '';
+        // Clear all filters including search
+        if (proxySearch) proxySearch.value = '';
+        if (countryFilter) countryFilter.value = '';
+        if (typeFilter) typeFilter.value = '';
+        // Reset filter chips
+        if (filterChips) {
+          filterChips.querySelectorAll('.chip').forEach(c => c.classList.remove('chip-active'));
+          filterChips.querySelector('[data-value="all"]')?.classList.add('chip-active');
+        }
         filterProxies();
       }
       else if (type === 'noFavorites') switchToTab('all');

@@ -30,30 +30,23 @@ Welcome to the ProxyMania VPN user guide. This document provides detailed instru
 
 ```
 ┌─────────────────────────────────────┐
-│  🛡️ ProxyMania VPN          🌙 📊 ⭐ ⚙ │
+│  🛡️ ProxyMania VPN          ⚙     │
 ├─────────────────────────────────────┤
-│  ● Disconnected                     │
-│  [⚡ Connect]              🔄        │
+│  ● Disconnected           [Connect] │
+│  Quick Connect ▼                    │
+│  ┌────┐ ┌────┐ ┌────┐ ┌────┐      │
+│  │ 🇩🇪 │ │ 🇫🇷 │ │ 🇬🇧 │ │ 🇯🇵 │      │
+│  └────┘ └────┘ └────┘ └────┘      │
 ├─────────────────────────────────────┤
-│  Quick Connect                      │
-│  [Best Proxy]                       │
-│  ┌────┐ ┌────┐ ┌────┐ ┌────┐       │
-│  │ 🇩🇪 │ │ 🇫🇷 │ │ 🇬🇧 │ │ 🇯🇵 │       │
-│  └────┘ └────┘ └────┘ └────┘       │
+│  [All] [⭐] [🕐]                   │
+│  🔍 Search...                       │
+│  [All] [HTTPS] [SOCKS5]            │
 ├─────────────────────────────────────┤
-│  [All] [Favorites] [Recent]        │
-│  🔍 Search proxies...               │
-│  [All ▼] [All ▼]                   │
-├─────────────────────────────────────┤
-│  Available Proxies           [54]   │
+│  Available Proxies           [100+]  │
 │  ┌─────────────────────────────┐   │
 │  │ 🇺🇸 192.168.1.1            │   │
-│  │ USA • HTTPS • ⚡ 45ms • ✓  │   │
-│  │                    [Connect]│   │
+│  │ USA • HTTPS • 45ms         │   │
 │  └─────────────────────────────┘   │
-├─────────────────────────────────────┤
-│  Powered by ProxyMania              │
-│  Use at your own risk               │
 └─────────────────────────────────────┘
 ```
 
@@ -120,7 +113,26 @@ Welcome to the ProxyMania VPN user guide. This document provides detailed instru
 2. Choose:
    - **HTTPS** - Secure HTTP proxy (recommended for web browsing)
    - **SOCKS5** - General purpose proxy (supports all TCP/UDP)
-3. List filters to show only selected type
+  3. List filters to show only selected type
+
+### Choosing Proxy Source
+
+1. Go to **Settings** (⚙️ button)
+2. Find **Connection** section
+3. Select **Proxy Source**:
+   - **ProxyMania** - Default source, good variety
+   - **ProxyScrape** - Alternative source with different proxies
+
+### Country Blacklist
+
+Exclude countries you don't want to use:
+
+1. Go to **Settings** → **Advanced Features**
+2. Click **Manage** next to "Country Blacklist"
+3. Use dropdown to add countries
+4. Click × to remove from blacklist
+
+Blacklisted countries are filtered from all proxy lists.
 
 ### Understanding Proxy Information
 
@@ -183,7 +195,7 @@ Free proxies can go offline unexpectedly. If browsing fails:
 ### General Questions
 
 **Q: Is this extension free?**
-A: Yes, completely free. It uses publicly available proxies from ProxyMania.
+A: Yes, completely free. It uses publicly available proxies from ProxyMania and ProxyScrape.
 
 **Q: Do I need to create an account?**
 A: No account required. Install and use immediately.
@@ -193,6 +205,9 @@ A: Possibly. Free proxies are often slower than direct connections. Choose low-l
 
 **Q: Can I use this for Netflix/streaming?**
 A: Free proxies rarely work with streaming services. This extension is designed for basic web browsing.
+
+**Q: How do I change proxy source?**
+A: Go to Settings → Connection → Proxy Source. Choose ProxyMania or ProxyScrape.
 
 ### Technical Questions
 

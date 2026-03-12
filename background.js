@@ -289,19 +289,165 @@ async function handleMessage(request) {
 // Proxy functions
 async function fetchProxies() {
   try {
-    const response = await fetch('https://proxymania.su/free-proxy');
-    if (!response.ok) {
-      throw new Error('Failed to fetch proxies: ' + response.statusText);
+    // Get proxy source from settings
+    const result = await chrome.storage.local.get(['settings']);
+    const proxySource = result.settings?.proxySource || 'proxymania';
+    
+    let proxies;
+    switch (proxySource) {
+      case 'proxyscrape':
+        proxies = await fetchProxyScrape();
+        break;
+      case 'proxymania':
+      default:
+        proxies = await fetchProxyMania();
+        break;
     }
-    const html = await response.text();
-    return parseProxies(html);
+    
+    return proxies;
   } catch (error) {
     console.error('Error fetching proxies:', error);
+    // Try fallback to proxymania if proxyscrape fails
+    try {
+      return await fetchProxyMania();
+    } catch (fallbackError) {
+      throw error;
+    }
+  }
+}
+
+async function fetchProxyMania() {
+  try {
+    const allProxies = [];
+    const maxPages = 5; // Fetch up to 5 pages
+    
+    for (let page = 1; page <= maxPages; page++) {
+      const url = page === 1 
+        ? 'https://proxymania.su/free-proxy' 
+        : `https://proxymania.su/free-proxy?page=${page}`;
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        break; // Stop if no more pages
+      }
+      
+      const html = await response.text();
+      const proxies = parseProxyMania(html);
+      
+      if (!proxies || proxies.length === 0) {
+        break; // Stop if no more proxies
+      }
+      
+      allProxies.push(...proxies);
+      console.log(`ProxyMania: Fetched page ${page}, total proxies: ${allProxies.length}`);
+    }
+    
+    return allProxies;
+  } catch (error) {
+    console.error('Error fetching from ProxyMania:', error);
     throw error;
   }
 }
 
-function parseProxies(html) {
+async function fetchProxyScrape() {
+  try {
+    // Use the API endpoint for direct CSV download
+    const response = await fetch('https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&format=csv&proxy_type=all&timeout=5000');
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch from ProxyScrape: ' + response.statusText);
+    }
+    
+    const csvText = await response.text();
+    return parseProxyScrapeCSV(csvText);
+  } catch (error) {
+    console.error('Error fetching from ProxyScrape:', error);
+    throw error;
+  }
+}
+
+function parseProxyScrapeCSV(csvText) {
+  const proxyItems = [];
+  
+  try {
+    const lines = csvText.trim().split('\n');
+    if (lines.length < 2) return proxyItems;
+    
+    // Parse header to find column indices
+    const headerLine = lines[0].toLowerCase();
+    const headers = parseCSVLine(headerLine);
+    
+    const ipIndex = headers.findIndex(h => h === 'ip');
+    const portIndex = headers.findIndex(h => h === 'port');
+    const codeIndex = headers.findIndex(h => h === 'ip_data_countryCode');
+    const countryIndex = headers.findIndex(h => h === 'ip_data_country');
+    const typeIndex = headers.findIndex(h => h === 'protocol');
+    const speedIndex = headers.findIndex(h => h === 'average_timeout');
+    
+    console.log('ProxyScrape headers:', headers);
+    console.log('Indices - IP:', ipIndex, 'Port:', portIndex, 'Code:', codeIndex, 'Type:', typeIndex, 'Speed:', speedIndex);
+    
+    // Parse data rows
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      
+      const parts = parseCSVLine(line);
+      
+      if (parts.length < 3) continue;
+      
+      const ip = parts[ipIndex]?.trim();
+      const port = parseInt(parts[portIndex]?.trim());
+      const countryCode = parts[codeIndex]?.trim() || parts[countryIndex]?.trim();
+      const type = parts[typeIndex]?.trim();
+      const speedStr = parts[speedIndex]?.trim();
+      
+      if (ip && port && !isNaN(port)) {
+        proxyItems.push({
+          ip,
+          port,
+          ipPort: `${ip}:${port}`,
+          country: getCountryName(countryCode),
+          type: normalizeProxyType(type),
+          speed: speedStr,
+          lastCheck: 'Recently',
+          speedMs: parseSpeed(speedStr)
+        });
+      }
+    }
+    
+    console.log(`ProxyScrape: Parsed ${proxyItems.length} proxies from CSV`);
+  } catch (error) {
+    console.error('Error parsing ProxyScrape CSV:', error);
+  }
+  
+  return proxyItems;
+}
+
+// Parse a CSV line handling quoted values
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  result.push(current);
+  return result;
+}
+
+function parseProxyMania(html) {
   const proxyItems = [];
   
   const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
@@ -343,6 +489,86 @@ function parseProxies(html) {
   }
   
   return proxyItems;
+}
+
+function parseProxyScrape(html) {
+  const proxyItems = [];
+  
+  // ProxyScrape format: table with IP, Port, Code, Country, Anonymity, Type, Speed, Latency, Uptime
+  const rowRegex = /<tr[^>]*class="[^"]*odd[^"]*"[^>]*>([\s\S]*?)<\/tr>/gi;
+  // Also match even rows
+  const rowRegexAll = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  
+  // Try to parse the table
+  const rows = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
+  
+  for (const row of rows) {
+    // Skip header rows
+    if (row.includes('<th') || row.includes('thead')) continue;
+    
+    // Extract cells
+    const cellRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+    const cells = [];
+    let cellMatch;
+    
+    while ((cellMatch = cellRegex.exec(row)) !== null) {
+      let content = cellMatch[1].replace(/<[^>]+>/g, '').trim();
+      cells.push(content);
+    }
+    
+    // ProxyScrape typically has: IP, Port, Code, Country, Anonymity, Type, Speed, Latency, Uptime
+    // Indices: 0=IP, 1=Port, 2=Code, 3=Country, 4=Anonymity, 5=Type, 6=Speed, 7=Latency, 8=Uptime
+    if (cells.length >= 6) {
+      const ip = cells[0];
+      const port = parseInt(cells[1]);
+      const countryCode = cells[2] || cells[3] || '';
+      const country = getCountryName(countryCode);
+      const type = normalizeProxyType(cells[5]);
+      const speedStr = cells[6] || '';
+      const speedMs = parseSpeed(speedStr);
+      
+      if (ip && port && !isNaN(port)) {
+        proxyItems.push({
+          ip,
+          port,
+          ipPort: `${ip}:${port}`,
+          country,
+          type,
+          speed: speedStr,
+          lastCheck: 'Recently',
+          speedMs
+        });
+      }
+    }
+  }
+  
+  return proxyItems;
+}
+
+function getCountryName(code) {
+  const countryMap = {
+    'US': 'United States', 'GB': 'United Kingdom', 'DE': 'Germany', 'FR': 'France',
+    'JP': 'Japan', 'CN': 'China', 'BR': 'Brazil', 'CA': 'Canada', 'AU': 'Australia',
+    'RU': 'Russia', 'IN': 'India', 'KR': 'South Korea', 'NL': 'Netherlands',
+    'ES': 'Spain', 'IT': 'Italy', 'PL': 'Poland', 'SG': 'Singapore', 'HK': 'Hong Kong',
+    'TW': 'Taiwan', 'ID': 'Indonesia', 'TH': 'Thailand', 'VN': 'Vietnam', 'PH': 'Philippines',
+    'MY': 'Malaysia', 'AR': 'Argentina', 'MX': 'Mexico', 'UA': 'Ukraine', 'TR': 'Turkey',
+    'ZA': 'South Africa', 'SE': 'Sweden', 'NO': 'Norway', 'CH': 'Switzerland', 'AT': 'Austria',
+    'BE': 'Belgium', 'PT': 'Portugal', 'GR': 'Greece', 'CZ': 'Czech Republic', 'RO': 'Romania',
+    'HU': 'Hungary', 'BG': 'Bulgaria', 'IE': 'Ireland', 'NZ': 'New Zealand', 'PK': 'Pakistan',
+    'BD': 'Bangladesh', 'IR': 'Iran', 'IL': 'Israel', 'AE': 'UAE', 'SA': 'Saudi Arabia',
+    'EG': 'Egypt', 'NG': 'Nigeria', 'KE': 'Kenya', 'CL': 'Chile', 'CO': 'Colombia',
+    'PE': 'Peru', 'VE': 'Venezuela', 'EC': 'Ecuador', 'UY': 'Uruguay', 'CR': 'Costa Rica'
+  };
+  return countryMap[code?.toUpperCase()] || code || 'Unknown';
+}
+
+function normalizeProxyType(typeStr) {
+  const type = typeStr?.toUpperCase() || '';
+  if (type.includes('HTTPS') || type.includes('HTTP')) return 'HTTPS';
+  if (type.includes('SOCKS5') || type.includes('SOCKS')) return 'SOCKS5';
+  if (type.includes('SOCKS4')) return 'SOCKS4';
+  return 'HTTPS';
 }
 
 function parseSpeed(speedStr) {

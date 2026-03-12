@@ -83,7 +83,7 @@ body {
   line-height: 1.5;
   background: var(--bg-primary);
   color: var(--text-primary);
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 
 .container {
@@ -868,6 +868,16 @@ body {
   pointer-events: none;
 }
 
+.proxy-item.failed {
+  border-color: var(--error);
+  background: var(--error-bg);
+}
+
+.proxy-item.failed .connect-btn {
+  background: var(--error);
+  color: white;
+}
+
 .proxy-ip {
   display: flex;
   align-items: center;
@@ -1160,8 +1170,8 @@ body {
 }
 
 .panel {
-  width: 90%;
-  max-width: 360px;
+  width: 95%;
+  max-width: 340px;
   max-height: 80vh;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
@@ -1366,6 +1376,44 @@ body {
   overflow-y: auto;
   margin: 8px 0;
   padding: 0 10px;
+}
+
+/* Country Blacklist */
+.blacklist-container {
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 8px 0;
+  padding: 0 10px;
+}
+
+.blacklist-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.blacklist-chip .remove-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  opacity: 0.7;
+}
+
+.blacklist-chip .remove-btn:hover {
+  opacity: 1;
+}
+
+.blacklist-add-select {
+  padding: 4px 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 12px;
+  margin-top: 8px;
 }
 
 .site-rule-item {
