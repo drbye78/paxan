@@ -1,6 +1,6 @@
 # ProxyMania VPN - Chrome Extension
 
-[![Version](https://img.shields.io/badge/version-2.1.0-blue?style=flat-square)](https://github.com)
+[![Version](https://img.shields.io/badge/version-2.2.0-blue?style=flat-square)](https://github.com)
 [![Manifest V3](https://img.shields.io/badge/manifest-v3-green?style=flat-square)](https://developer.chrome.com/docs/extensions/mv3/intro/)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
@@ -19,6 +19,14 @@ A professional-grade free VPN service Chrome extension that routes your traffic 
 ---
 
 ## 🎯 Features
+
+### New in v2.2.0
+- 🟢 **Connection Quality Badge** - Real-time quality indicator (Excellent/Good/Fair/Poor) with latency & packet loss
+- 🌐 **IP Detector** - Shows your real IP vs proxy IP with one-click verification
+- ↩️ **Undo Disconnect** - 5-second window to reconnect after disconnecting
+- 🎯 **Per-Site Proxy Rules** - Auto-switch proxies for specific websites (e.g., netflix.com → USA)
+- 🔄 **Auto-Rotation** - Automatically rotate to fresh proxies at configurable intervals (5-30 min)
+- ⌨️ **Keyboard Shortcuts** - Power user shortcuts (Ctrl+K search, Ctrl+D disconnect, etc.)
 
 ### Core Features
 - 🧪 **Real Proxy Testing** - Tests connectivity before connecting (5s timeout)
@@ -42,7 +50,7 @@ A professional-grade free VPN service Chrome extension that routes your traffic 
 - ⚡ **Smooth Animations** - Slide-in, pulse, shimmer effects
 - 🏷️ **Filter Chips** - Visual speed/type filtering
 - 📊 **Sparkline Charts** - Visual latency trends per proxy
-- 🔔 **Toast Notifications** - Non-blocking feedback
+- 🔔 **Toast Notifications** - Non-blocking feedback with undo support
 
 ---
 
@@ -155,6 +163,40 @@ Click 📊 to view:
 1. Settings → 📤 Export
 2. Downloads working proxies (>50% success)
 3. JSON format with full details
+
+### Keyboard Shortcuts (v2.2.0)
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+K` or `/` | Focus search |
+| `Ctrl+D` | Disconnect |
+| `Ctrl+R` | Refresh proxies |
+| `Ctrl+I` | Check IPs |
+| `Ctrl+S` | Open Settings |
+| `Ctrl+Q` | Quick connect (best proxy) |
+| `Ctrl+F` | Focus country filter |
+| `Escape` | Close panels |
+
+### Advanced Features (v2.2.0)
+
+**Per-Site Rules:**
+1. Settings → Advanced Features → Per-Site Proxy Rules → Manage Rules
+2. Enter website URL (e.g., `netflix.com`)
+3. Select pattern type (Exact, Wildcard, Contains, Regex)
+4. Choose priority (1 = highest)
+5. Select proxy country
+6. Click Save
+
+**Auto-Rotation:**
+1. Settings → Advanced Features → Auto-Rotation
+2. Toggle ON
+3. Select rotation interval (5/10/15/30 min)
+4. Proxies rotate within same country automatically
+
+**IP Detector:**
+- Connect to a proxy
+- Click "Check IPs" in the connection card
+- Verify proxy IP differs from real IP
 
 ---
 

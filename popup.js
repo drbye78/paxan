@@ -1,5 +1,5 @@
 // ProxyMania VPN - Chrome Extension
-// MV3 Compatible Version 2.1.0
+// MV3 Compatible Version 3.0.0 - Modern UX Refresh
 
 let proxies = [];
 let currentProxy = null;
@@ -32,7 +32,7 @@ let securityStatus = {
 let onboardingState = {
   completed: false,
   currentStepIndex: 0,
-  version: '2.1.0'
+  version: '3.0.0'
 };
 let healthStatus = {
   active: false,
@@ -40,6 +40,42 @@ let healthStatus = {
   avgLatency: 0,
   lastCheck: null
 };
+
+// Connection Quality state
+let connectionQuality = {
+  enabled: true,
+  lastUpdate: null,
+  latency: 0,
+  packetLoss: 0,
+  quality: 'excellent'
+};
+
+// IP Detector state
+let ipInfo = {
+  realIp: null,
+  proxyIp: null,
+  isLoading: false,
+  lastCheck: null,
+  expanded: false
+};
+
+// Undo Disconnect state
+let lastDisconnectedProxy = null;
+let disconnectTimeout = null;
+
+// Per-Site Rules state
+let siteRules = [];
+
+// Auto-Rotation state
+let autoRotation = {
+  enabled: false,
+  interval: 600000,
+  timer: null,
+  lastRotation: null
+};
+
+// Details expanded state (Progressive Disclosure)
+let detailsExpanded = false;
 
 // Country flag mapping
 const countryFlags = {
@@ -83,8 +119,7 @@ function getFlag(country) {
 const $ = (id) => document.getElementById(id);
 
 let statusIndicator, statusText, currentProxyDisplay, proxyFlag, proxyAddress, proxyCountry;
-let connectionTimer, timerValue, testStatus, testText, monitoringStatus;
-let refreshBtn, disconnectBtn, connectBtn, themeBtn, statsBtn, favoritesBtn, settingsBtn;
+let connectionTimer, timerValue, testStatus, testText;
 let countryFilter, typeFilter, proxyList, proxyCount, listTitle, loading;
 let quickConnectGrid, quickConnectSection, recommendedSection, recommendedList;
 let toastContainer, mainTabs, filterChips, settingsPanel, statsPanel;
@@ -94,7 +129,15 @@ let healthIndicator, securityIndicator;
 let speedData = [];
 let speedGraphInterval = null;
 
+// v3.0 New DOM elements
+let qualityBadgeInline, qualityStats, connectionQualityInline;
+let detailsToggle, connectionDetails, ipDetectorContent;
+let fab;
+let overflowBtn, overflowMenu, overflowStatsBtn, overflowFavoritesBtn, overflowApplyRuleBtn, overflowThemeBtn;
+let emptyState, themeSelect, settingsBtn;
+
 function initDOMElements() {
+  // Status elements
   statusIndicator = $('statusBadge');
   statusText = statusIndicator?.querySelector('.status-text');
   currentProxyDisplay = $('currentProxyDisplay');
@@ -103,38 +146,74 @@ function initDOMElements() {
   proxyCountry = $('proxyCountry');
   connectionTimer = $('connectionTimer');
   timerValue = connectionTimer?.querySelector('.timer-value');
+  
+  // Test status (removed in v3.0)
   testStatus = $('testStatus');
   testText = testStatus?.querySelector('.test-text');
-  monitoringStatus = $('monitoringStatus');
-  refreshBtn = $('refreshBtn');
-  disconnectBtn = $('disconnectBtn');
-  connectBtn = $('connectBtn');
-  themeBtn = $('themeBtn');
-  statsBtn = $('statsBtn');
-  favoritesBtn = $('favoritesBtn');
+  
+  // Indicators
+  healthIndicator = $('healthIndicator');
+  securityIndicator = $('securityIndicator');
+  
+  // New v3.0 elements
+  qualityBadgeInline = $('qualityBadge');
+  qualityStats = $('qualityStats');
+  connectionQualityInline = $('connectionQualityInline');
+  detailsToggle = $('detailsToggle');
+  connectionDetails = $('connectionDetails');
+  ipDetectorContent = $('ipDetectorContent');
+  
+  // FAB (Floating Action Button)
+  fab = $('fab');
+  
+  // Overflow menu
+  overflowBtn = $('overflowBtn');
+  overflowMenu = $('overflowMenu');
+  overflowStatsBtn = $('overflowStatsBtn');
+  overflowFavoritesBtn = $('overflowFavoritesBtn');
+  overflowApplyRuleBtn = $('overflowApplyRuleBtn');
+  overflowThemeBtn = $('overflowThemeBtn');
+  
+  // Settings & panels
   settingsBtn = $('settingsBtn');
+  settingsPanel = $('settingsPanel');
+  statsPanel = $('statsPanel');
+  
+  // Filters
+  proxySearch = $('proxySearch');
+  filterChips = $('filterChips');
   countryFilter = $('countryFilter');
   typeFilter = $('typeFilter');
+  
+  // Proxy list
   proxyList = $('proxyList');
   proxyCount = $('proxyCount');
   listTitle = $('listTitle');
   loading = $('loading');
+  emptyState = $('emptyState');
+  
+  // Quick connect
   quickConnectGrid = $('quickConnectGrid');
   quickConnectSection = $('quickConnectSection');
-  recommendedSection = $('recommendedSection');
-  recommendedList = $('recommendedList');
-  toastContainer = $('toastContainer');
-  mainTabs = $('mainTabs');
-  filterChips = $('filterChips');
-  settingsPanel = $('settingsPanel');
-  statsPanel = $('statsPanel');
-  proxySearch = $('proxySearch');
   bestProxyBtn = $('bestProxyBtn');
+  
+  // Tabs
+  mainTabs = $('mainTabs');
+  
+  // Toast
+  toastContainer = $('toastContainer');
+  
+  // Settings elements
+  themeSelect = $('themeSelect');
+  rotationToggle = $('rotationToggle');
+  rotationIntervalSelect = $('rotationInterval');
+  ipCheckBtn = $('ipCheckBtn');
+  ipRealValue = $('ipRealValue');
+  ipProxyValue = $('ipProxyValue');
+  ipDetectorSection = $('ipDetectorSection');
   speedGraphCanvas = $('speedGraph');
   speedGraphSection = $('speedGraphSection');
   currentLatencyEl = $('currentLatency');
-  healthIndicator = $('healthIndicator');
-  securityIndicator = $('securityIndicator');
 }
 
 // Initialize
@@ -149,6 +228,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadSecurityStatus();
   await loadOnboardingState();
   await loadHealthStatus();
+  await loadSiteRules();
+  await loadAutoRotationSettings();
   loadCurrentProxy();
   loadProxies();
   setupEventListeners();
@@ -158,7 +239,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupMessageListener();
   setupSearchListener();
   startAutoRefresh();
-  
+
   // Check if onboarding should be shown
   if (!onboardingState.completed) {
     showOnboarding();
@@ -166,38 +247,240 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function setupEventListeners() {
-  // Main action buttons
-  refreshBtn.addEventListener('click', loadProxies);
-  disconnectBtn.addEventListener('click', disconnectProxy);
-  connectBtn?.addEventListener('click', handleConnectClick);
-  themeBtn.addEventListener('click', toggleTheme);
+  // ===== v3.0 New Event Handlers =====
   
-  // Header buttons
-  statsBtn.addEventListener('click', () => showPanel('stats'));
-  favoritesBtn.addEventListener('click', () => switchToTab('favorites'));
+  // FAB (Floating Action Button)
+  if (fab) {
+    fab.addEventListener('click', handleFabClick);
+  }
+  
+  // Overflow menu
+  if (overflowBtn) {
+    overflowBtn.addEventListener('click', toggleOverflowMenu);
+  }
+  if (overflowStatsBtn) {
+    overflowStatsBtn.addEventListener('click', () => { toggleOverflowMenu(); showPanel('stats'); });
+  }
+  if (overflowFavoritesBtn) {
+    overflowFavoritesBtn.addEventListener('click', () => { toggleOverflowMenu(); switchToTab('favorites'); });
+  }
+  if (overflowApplyRuleBtn) {
+    overflowApplyRuleBtn.addEventListener('click', () => { toggleOverflowMenu(); applyRuleForCurrentTab(); });
+  }
+  if (overflowThemeBtn) {
+    overflowThemeBtn.addEventListener('click', () => { toggleOverflowMenu(); toggleTheme(); });
+  }
+  
+  // Close overflow menu when clicking outside
+  document.addEventListener('click', (e) => {
+    if (overflowMenu && !overflowBtn?.contains(e.target) && !overflowMenu.contains(e.target)) {
+      overflowMenu.style.display = 'none';
+    }
+  });
+  
+  // Progressive Disclosure - Details toggle
+  if (detailsToggle) {
+    detailsToggle.addEventListener('click', toggleDetails);
+  }
+  
+  // IP Detector expand
+  if (ipDetectorSection) {
+    ipDetectorSection.addEventListener('click', (e) => {
+      if (e.target !== ipCheckBtn) {
+        toggleIpDetector();
+      }
+    });
+  }
+  
+  // Empty state refresh
+  $('emptyRefreshBtn')?.addEventListener('click', loadProxies);
+  
+  // ===== Existing Event Handlers =====
+  
+  // Header buttons (now in overflow)
   settingsBtn.addEventListener('click', () => showPanel('settings'));
-  
+
   // Panel close buttons
   $('settingsClose')?.addEventListener('click', () => hidePanel('settings'));
   $('statsClose')?.addEventListener('click', () => hidePanel('stats'));
-  
+
   // Settings panel
   $('importBtn')?.addEventListener('click', importProxies);
   $('exportBtn')?.addEventListener('click', exportProxies);
   $('clearDataBtn')?.addEventListener('click', clearAllData);
-  
+
   // Filters
-  countryFilter.addEventListener('change', filterProxies);
-  typeFilter.addEventListener('change', filterProxies);
-  
+  countryFilter?.addEventListener('change', filterProxies);
+  typeFilter?.addEventListener('change', filterProxies);
+
   // Best Proxy button
   if (bestProxyBtn) {
     bestProxyBtn.addEventListener('click', connectToBestProxy);
   }
-  
+
   // Security toggles
   $('dnsLeakToggle')?.addEventListener('click', toggleDnsLeakProtection);
   $('webRtcToggle')?.addEventListener('click', toggleWebRtcProtection);
+
+  // Feature 2: IP Detector
+  if (ipCheckBtn) {
+    ipCheckBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      checkIpAddresses();
+    });
+  }
+
+  // Feature 4: Site Rules
+  $('addSiteRuleBtn')?.addEventListener('click', showAddSiteRuleDialog);
+  $('siteRulesList')?.addEventListener('click', handleSiteRuleAction);
+
+  // Feature 5: Auto-Rotation
+  if (rotationToggle) {
+    rotationToggle.addEventListener('click', toggleAutoRotation);
+  }
+  if (rotationIntervalSelect) {
+    rotationIntervalSelect.addEventListener('change', updateRotationInterval);
+  }
+  
+  // Theme select
+  if (themeSelect) {
+    themeSelect.addEventListener('change', (e) => {
+      settings.theme = e.target.value;
+      applyTheme();
+      saveSettings();
+    });
+  }
+
+  // Task 9: Keyboard Shortcuts
+  setupKeyboardShortcuts();
+}
+
+// ===== v3.0 New Functions =====
+
+// FAB Handler
+function handleFabClick() {
+  if (currentProxy) {
+    disconnectProxy();
+  } else {
+    // Find best proxy and connect
+    connectToBestProxy();
+  }
+}
+
+// Overflow Menu Toggle
+function toggleOverflowMenu() {
+  if (overflowMenu.style.display === 'none') {
+    overflowMenu.style.display = 'block';
+  } else {
+    overflowMenu.style.display = 'none';
+  }
+}
+
+// Progressive Disclosure - Toggle Details
+function toggleDetails() {
+  detailsExpanded = !detailsExpanded;
+  connectionDetails.setAttribute('data-expanded', detailsExpanded);
+  detailsToggle.setAttribute('aria-expanded', detailsExpanded);
+}
+
+// Toggle IP Detector
+function toggleIpDetector() {
+  ipInfo.expanded = !ipInfo.expanded;
+  if (ipDetectorContent) {
+    ipDetectorContent.style.display = ipInfo.expanded ? 'block' : 'none';
+  }
+}
+
+// Update FAB state
+function updateFab() {
+  if (!fab) return;
+
+  fab.classList.remove('loading', 'connected');
+
+  if (currentProxy) {
+    fab.classList.add('connected');
+    fab.title = 'Disconnect';
+  } else {
+    fab.title = 'Connect';
+  }
+  
+  // Force icon visibility update
+  const connectIcon = fab.querySelector('.fab-connect');
+  const disconnectIcon = fab.querySelector('.fab-disconnect');
+  const loadingIcon = fab.querySelector('.fab-loading');
+  
+  if (connectIcon) connectIcon.style.display = currentProxy ? 'none' : 'block';
+  if (disconnectIcon) disconnectIcon.style.display = currentProxy ? 'block' : 'none';
+  if (loadingIcon) loadingIcon.style.display = 'none';
+}
+
+// Task 9: Keyboard Shortcuts Setup
+function setupKeyboardShortcuts() {
+  document.addEventListener('keydown', (e) => {
+    // Ignore if typing in input/select
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
+      // Allow Ctrl+K to focus search even when typing
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        proxySearch?.focus();
+      }
+      return;
+    }
+    
+    // Ctrl+K or / - Focus search
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      proxySearch?.focus();
+    }
+    
+    // / - Focus search (single key)
+    if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      proxySearch?.focus();
+    }
+    
+    // Ctrl+D - Disconnect
+    if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+      e.preventDefault();
+      if (currentProxy) disconnectProxy();
+    }
+    
+    // Ctrl+R - Refresh proxies
+    if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+      e.preventDefault();
+      loadProxies();
+    }
+    
+    // Ctrl+I - Check IPs
+    if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
+      e.preventDefault();
+      checkIpAddresses();
+    }
+    
+    // Ctrl+S - Open Settings
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      showPanel('settings');
+    }
+    
+    // Ctrl+Q - Quick connect (connect to best proxy)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'q') {
+      e.preventDefault();
+      connectToBestProxy();
+    }
+    
+    // Ctrl+F - Focus country filter
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      e.preventDefault();
+      countryFilter?.focus();
+    }
+    
+    // Escape - Close panels
+    if (e.key === 'Escape') {
+      hidePanel('settings');
+      hidePanel('stats');
+    }
+  });
 }
 
 function handleConnectClick() {
@@ -216,6 +499,7 @@ function setupTabListeners() {
 }
 
 function setupFilterChipListeners() {
+  if (!filterChips) return;
   filterChips.querySelectorAll('.chip').forEach(chip => {
     chip.addEventListener('click', () => {
       filterChips.querySelectorAll('.chip').forEach(c => c.classList.remove('chip-active'));
@@ -445,7 +729,7 @@ async function toggleWebRtcProtection() {
       action: 'toggleWebRtcProtection',
       enabled: enabled
     });
-    
+
     if (result.success) {
       securityStatus.webRtcProtection = enabled;
       updateSecurityUI();
@@ -460,6 +744,180 @@ function showSecurityStatus() {
   showToast(`Security: ${securityStatus.status} | DNS: ${securityStatus.dnsLeakProtection ? 'ON' : 'OFF'} | WebRTC: ${securityStatus.webRtcProtection ? 'ON' : 'OFF'}`, 'info');
 }
 
+// ===== Feature 1: Connection Quality Badge (v3.0 Inline) =====
+function updateConnectionQuality(latency, packetLoss = 0) {
+  connectionQuality.latency = latency || 0;
+  connectionQuality.packetLoss = packetLoss;
+  connectionQuality.quality = calculateConnectionQuality(latency, packetLoss);
+  connectionQuality.lastUpdate = Date.now();
+
+  // Update inline quality badge
+  if (qualityBadgeInline) {
+    qualityBadgeInline.className = `quality-badge ${connectionQuality.quality}`;
+    qualityBadgeInline.textContent = connectionQuality.quality.charAt(0).toUpperCase() + connectionQuality.quality.slice(1);
+  }
+  if (qualityStats) {
+    qualityStats.textContent = `${connectionQuality.latency}ms`;
+  }
+  
+  // Show quality inline when connected
+  if (connectionQualityInline && currentProxy) {
+    connectionQualityInline.style.display = 'flex';
+  }
+}
+
+function calculateConnectionQuality(latency, packetLoss) {
+  if (!latency || packetLoss > 50) return 'poor';
+  if (latency <= 100 && packetLoss <= 1) return 'excellent';
+  if (latency <= 300 && packetLoss <= 5) return 'good';
+  if (latency <= 500 && packetLoss <= 10) return 'fair';
+  return 'poor';
+}
+
+// ===== Feature 2: IP Detector =====
+async function checkIpAddresses() {
+  if (ipInfo.isLoading) return;
+
+  ipInfo.isLoading = true;
+  if (ipCheckBtn) {
+    ipCheckBtn.textContent = 'Checking...';
+    ipCheckBtn.disabled = true;
+  }
+
+  try {
+    // Check real IP (without proxy)
+    const realIpPromise = (async () => {
+      try {
+        const response = await fetch('https://api.ipify.org?format=json', {
+          method: 'GET',
+          cache: 'no-store'
+        });
+        const data = await response.json();
+        return data.ip;
+      } catch (error) {
+        return 'Unable to detect';
+      }
+    })();
+
+    // Check proxy IP (through current proxy)
+    const proxyIpPromise = (async () => {
+      if (!currentProxy) {
+        return 'Not connected';
+      }
+      try {
+        const testConfig = {
+          mode: 'fixed_servers',
+          rules: {
+            singleProxy: {
+              scheme: currentProxy.type === 'SOCKS5' ? 'socks5' : 'http',
+              host: currentProxy.ip,
+              port: currentProxy.port
+            },
+            bypassList: ['localhost', '127.0.0.1']
+          }
+        };
+
+        await chrome.proxy.settings.set({ value: testConfig, scope: 'regular' });
+
+        const response = await fetch('https://api.ipify.org?format=json', {
+          method: 'GET',
+          cache: 'no-store'
+        });
+
+        await chrome.proxy.settings.clear({ scope: 'regular' });
+
+        const data = await response.json();
+        return data.ip;
+      } catch (error) {
+        return 'Proxy blocked';
+      }
+    })();
+
+    const [realIp, proxyIp] = await Promise.all([realIpPromise, proxyIpPromise]);
+
+    ipInfo.realIp = realIp;
+    ipInfo.proxyIp = proxyIp;
+    ipInfo.lastCheck = Date.now();
+
+    if (ipRealValue) ipRealValue.textContent = realIp;
+    if (ipProxyValue) ipProxyValue.textContent = proxyIp;
+
+    // Check if IPs match (proxy not working)
+    if (realIp && proxyIp && realIp === proxyIp && proxyIp !== 'Not connected') {
+      showToast('⚠️ Warning: Proxy IP matches real IP!', 'warning');
+    } else if (proxyIp && proxyIp !== 'Not connected' && proxyIp !== 'Proxy blocked') {
+      showToast('✓ Proxy is working correctly', 'success');
+    }
+
+  } catch (error) {
+    showToast('IP check failed: ' + error.message, 'error');
+  } finally {
+    ipInfo.isLoading = false;
+    if (ipCheckBtn) {
+      ipCheckBtn.textContent = 'Check IPs';
+      ipCheckBtn.disabled = false;
+    }
+  }
+}
+
+// ===== Feature 3: Undo Disconnect =====
+async function disconnectProxy() {
+  try {
+    // Save for undo
+    lastDisconnectedProxy = currentProxy;
+
+    await chrome.runtime.sendMessage({ action: 'clearProxy' });
+    await chrome.runtime.sendMessage({ action: 'stopMonitoring' });
+    await chrome.storage.local.remove(['activeProxy', 'connectionStartTime']);
+    stopConnectionTimer();
+    stopMonitoring();
+    stopSpeedGraph();
+    currentProxy = null;
+    connectionStartTime = null;
+    updateUI();
+    filterProxies();
+    renderQuickConnect();
+    renderRecommended();
+
+    // Show undo toast
+    showToast('Disconnected', 'info', () => {
+      // Undo callback
+      if (disconnectTimeout) clearTimeout(disconnectTimeout);
+      reconnectToLastProxy();
+    });
+
+    // Auto-clear after 5 seconds
+    disconnectTimeout = setTimeout(() => {
+      lastDisconnectedProxy = null;
+    }, 5000);
+
+  } catch (error) { showToast('Disconnect failed', 'error'); }
+}
+
+async function reconnectToLastProxy() {
+  if (!lastDisconnectedProxy) return;
+
+  const proxy = lastDisconnectedProxy;
+  lastDisconnectedProxy = null;
+
+  try {
+    await chrome.runtime.sendMessage({ action: 'setProxy', proxy });
+    currentProxy = proxy;
+    connectionStartTime = Date.now();
+    await chrome.storage.local.set({ activeProxy: proxy, connectionStartTime });
+    startConnectionTimer();
+    startMonitoring();
+    startSpeedGraph();
+    updateUI();
+    filterProxies();
+    renderQuickConnect();
+    renderRecommended();
+    showToast(`Reconnected to ${proxy.country}`, 'success');
+  } catch (error) {
+    showToast('Reconnect failed', 'error');
+  }
+}
+
 // Onboarding Management
 async function loadOnboardingState() {
   try {
@@ -469,6 +927,457 @@ async function loadOnboardingState() {
     }
   } catch (error) { console.error('Error loading onboarding state:', error); }
 }
+
+// ===== Feature 4: Per-Site Proxy Rules =====
+async function loadSiteRules() {
+  try {
+    const result = await chrome.storage.local.get(['siteRules']);
+    siteRules = result.siteRules || [];
+    // Ensure all rules have required fields (migration)
+    siteRules = siteRules.map(rule => ({
+      id: rule.id || Date.now(),
+      url: rule.url || '',
+      country: rule.country || '',
+      proxyIps: rule.proxyIps || [],
+      enabled: rule.enabled !== undefined ? rule.enabled : true,
+      priority: rule.priority || 999,
+      patternType: rule.patternType || 'exact'
+    }));
+  } catch (error) { console.error('Error loading site rules:', error); }
+}
+
+async function saveSiteRules() {
+  try {
+    await chrome.storage.local.set({ siteRules });
+    showToast('Site rules saved', 'success');
+  } catch (error) { showToast('Failed to save rules', 'error'); }
+}
+
+// Wildcard pattern matching
+function matchesPattern(pattern, hostname, patternType = 'exact') {
+  if (!pattern || !hostname) return false;
+  
+  switch (patternType) {
+    case 'wildcard':
+      // *.example.com matches sub.example.com
+      if (pattern.startsWith('*.')) {
+        const domain = pattern.slice(2);
+        return hostname === domain || hostname.endsWith('.' + domain);
+      }
+      // *keyword* matches anything containing keyword
+      if (pattern.startsWith('*') && pattern.endsWith('*')) {
+        return hostname.includes(pattern.slice(1, -1));
+      }
+      return hostname.endsWith(pattern);
+      
+    case 'regex':
+      try {
+        const regex = new RegExp(pattern, 'i');
+        return regex.test(hostname);
+      } catch (e) {
+        return false;
+      }
+      
+    case 'exact':
+    default:
+      return hostname === pattern || hostname.endsWith('.' + pattern);
+  }
+}
+
+function showAddSiteRuleDialog() {
+  const dialog = document.createElement('div');
+  dialog.className = 'rule-dialog';
+  dialog.innerHTML = `
+    <div class="rule-dialog-content">
+      <h3>Add Site Rule</h3>
+      <div class="rule-input-group">
+        <label>Website URL (e.g., netflix.com)</label>
+        <input type="text" id="ruleUrl" placeholder="netflix.com or *.netflix.com" />
+      </div>
+      <div class="rule-input-group">
+        <label>Pattern Type</label>
+        <select id="rulePatternType">
+          <option value="exact">Exact Match (netflix.com)</option>
+          <option value="wildcard">Wildcard (*.netflix.com)</option>
+          <option value="contains">Contains (*netflix*)</option>
+          <option value="regex">Regex Pattern</option>
+        </select>
+      </div>
+      <div class="rule-input-group">
+        <label>Priority (1 = highest)</label>
+        <input type="number" id="rulePriority" min="1" max="999" value="100" />
+      </div>
+      <div class="rule-input-group">
+        <label>Proxy Country</label>
+        <select id="ruleCountry">
+          ${[...new Set(proxies.map(p => p.country))].sort().map(c => 
+            `<option value="${c}">${getFlag(c)} ${c}</option>`
+          ).join('')}
+        </select>
+      </div>
+      <div class="rule-actions">
+        <button class="btn btn-primary" id="saveRuleBtn">Save</button>
+        <button class="btn btn-secondary" id="cancelRuleBtn">Cancel</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(dialog);
+
+  $('saveRuleBtn')?.addEventListener('click', async () => {
+    const url = $('ruleUrl')?.value?.trim();
+    const patternType = $('rulePatternType')?.value || 'exact';
+    const priority = parseInt($('rulePriority')?.value) || 100;
+    const country = $('ruleCountry')?.value;
+
+    if (!url || !country) {
+      showToast('Please fill all fields', 'warning');
+      return;
+    }
+
+    // Find proxies from that country
+    const countryProxies = proxies.filter(p => p.country === country);
+    if (countryProxies.length === 0) {
+      showToast('No proxies available for ' + country, 'warning');
+      return;
+    }
+
+    siteRules.push({
+      id: Date.now(),
+      url,
+      patternType,
+      priority,
+      country,
+      proxyIps: countryProxies.map(p => p.ipPort),
+      enabled: true
+    });
+
+    // Sort by priority
+    siteRules.sort((a, b) => a.priority - b.priority);
+
+    await saveSiteRules();
+    renderSiteRules();
+    dialog.remove();
+    showToast('Rule added', 'success');
+  });
+
+  $('cancelRuleBtn')?.addEventListener('click', () => dialog.remove());
+}
+
+function handleSiteRuleAction(e) {
+  const deleteBtn = e.target.closest('.delete-rule-btn');
+  const toggleBtn = e.target.closest('.rule-toggle');
+  
+  if (deleteBtn) {
+    const ruleId = parseInt(deleteBtn.dataset.id);
+    siteRules = siteRules.filter(r => r.id !== ruleId);
+    saveSiteRules();
+    renderSiteRules();
+    showToast('Rule deleted', 'info');
+  }
+  
+  if (toggleBtn) {
+    const ruleId = parseInt(toggleBtn.dataset.id);
+    const rule = siteRules.find(r => r.id === ruleId);
+    if (rule) {
+      rule.enabled = !rule.enabled;
+      saveSiteRules();
+      renderSiteRules();
+      showToast(`Rule ${rule.enabled ? 'enabled' : 'disabled'}`, 'info');
+    }
+  }
+  
+  const priorityBtn = e.target.closest('.priority-up-btn, .priority-down-btn');
+  if (priorityBtn) {
+    const ruleId = parseInt(priorityBtn.dataset.id);
+    const ruleIndex = siteRules.findIndex(r => r.id === ruleId);
+    if (ruleIndex === -1) return;
+    
+    const direction = priorityBtn.classList.contains('priority-up-btn') ? -1 : 1;
+    const newIndex = ruleIndex + direction;
+    
+    if (newIndex >= 0 && newIndex < siteRules.length) {
+      // Swap priorities
+      const temp = siteRules[ruleIndex].priority;
+      siteRules[ruleIndex].priority = siteRules[newIndex].priority;
+      siteRules[newIndex].priority = temp;
+      
+      // Re-sort
+      siteRules.sort((a, b) => a.priority - b.priority);
+      
+      saveSiteRules();
+      renderSiteRules();
+    }
+  }
+}
+
+function renderSiteRules() {
+  const container = $('siteRulesList');
+  if (!container) return;
+
+  // Sort by priority
+  siteRules.sort((a, b) => a.priority - b.priority);
+
+  if (siteRules.length === 0) {
+    container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">No rules yet. Click "Manage Rules" to add one.</p>';
+    return;
+  }
+
+  container.innerHTML = siteRules.map((rule, index) => `
+    <div class="site-rule-item" data-id="${rule.id}">
+      <div class="rule-priority-controls">
+        <button class="priority-btn priority-up-btn" data-id="${rule.id}" ${index === 0 ? 'disabled' : ''}>▲</button>
+        <span class="rule-priority">#${index + 1}</span>
+        <button class="priority-btn priority-down-btn" data-id="${rule.id}" ${index === siteRules.length - 1 ? 'disabled' : ''}>▼</button>
+      </div>
+      <div class="rule-info">
+        <span class="rule-url">${escapeHtml(rule.url)}</span>
+        <span class="rule-pattern-type">${rule.patternType || 'exact'}</span>
+        <span class="rule-country">${getFlag(rule.country)} ${rule.country}</span>
+      </div>
+      <div class="rule-actions-right">
+        <div class="toggle rule-toggle ${rule.enabled ? 'active' : ''}" data-id="${rule.id}">
+          <div class="toggle-knob"></div>
+        </div>
+        <button class="delete-rule-btn" data-id="${rule.id}" title="Delete rule">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+async function applySiteRule(url) {
+  if (!url || siteRules.length === 0) return;
+  
+  // Find first matching enabled rule (sorted by priority)
+  const sortedRules = [...siteRules].filter(r => r.enabled).sort((a, b) => a.priority - b.priority);
+  const rule = sortedRules.find(r => matchesPattern(r.url, url, r.patternType));
+  
+  if (!rule || !currentProxy) return;
+
+  // Check if current proxy matches the rule
+  const matchingProxies = rule.proxyIps.filter(ip => ip === currentProxy.ipPort);
+  if (matchingProxies.length === 0) {
+    // Find a new proxy from the rule's country
+    const newProxy = proxies.find(p => rule.proxyIps.includes(p.ipPort));
+    if (newProxy) {
+      showToast(`Auto-switching to ${rule.country} proxy for ${url}`, 'info');
+      await chrome.runtime.sendMessage({ action: 'setProxy', proxy: newProxy });
+      currentProxy = newProxy;
+      await chrome.storage.local.set({ activeProxy: newProxy });
+      updateUI();
+    }
+  }
+}
+
+// Feature 6: Apply rule for current tab
+async function applyRuleForCurrentTab() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.url) {
+      showToast('No active tab found', 'warning');
+      return;
+    }
+    
+    let hostname;
+    try {
+      hostname = new URL(tab.url).hostname;
+    } catch (e) {
+      showToast('Invalid tab URL', 'error');
+      return;
+    }
+    
+    // Find matching rule
+    const rule = siteRules.filter(r => r.enabled).sort((a, b) => a.priority - b.priority)
+      .find(r => matchesPattern(r.url, hostname, r.patternType));
+    
+    if (!rule) {
+      showToast('No rule for this site. Create one in Settings.', 'info');
+      return;
+    }
+    
+    // Apply the rule's proxy
+    const proxy = proxies.find(p => rule.proxyIps.includes(p.ipPort));
+    if (!proxy) {
+      showToast('No available proxies for ' + rule.country, 'warning');
+      return;
+    }
+    
+    await chrome.runtime.sendMessage({ action: 'setProxy', proxy });
+    currentProxy = proxy;
+    connectionStartTime = Date.now();
+    await chrome.storage.local.set({ activeProxy: proxy, connectionStartTime });
+    
+    startConnectionTimer();
+    startMonitoring();
+    startSpeedGraph();
+    updateUI();
+    
+    showToast(`Applied ${rule.country} proxy for ${hostname}`, 'success');
+  } catch (error) {
+    showToast('Failed to apply rule: ' + error.message, 'error');
+  }
+}
+
+// ===== Feature 5: Auto-Rotation =====
+async function loadAutoRotationSettings() {
+  try {
+    const result = await chrome.storage.local.get(['autoRotation']);
+    if (result.autoRotation) {
+      autoRotation = { ...autoRotation, ...result.autoRotation };
+    }
+    if (rotationToggle) {
+      rotationToggle.classList.toggle('active', autoRotation.enabled);
+    }
+    if (rotationIntervalSelect) {
+      rotationIntervalSelect.value = autoRotation.interval.toString();
+    }
+  } catch (error) { console.error('Error loading auto-rotation:', error); }
+}
+
+async function toggleAutoRotation() {
+  autoRotation.enabled = !autoRotation.enabled;
+  if (rotationToggle) {
+    rotationToggle.classList.toggle('active', autoRotation.enabled);
+  }
+  await chrome.storage.local.set({ autoRotation });
+
+  if (autoRotation.enabled) {
+    startAutoRotation();
+    showToast(`Auto-rotation enabled (${autoRotation.interval / 60000} min)`, 'info');
+  } else {
+    stopAutoRotation();
+    showToast('Auto-rotation disabled', 'info');
+  }
+}
+
+async function updateRotationInterval(e) {
+  autoRotation.interval = parseInt(e.target.value);
+  await chrome.storage.local.set({ autoRotation });
+
+  if (autoRotation.enabled) {
+    stopAutoRotation();
+    startAutoRotation();
+  }
+  showToast(`Rotation interval: ${autoRotation.interval / 60000} min`, 'info');
+}
+
+function startAutoRotation() {
+  if (autoRotation.timer) clearInterval(autoRotation.timer);
+
+  autoRotation.timer = setInterval(async () => {
+    if (!currentProxy || !autoRotation.enabled) return;
+
+    try {
+      // Find a new proxy from the same country with good stats
+      const currentCountry = currentProxy.country;
+      const alternatives = proxies.filter(p =>
+        p.country === currentCountry &&
+        p.ipPort !== currentProxy.ipPort &&
+        p.speedMs < 300
+      );
+
+      if (alternatives.length === 0) {
+        console.log('No alternative proxies found');
+        return;
+      }
+
+      // Pick the fastest
+      const newProxy = alternatives.sort((a, b) => a.speedMs - b.speedMs)[0];
+
+      showToast(`Auto-rotating to ${newProxy.ipPort} (${newProxy.speedMs}ms)`, 'info');
+
+      await chrome.runtime.sendMessage({ action: 'setProxy', proxy: newProxy });
+      currentProxy = newProxy;
+      connectionStartTime = Date.now();
+      autoRotation.lastRotation = Date.now();
+      await chrome.storage.local.set({ activeProxy: newProxy, connectionStartTime });
+
+      startConnectionTimer();
+      startSpeedGraph();
+      updateUI();
+      filterProxies();
+
+    } catch (error) {
+      console.error('Auto-rotation failed:', error);
+    }
+  }, autoRotation.interval);
+}
+
+function stopAutoRotation() {
+  if (autoRotation.timer) {
+    clearInterval(autoRotation.timer);
+    autoRotation.timer = null;
+  }
+}
+
+// Task 7: Enhanced Onboarding for v2.2.0
+const onboardingSteps = [
+  {
+    id: 'welcome',
+    image: '🛡️',
+    title: 'Welcome to ProxyMania VPN',
+    content: 'Your free VPN service using ProxyMania proxy servers. Let\'s get you started!'
+  },
+  {
+    id: 'connectivity',
+    image: '🔌',
+    title: 'Quick Connection',
+    content: 'Click any proxy or use Quick Connect to start browsing securely. The green status means you\'re connected!'
+  },
+  {
+    id: 'quality',
+    image: '🟢',
+    title: 'Connection Quality',
+    content: 'See real-time connection quality. Green = excellent, Red = poor. Shows latency and packet loss.'
+  },
+  {
+    id: 'ip-detector',
+    image: '🌐',
+    title: 'IP Detector',
+    content: 'Click "Check IPs" to verify your proxy is working. Your proxy IP should differ from your real IP.'
+  },
+  {
+    id: 'site-rules',
+    image: '🎯',
+    title: 'Per-Site Rules',
+    content: 'Auto-switch proxies for specific websites. Set rules in Settings → Advanced Features.'
+  },
+  {
+    id: 'auto-rotation',
+    image: '🔄',
+    title: 'Auto-Rotation',
+    content: 'Automatically rotate to fresh proxies at set intervals. Enable in Settings → Advanced Features.'
+  },
+  {
+    id: 'undo',
+    image: '↩️',
+    title: 'Undo Disconnect',
+    content: 'Accidentally disconnected? Click Undo within 5 seconds to reconnect instantly!'
+  },
+  {
+    id: 'shortcuts',
+    image: '⌨️',
+    title: 'Keyboard Shortcuts',
+    content: 'Power user tips: Ctrl+K search, Ctrl+D disconnect, Ctrl+I check IPs, / focuses search.'
+  },
+  {
+    id: 'complete',
+    image: '🎉',
+    title: 'You\'re All Set!',
+    content: 'Enjoy secure browsing with ProxyMania VPN. You can always revisit this tutorial in Settings.'
+  }
+];
 
 function showOnboarding() {
   const overlay = document.createElement('div');
@@ -481,29 +1390,78 @@ function showOnboarding() {
           <div class="progress-bar">
             <div class="progress-fill" style="width: 0%"></div>
           </div>
-          <span class="progress-text">Step 1 of 7</span>
+          <span class="progress-text">Step 1 of ${onboardingSteps.length}</span>
         </div>
         <button class="onboarding-skip" title="Skip Tutorial">Skip</button>
       </div>
-      
+
       <div class="onboarding-content">
-        <div class="onboarding-image">🛡️</div>
-        <h3 class="onboarding-title">Welcome to ProxyMania VPN</h3>
-        <div class="onboarding-text">Your free VPN service using ProxyMania proxy servers. Let's get you started!</div>
+        <div class="onboarding-image">${onboardingSteps[0].image}</div>
+        <h3 class="onboarding-title">${onboardingSteps[0].title}</h3>
+        <div class="onboarding-text">${onboardingSteps[0].content}</div>
       </div>
-      
+
       <div class="onboarding-actions">
         <button class="onboarding-btn onboarding-btn-primary">Get Started</button>
-        <button class="onboarding-btn onboarding-btn-secondary">Back</button>
+        <button class="onboarding-btn onboarding-btn-secondary" style="display:none">Back</button>
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(overlay);
-  
+
+  let currentStep = 0;
+  const updateStep = (stepIndex) => {
+    const step = onboardingSteps[stepIndex];
+    const content = overlay.querySelector('.onboarding-content');
+    const progress = overlay.querySelector('.progress-text');
+    const progressFill = overlay.querySelector('.progress-fill');
+    const backBtn = overlay.querySelector('.onboarding-btn-secondary');
+    const nextBtn = overlay.querySelector('.onboarding-btn-primary');
+
+    if (content) {
+      content.innerHTML = `
+        <div class="onboarding-image">${step.image}</div>
+        <h3 class="onboarding-title">${step.title}</h3>
+        <div class="onboarding-text">${step.content}</div>
+      `;
+    }
+
+    if (progress) {
+      progress.textContent = `Step ${stepIndex + 1} of ${onboardingSteps.length}`;
+    }
+
+    if (progressFill) {
+      progressFill.style.width = `${((stepIndex + 1) / onboardingSteps.length) * 100}%`;
+    }
+
+    if (backBtn) {
+      backBtn.style.display = stepIndex > 0 ? 'inline-block' : 'none';
+    }
+
+    if (nextBtn) {
+      nextBtn.textContent = stepIndex === onboardingSteps.length - 1 ? 'Finish' : 'Next';
+    }
+  };
+
   // Add event listeners
   overlay.querySelector('.onboarding-skip').addEventListener('click', completeOnboarding);
-  overlay.querySelector('.onboarding-btn-primary').addEventListener('click', startOnboarding);
+  
+  overlay.querySelector('.onboarding-btn-primary').addEventListener('click', () => {
+    if (currentStep < onboardingSteps.length - 1) {
+      currentStep++;
+      updateStep(currentStep);
+    } else {
+      completeOnboarding();
+    }
+  });
+  
+  overlay.querySelector('.onboarding-btn-secondary').addEventListener('click', () => {
+    if (currentStep > 0) {
+      currentStep--;
+      updateStep(currentStep);
+    }
+  });
 }
 
 function hideOnboarding() {
@@ -608,7 +1566,12 @@ function handleConnectionDegraded(message) {
 function updateHealthStatus(message) {
   healthStatus = { ...healthStatus, ...message };
   updateHealthUI();
-  
+
+  // Also update connection quality badge
+  if (message.avgLatency !== undefined) {
+    updateConnectionQuality(message.avgLatency, message.packetLoss || 0);
+  }
+
   if (message.quality === 'poor') {
     showToast('🚨 Connection quality is poor. Consider switching proxies.', 'error');
   }
@@ -624,9 +1587,12 @@ function applyTheme() {
     theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
   document.documentElement.setAttribute('data-theme', theme);
-  themeBtn.innerHTML = theme === 'dark' 
-    ? '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
-    : '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+  // Theme button is now in overflow menu - update if exists
+  if (typeof themeBtn !== 'undefined' && themeBtn) {
+    themeBtn.innerHTML = theme === 'dark'
+      ? '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+      : '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+  }
 }
 
 function setupThemeWatcher() {
@@ -658,6 +1624,7 @@ function toggleTheme() {
 function showPanel(name) {
   if (name === 'settings') {
     if (settingsPanel) settingsPanel.style.display = 'block';
+    renderSiteRules(); // Feature 4: Show site rules
   } else if (name === 'stats') {
     updateStatsDisplay();
     if (statsPanel) statsPanel.style.display = 'block';
@@ -765,7 +1732,6 @@ async function loadCurrentProxy() {
     if (currentProxy && result.connectionStartTime) {
       connectionStartTime = result.connectionStartTime;
       if (connectionTimer) startConnectionTimer();
-      if (monitoringStatus) startMonitoring();
     }
     updateUI();
   } catch (error) { console.error('Error loading current proxy:', error); }
@@ -812,6 +1778,7 @@ async function loadProxies() {
 
 // Populate country filter
 function populateCountryFilter() {
+  if (!countryFilter) return;
   const countries = [...new Set(proxies.map(p => p.country))].sort();
   countryFilter.innerHTML = '<option value="">🌍 All Countries</option>';
   countries.forEach(country => {
@@ -824,24 +1791,24 @@ function populateCountryFilter() {
 
 // Filter proxies
 async function filterProxies() {
-  const selectedCountry = countryFilter.value;
-  const selectedType = typeFilter.value;
-  const activeChip = filterChips.querySelector('.chip-active');
-  const speedFilter = activeChip?.dataset.filter === 'speed' ? activeChip.dataset.value : 'all';
+  const selectedCountry = countryFilter?.value || '';
+  const selectedType = typeFilter?.value || '';
+  const activeChip = filterChips?.querySelector('.chip-active');
+  const speedFilter = activeChip?.dataset?.filter === 'speed' ? activeChip.dataset.value : 'all';
   const searchQuery = proxySearch?.value?.toLowerCase() || '';
-  
+
   let filtered = proxies;
-  
+
   // Apply search filter
   if (searchQuery) {
-    filtered = filtered.filter(p => 
+    filtered = filtered.filter(p =>
       p.ipPort.toLowerCase().includes(searchQuery) ||
       p.country.toLowerCase().includes(searchQuery) ||
       p.type.toLowerCase().includes(searchQuery) ||
       p.ip.toLowerCase().includes(searchQuery)
     );
   }
-  
+
   if (currentTab === 'favorites') {
     filtered = filtered.filter(p => favorites.some(f => f.ipPort === p.ipPort));
   } else if (currentTab === 'recent') {
@@ -854,19 +1821,21 @@ async function filterProxies() {
       filtered = [];
     }
   }
-  
+
   applyFilters(filtered, selectedCountry, selectedType, speedFilter);
 }
 
 function applyFilters(filtered, country, type, speed) {
+  if (!proxyList) return;
+  
   if (country) filtered = filtered.filter(p => p.country === country);
   if (type) filtered = filtered.filter(p => p.type === type);
   if (speed === 'fast') filtered = filtered.filter(p => p.speedMs < 100);
   if (speed === 'medium') filtered = filtered.filter(p => p.speedMs < 300);
-  
+
   filtered = filtered.map(p => ({ ...p, score: calculateProxyScore(p) }))
     .sort((a, b) => b.score - a.score);
-  
+
   renderProxyList(filtered);
 }
 
@@ -964,6 +1933,7 @@ function renderRecommended() {
 
 // Render proxy list
 function renderProxyList(proxyItems) {
+  if (!proxyList) return;
   proxyList.innerHTML = '';
   if (!proxyItems.length) {
     showEmptyState(currentTab === 'favorites' ? 'noFavorites' : 'noResults');
@@ -1044,12 +2014,14 @@ function getWorkingStatus(proxy) {
 
 // Render quick connect
 function renderQuickConnect() {
+  if (!quickConnectGrid || !quickConnectSection) return;
+  
   const fastest = proxies.filter(p => p.speedMs < 150 && getWorkingStatus(p) === 'good')
     .sort((a, b) => a.speedMs - b.speedMs).slice(0, 4);
-  
+
   if (!fastest.length) { quickConnectSection.style.display = 'none'; return; }
   quickConnectSection.style.display = 'block';
-  
+
   quickConnectGrid.innerHTML = fastest.map(p => `
     <button class="quick-connect-btn" data-proxy="${p.ipPort}">
       <span class="qc-flag">${getFlag(p.country)}</span>
@@ -1057,7 +2029,7 @@ function renderQuickConnect() {
       <span class="qc-speed">${p.speedMs}ms</span>
     </button>
   `).join('');
-  
+
   quickConnectGrid.querySelectorAll('.quick-connect-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const proxy = proxies.find(p => p.ipPort === btn.dataset.proxy);
@@ -1077,9 +2049,14 @@ function switchToTab(tabName) {
 // Connect to proxy
 async function connectToProxy(proxy, event) {
   const proxyItem = event.target.closest('.proxy-item') || event.target;
-  proxyItem.classList.add('connecting');
-  const connectBtn = event.target.querySelector('.connect-btn') || event.target;
-  connectBtn.textContent = '🧪 Testing...';
+  proxyItem?.classList.add('connecting');
+  
+  // Find the connect button (could be the proxy item itself or a child button)
+  const connectBtn = event.target.querySelector?.('.connect-btn') || event.target;
+  if (connectBtn && connectBtn.textContent) {
+    connectBtn.textContent = '🧪 Testing...';
+  }
+  
   if (testStatus) {
     testStatus.style.display = 'block';
     if (testText) testText.textContent = 'Testing proxy connectivity...';
@@ -1124,29 +2101,12 @@ async function connectToProxy(proxy, event) {
       }
     }
   } finally {
-    proxyItem.classList.remove('connecting');
+    proxyItem?.classList.remove('connecting');
     if (testStatus) testStatus.style.display = 'none';
   }
 }
 
-// Disconnect
-async function disconnectProxy() {
-  try {
-    await chrome.runtime.sendMessage({ action: 'clearProxy' });
-    await chrome.runtime.sendMessage({ action: 'stopMonitoring' });
-    await chrome.storage.local.remove(['activeProxy', 'connectionStartTime']);
-    stopConnectionTimer();
-    stopMonitoring();
-    stopSpeedGraph();
-    currentProxy = null;
-    connectionStartTime = null;
-    updateUI();
-    filterProxies();
-    renderQuickConnect();
-    renderRecommended();
-    showToast('Disconnected', 'info');
-  } catch (error) { showToast('Disconnect failed', 'error'); }
-}
+// Disconnect (removed - duplicate, see line 855)
 
 // Toggle favorite
 async function toggleFavorite(proxy) {
@@ -1176,9 +2136,6 @@ function startMonitoring() {
   if (currentProxy && !monitoringActive) {
     chrome.runtime.sendMessage({ action: 'startMonitoring', proxy: currentProxy });
     monitoringActive = true;
-    if (monitoringStatus) {
-      monitoringStatus.style.display = 'flex';
-    }
   }
 }
 
@@ -1186,9 +2143,6 @@ function stopMonitoring() {
   if (monitoringActive) {
     chrome.runtime.sendMessage({ action: 'stopMonitoring' });
     monitoringActive = false;
-    if (monitoringStatus) {
-      monitoringStatus.style.display = 'none';
-    }
   }
 }
 
@@ -1224,75 +2178,149 @@ function updateConnectionTime() {
   }
 }
 
-// Update UI
+// Update UI - v3.0 Unified Connection Card
 function updateUI() {
   if (currentProxy) {
+    // Status badge
     statusIndicator.classList.add('connected');
     statusText.textContent = 'Connected';
-    
+
+    // Proxy display
     if (currentProxyDisplay) {
-      currentProxyDisplay.style.display = 'block';
+      currentProxyDisplay.style.display = 'flex';
       if (proxyFlag) proxyFlag.textContent = getFlag(currentProxy.country);
       if (proxyAddress) proxyAddress.textContent = currentProxy.ipPort;
       if (proxyCountry) proxyCountry.textContent = currentProxy.country;
     }
-    
-    if (connectBtn) {
-      connectBtn.innerHTML = `<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/></svg><span>Disconnect</span>`;
-      connectBtn.classList.remove('btn-primary');
-      connectBtn.classList.add('btn-danger');
-    }
-    if (disconnectBtn) disconnectBtn.style.display = 'none';
+
+    // Timer
     if (connectionTimer) connectionTimer.style.display = 'flex';
-    if (monitoringStatus) monitoringStatus.style.display = 'flex';
+
+    // Quality badge inline
+    if (connectionQualityInline) {
+      connectionQualityInline.style.display = 'flex';
+    }
+
+    // Update FAB
+    updateFab();
+
   } else {
+    // Status badge
     statusIndicator.classList.remove('connected');
     statusText.textContent = 'Disconnected';
-    
+
+    // Proxy display
     if (currentProxyDisplay) {
       currentProxyDisplay.style.display = 'none';
     }
-    
-    if (connectBtn) {
-      connectBtn.innerHTML = `<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg><span>Connect</span>`;
-      connectBtn.classList.remove('btn-danger');
-      connectBtn.classList.add('btn-primary');
-    }
-    if (disconnectBtn) disconnectBtn.style.display = 'none';
+
+    // Timer
     if (connectionTimer) connectionTimer.style.display = 'none';
-    if (monitoringStatus) monitoringStatus.style.display = 'none';
+
+    // Quality badge inline
+    if (connectionQualityInline) {
+      connectionQualityInline.style.display = 'none';
+    }
+
+    // Reset IP detector
+    if (ipRealValue) ipRealValue.textContent = '--';
+    if (ipProxyValue) ipProxyValue.textContent = '--';
+    if (ipDetectorContent) ipDetectorContent.style.display = 'none';
+    ipInfo.expanded = false;
+
+    // Update FAB
+    updateFab();
+    
     monitoringActive = false;
   }
-  
+
   updateSecurityUI();
+  updateFab();
 }
 
 function updateProxyCount() { proxyCount.textContent = proxies.length; }
-function showLoading(show) { 
-  if (loading) loading.classList.toggle('show', show); 
-  if (show && proxyList) proxyList.innerHTML = ''; 
+
+function showLoading(show) {
+  if (loading) {
+    loading.style.display = show ? 'flex' : 'none';
+  }
+  if (show && proxyList) {
+    proxyList.innerHTML = '';
+  }
+  if (emptyState) {
+    emptyState.style.display = 'none';
+  }
 }
 
-// Empty state
+// Empty State - v3.0
 function showEmptyState(type) {
+  if (!emptyState) return;
+  
   const msgs = {
-    noProxies: { icon: '📭', title: 'No Proxies', msg: 'Failed to load. Check connection.', action: 'Retry', fn: loadProxies },
-    noResults: { icon: '🔍', title: 'No Matches', msg: 'Try adjusting filters.', action: 'Clear', fn: () => { countryFilter.value = ''; typeFilter.value = ''; filterProxies(); } },
-    noFavorites: { icon: '⭐', title: 'No Favorites', msg: 'Star proxies to save them.', action: 'Browse', fn: () => switchToTab('all') }
+    noProxies: { icon: '📭', title: 'No Proxies', msg: 'Failed to load. Check your connection.', action: 'Retry' },
+    noResults: { icon: '🔍', title: 'No Matches', msg: 'Try adjusting your filters or search.', action: 'Clear Filters' },
+    noFavorites: { icon: '⭐', title: 'No Favorites', msg: 'Star proxies to save them for quick access.', action: 'Browse All' }
   };
-  const { icon, title, msg, action, fn } = msgs[type];
-  proxyList.innerHTML = `<div class="empty-state"><div class="empty-icon">${icon}</div><h4>${title}</h4><p>${msg}</p><button class="btn btn-primary">${action}</button></div>`;
-  proxyList.querySelector('.btn').addEventListener('click', fn);
+  
+  const { icon, title, msg, action } = msgs[type];
+  
+  emptyState.innerHTML = `
+    <div class="empty-icon">${icon}</div>
+    <h4>${title}</h4>
+    <p>${msg}</p>
+    <button class="btn btn-primary" id="emptyActionBtn">${action}</button>
+  `;
+  
+  loading.style.display = 'none';
+  proxyList.innerHTML = '';
+  emptyState.style.display = 'flex';
+  
+  // Add action handler
+  const actionBtn = $('emptyActionBtn');
+  if (actionBtn) {
+    actionBtn.addEventListener('click', () => {
+      if (type === 'noProxies') loadProxies();
+      else if (type === 'noResults') {
+        countryFilter.value = '';
+        typeFilter.value = '';
+        filterProxies();
+      }
+      else if (type === 'noFavorites') switchToTab('all');
+    });
+  }
 }
 
 // Toast
-function showToast(message, type = 'info') {
+function showToast(message, type = 'info', onUndo = null) {
   if (!settings.notifications && type !== 'error') return;
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
   const icons = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
-  toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span class="toast-message">${message}</span>`;
+  
+  let undoHtml = '';
+  if (onUndo) {
+    undoHtml = `<button class="toast-undo" onclick="event.stopPropagation();">Undo</button>`;
+  }
+  
+  toast.innerHTML = `
+    <span class="toast-icon">${icons[type]}</span>
+    <span class="toast-message">${message}</span>
+    ${undoHtml}
+  `;
+  
   toastContainer.appendChild(toast);
+  
+  // Add undo listener
+  if (onUndo) {
+    const undoBtn = toast.querySelector('.toast-undo');
+    if (undoBtn) {
+      undoBtn.addEventListener('click', () => {
+        toast.remove();
+        onUndo();
+      });
+    }
+  }
+  
   requestAnimationFrame(() => toast.classList.add('toast-show'));
   setTimeout(() => { toast.classList.add('toast-hide'); setTimeout(() => toast.remove(), 300); }, 3000);
 }

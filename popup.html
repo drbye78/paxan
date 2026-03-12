@@ -8,7 +8,7 @@
 </head>
 <body>
   <div class="container">
-    <!-- Header -->
+    <!-- Smart Header (Task 3) -->
     <header class="header">
       <div class="header-left">
         <div class="logo">
@@ -19,19 +19,12 @@
         </div>
       </div>
       <div class="header-right">
-        <button class="icon-btn" id="themeBtn" title="Toggle Theme">
+        <!-- Overflow menu button -->
+        <button class="icon-btn" id="overflowBtn" title="More actions">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-          </svg>
-        </button>
-        <button class="icon-btn" id="statsBtn" title="Statistics">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 20V10M12 20V4M6 20v-6"/>
-          </svg>
-        </button>
-        <button class="icon-btn" id="favoritesBtn" title="Favorites">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            <circle cx="12" cy="12" r="1"/>
+            <circle cx="12" cy="5" r="1"/>
+            <circle cx="12" cy="19" r="1"/>
           </svg>
         </button>
         <button class="icon-btn" id="settingsBtn" title="Settings">
@@ -43,87 +36,135 @@
       </div>
     </header>
 
-    <!-- Connection Status Card -->
+    <!-- Overflow Menu (Task 3) -->
+    <div class="overflow-menu" id="overflowMenu" style="display: none;">
+      <button class="overflow-item" id="overflowStatsBtn">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 20V10M12 20V4M6 20v-6"/>
+        </svg>
+        <span>Statistics</span>
+      </button>
+      <button class="overflow-item" id="overflowFavoritesBtn">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+        <span>Favorites</span>
+      </button>
+      <button class="overflow-item" id="overflowApplyRuleBtn">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        <span>Apply Rule for This Site</span>
+      </button>
+      <button class="overflow-item" id="overflowThemeBtn">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        <span>Toggle Theme</span>
+      </button>
+    </div>
+
+    <!-- Unified Connection Card (Task 1) with Progressive Disclosure (Task 2) -->
     <div class="connection-card" id="connectionCard">
-      <div class="connection-status">
-        <div class="status-badge" id="statusBadge">
-          <span class="status-dot"></span>
-          <span class="status-text">Disconnected</span>
+      <!-- Main Status (always visible) -->
+      <div class="connection-main">
+        <div class="connection-status-line">
+          <div class="status-badge" id="statusBadge">
+            <span class="status-dot"></span>
+            <span class="status-text">Disconnected</span>
+          </div>
+          <div class="connection-timer" id="connectionTimer" style="display: none;">
+            <svg class="timer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span class="timer-value">00:00</span>
+          </div>
         </div>
-        <div class="connection-timer" id="connectionTimer" style="display: none;">
-          <svg class="timer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-          <span class="timer-value">00:00</span>
-        </div>
-      </div>
-      
-      <div class="current-proxy-display" id="currentProxyDisplay" style="display: none;">
-        <div class="proxy-info-pill">
+        
+        <div class="current-proxy-display" id="currentProxyDisplay" style="display: none;">
           <span class="proxy-flag" id="proxyFlag"></span>
           <span class="proxy-address" id="proxyAddress">-</span>
-          <span class="proxy-country" id="proxyCountry">-</span>
+          <span class="proxy-country" id="proxyCountry"></span>
+        </div>
+
+        <div class="connection-quality-inline" id="connectionQualityInline" style="display: none;">
+          <span class="quality-badge excellent" id="qualityBadge">Excellent</span>
+          <span class="quality-stats" id="qualityStats">45ms</span>
         </div>
       </div>
 
-      <div class="test-status" id="testStatus" style="display: none;">
-        <span class="test-text">Testing...</span>
-      </div>
+      <!-- Collapsible Details (Task 2) -->
+      <button class="details-toggle" id="detailsToggle">
+        <span>Details</span>
+        <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
 
-      <div class="status-indicators">
-        <div class="indicator" id="healthIndicator">
-          <svg class="indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-          </svg>
-          <span class="indicator-text">Offline</span>
+      <div class="connection-details" id="connectionDetails">
+        <!-- Status Indicators -->
+        <div class="status-indicators">
+          <div class="indicator" id="healthIndicator">
+            <svg class="indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <span class="indicator-text">Offline</span>
+          </div>
+          <div class="indicator" id="securityIndicator">
+            <svg class="indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <span class="indicator-text">Secure</span>
+          </div>
         </div>
-        <div class="indicator" id="securityIndicator">
-          <svg class="indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-          </svg>
-          <span class="indicator-text">Secure</span>
+
+        <!-- IP Detector (collapsible) -->
+        <div class="ip-detector-section" id="ipDetectorSection">
+          <div class="ip-detector-header">
+            <span>IP Address Check</span>
+            <button class="btn btn-ghost btn-sm" id="ipCheckBtn">Check IPs</button>
+          </div>
+          <div class="ip-detector-content" id="ipDetectorContent" style="display: none;">
+            <div class="ip-row">
+              <span class="ip-label">Real IP:</span>
+              <span class="ip-value" id="ipRealValue">--</span>
+            </div>
+            <div class="ip-row">
+              <span class="ip-label">Proxy IP:</span>
+              <span class="ip-value" id="ipProxyValue">--</span>
+            </div>
+          </div>
         </div>
-        <div class="indicator monitoring-status" id="monitoringStatus" style="display: none;">
-          <svg class="indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-          <span class="indicator-text">Monitoring</span>
+
+        <!-- Speed Graph -->
+        <div class="speed-graph-section" id="speedGraphSection" style="display: none;">
+          <div class="speed-graph-header">
+            <span>Latency</span>
+            <span class="latency-value" id="currentLatency">--ms</span>
+          </div>
+          <canvas id="speedGraph" width="340" height="40"></canvas>
         </div>
       </div>
+    </div>
 
-      <!-- Speed Graph (collapsible) -->
-      <div class="speed-graph-section" id="speedGraphSection" style="display: none;">
-        <div class="speed-graph-header">
-          <span>Latency</span>
-          <span class="latency-value" id="currentLatency">--ms</span>
-        </div>
-        <canvas id="speedGraph" width="340" height="40"></canvas>
+    <!-- Smart Filters Bar (Task 5) -->
+    <div class="smart-filters">
+      <div class="search-wrapper">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="proxySearch" class="search-input" placeholder="Search by country, IP, or type...">
+        <kbd class="search-shortcut">/</kbd>
       </div>
-
-      <!-- Action Buttons -->
-      <div class="connection-actions">
-        <button class="btn btn-primary btn-lg" id="connectBtn">
-          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/>
-          </svg>
-          <span>Connect</span>
-        </button>
-        <button class="btn btn-danger btn-lg" id="disconnectBtn" disabled style="display: none;">
-          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/>
-          </svg>
-          <span>Disconnect</span>
-        </button>
-        <button class="btn btn-secondary btn-icon-only" id="refreshBtn" title="Refresh Proxies">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="23 4 23 10 17 10"/>
-            <polyline points="1 20 1 14 7 14"/>
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-          </svg>
-        </button>
+      <div class="filter-chips" id="filterChips">
+        <button class="chip chip-active" data-filter="speed" data-value="all">🌍 All</button>
+        <button class="chip" data-filter="speed" data-value="best">⭐ Best</button>
+        <button class="chip" data-filter="speed" data-value="fast">⚡ &lt;100ms</button>
+        <button class="chip" data-filter="type" data-value="HTTPS">🔒 HTTPS</button>
+        <button class="chip" data-filter="type" data-value="SOCKS5">🔌 SOCKS5</button>
       </div>
     </div>
 
@@ -131,71 +172,41 @@
     <section class="section" id="quickConnectSection">
       <div class="section-header">
         <h3 class="section-title">Quick Connect</h3>
-        <button class="btn btn-accent btn-sm" id="bestProxyBtn">Best Proxy</button>
+        <button class="btn btn-ghost btn-sm" id="bestProxyBtn">Find Best</button>
       </div>
       <div class="quick-connect-grid" id="quickConnectGrid"></div>
     </section>
 
-    <!-- Recommended Section -->
-    <section class="section" id="recommendedSection" style="display: none;">
-      <div class="section-header">
-        <h3 class="section-title">Recommended</h3>
-      </div>
-      <div class="recommended-list" id="recommendedList"></div>
-    </section>
-
-    <!-- Tabs -->
+    <!-- Tabs (simplified) -->
     <div class="tabs" id="mainTabs">
-      <button class="tab tab-active" data-tab="all">All</button>
-      <button class="tab" data-tab="favorites">Favorites</button>
-      <button class="tab" data-tab="recent">Recent</button>
+      <button class="tab tab-active" data-tab="all">All Proxies</button>
+      <button class="tab" data-tab="favorites">⭐ Favorites</button>
+      <button class="tab" data-tab="recent">🕐 Recent</button>
     </div>
 
-    <!-- Search & Filters -->
-    <div class="search-filters">
-      <div class="search-wrapper">
-        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input type="text" id="proxySearch" class="search-input" placeholder="Search proxies...">
-      </div>
-      <div class="filter-chips" id="filterChips">
-        <button class="chip chip-active" data-filter="speed" data-value="all">All</button>
-        <button class="chip" data-filter="speed" data-value="fast">&lt;100ms</button>
-        <button class="chip" data-filter="speed" data-value="medium">&lt;300ms</button>
-        <button class="chip" data-filter="type" data-value="HTTPS">HTTPS</button>
-        <button class="chip" data-filter="type" data-value="SOCKS5">SOCKS5</button>
-        <button class="chip" data-filter="type" data-value="SOCKS4">SOCKS4</button>
-      </div>
-    </div>
-
-    <!-- Dropdown Filters -->
-    <div class="dropdown-filters">
-      <select id="countryFilter" class="dropdown">
-        <option value="">All Countries</option>
-      </select>
-      <select id="typeFilter" class="dropdown">
-        <option value="">All Types</option>
-        <option value="HTTPS">HTTPS</option>
-        <option value="SOCKS5">SOCKS5</option>
-        <option value="SOCKS4">SOCKS4</option>
-      </select>
-    </div>
-
-    <!-- Proxy List -->
+    <!-- Proxy List Container -->
     <div class="proxy-list-container">
       <div class="proxy-list-header">
         <span id="listTitle">Available Proxies</span>
         <span class="proxy-count" id="proxyCount">0</span>
       </div>
+      
+      <!-- Loading State (Task 7) -->
       <div class="loading" id="loading">
-        <div class="skeleton-list">
-          <div class="skeleton-item"></div>
-          <div class="skeleton-item"></div>
-          <div class="skeleton-item"></div>
-        </div>
+        <div class="loading-spinner"></div>
+        <span class="loading-text">Loading proxies...</span>
+        <span class="loading-hint">Usually takes 2-3 seconds</span>
       </div>
+      
+      <!-- Empty State -->
+      <div class="empty-state" id="emptyState" style="display: none;">
+        <div class="empty-icon">📭</div>
+        <h4>No proxies found</h4>
+        <p>Try adjusting your filters or refresh the list</p>
+        <button class="btn btn-primary" id="emptyRefreshBtn">Refresh</button>
+      </div>
+      
+      <!-- Proxy Grid (Task 8) -->
       <div class="proxy-list" id="proxyList"></div>
     </div>
 
@@ -206,9 +217,29 @@
     <footer class="footer">
       <span>Powered by <a href="https://proxymania.su/free-proxy" target="_blank">ProxyMania</a></span>
     </footer>
+
+    <!-- Floating Action Button (Task 4) -->
+    <button class="fab" id="fab" title="Connect/Disconnect">
+      <svg class="fab-icon fab-connect" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/>
+      </svg>
+      <svg class="fab-icon fab-disconnect" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+        <path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/>
+      </svg>
+      <svg class="fab-icon fab-loading" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+        <line x1="12" y1="2" x2="12" y2="6"/>
+        <line x1="12" y1="18" x2="12" y2="22"/>
+        <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/>
+        <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>
+        <line x1="2" y1="12" x2="6" y2="12"/>
+        <line x1="18" y1="12" x2="22" y2="12"/>
+        <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/>
+        <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
+      </svg>
+    </button>
   </div>
 
-  <!-- Settings Panel (Overlay) -->
+  <!-- Settings Panel -->
   <div class="panel-overlay" id="settingsPanel" style="display: none;">
     <div class="panel">
       <div class="panel-header">
@@ -307,6 +338,40 @@
         </div>
 
         <div class="setting-group">
+          <h3>Advanced Features</h3>
+          <div class="setting">
+            <div class="setting-info">
+              <span class="setting-label">Per-Site Proxy Rules</span>
+              <span class="setting-desc">Auto-switch proxies for specific websites</span>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="addSiteRuleBtn">Manage Rules</button>
+          </div>
+          <div class="site-rules-container">
+            <div id="siteRulesList"></div>
+          </div>
+          <div class="setting">
+            <div class="setting-info">
+              <span class="setting-label">Auto-Rotation</span>
+              <span class="setting-desc">Automatically switch to fresh proxies</span>
+            </div>
+            <div class="toggle" id="rotationToggle">
+              <div class="toggle-knob"></div>
+            </div>
+          </div>
+          <div class="setting">
+            <div class="setting-info">
+              <span class="setting-label">Rotation Interval</span>
+            </div>
+            <select id="rotationInterval" class="dropdown dropdown-sm">
+              <option value="300000">5 min</option>
+              <option value="600000" selected>10 min</option>
+              <option value="900000">15 min</option>
+              <option value="1800000">30 min</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-group">
           <h3>Data</h3>
           <div class="setting-buttons">
             <button class="btn btn-secondary btn-sm" id="importBtn">Import</button>
@@ -318,7 +383,7 @@
     </div>
   </div>
 
-  <!-- Stats Panel (Overlay) -->
+  <!-- Stats Panel -->
   <div class="panel-overlay" id="statsPanel" style="display: none;">
     <div class="panel">
       <div class="panel-header">

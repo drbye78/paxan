@@ -639,7 +639,7 @@ function stopHealthMonitoring() {
 chrome.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === 'install') {
     console.log('ProxyMania VPN installed');
-    
+
     await chrome.storage.local.set({
       settings: {
         theme: 'dark',
@@ -656,7 +656,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       onboarding: {
         completed: false,
         currentStepIndex: 0,
-        version: '2.1.0'
+        version: '2.2.0'
       },
       healthData: {
         connectionQuality: 'excellent',
@@ -664,10 +664,53 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         qualityHistory: [],
         latencyHistory: [],
         avgLatency: 0
+      },
+      // v2.2.0 new fields
+      siteRules: [],
+      autoRotation: {
+        enabled: false,
+        interval: 600000
       }
     });
   } else if (details.reason === 'update') {
-    console.log('ProxyMania VPN updated');
+    console.log('ProxyMania VPN updated from', details.previousVersion);
+    
+    // Storage migration for v2.2.0
+    const oldVersion = details.previousVersion || '2.0.0';
+    if (oldVersion < '2.2.0') {
+      try {
+        const data = await chrome.storage.local.get(null);
+        const updates = {};
+        
+        // Initialize new v2.2.0 fields if missing
+        if (!data.siteRules) {
+          updates.siteRules = [];
+        }
+        if (!data.autoRotation) {
+          updates.autoRotation = { enabled: false, interval: 600000 };
+        }
+        if (!data.connectionQuality) {
+          updates.connectionQuality = { enabled: true, lastUpdate: null, latency: 0, packetLoss: 0, quality: 'excellent' };
+        }
+        if (!data.ipInfo) {
+          updates.ipInfo = { realIp: null, proxyIp: null, isLoading: false, lastCheck: null };
+        }
+        
+        // Update onboarding version
+        if (data.onboarding) {
+          data.onboarding.version = '2.2.0';
+          updates.onboarding = data.onboarding;
+        }
+        
+        if (Object.keys(updates).length > 0) {
+          await chrome.storage.local.set(updates);
+          console.log('Migrated to v2.2.0:', Object.keys(updates));
+        }
+      } catch (error) {
+        console.error('Migration error:', error);
+      }
+    }
+    
     try {
       const result = await chrome.storage.local.get(['activeProxy']);
       if (result.activeProxy) {
@@ -691,5 +734,82 @@ chrome.runtime.onStartup.addListener(async () => {
     }
   } catch (error) {
     console.error('Error restoring proxy:', error);
+  }
+});
+
+// ===== Feature 4: Per-Site Rules - Auto-switch proxy based on website =====
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (!changeInfo.url || !tab.active) return;
+
+  try {
+    const { siteRules, activeProxy } = await chrome.storage.local.get(['siteRules', 'activeProxy']);
+    if (!siteRules || !activeProxy || siteRules.length === 0) return;
+
+    const url = changeInfo.url;
+    let hostname;
+    try {
+      hostname = new URL(url).hostname;
+    } catch (e) {
+      return;
+    }
+
+    // Find first matching enabled rule (sorted by priority)
+    const sortedRules = [...siteRules].filter(r => r.enabled !== false).sort((a, b) => a.priority - b.priority);
+    const matchingRule = sortedRules.find(rule => {
+      const patternType = rule.patternType || 'exact';
+      if (patternType === 'exact') {
+        return hostname === rule.url || hostname.endsWith('.' + rule.url);
+      } else if (patternType === 'wildcard') {
+        if (rule.url.startsWith('*.')) {
+          const domain = rule.url.slice(2);
+          return hostname === domain || hostname.endsWith('.' + domain);
+        }
+        if (rule.url.startsWith('*') && rule.url.endsWith('*')) {
+          return hostname.includes(rule.url.slice(1, -1));
+        }
+        return hostname.endsWith(rule.url);
+      } else if (patternType === 'regex') {
+        try {
+          return new RegExp(rule.url, 'i').test(hostname);
+        } catch (e) {
+          return false;
+        }
+      }
+      return false;
+    });
+
+    if (!matchingRule) return;
+
+    // Check if current proxy already matches the rule
+    const currentProxyInRule = matchingRule.proxyIps.includes(activeProxy.ipPort);
+    if (currentProxyInRule) return;
+
+    // Find a proxy from the rule's country
+    const { proxies } = await chrome.storage.local.get(['proxies']);
+    if (!proxies) return;
+
+    const newProxy = proxies.find(p => 
+      matchingRule.proxyIps.includes(p.ipPort) && 
+      p.speedMs < 300
+    );
+
+    if (!newProxy) return;
+
+    console.log(`Auto-switching to ${newProxy.country} proxy for ${hostname}`);
+
+    // Switch proxy
+    await setProxy(newProxy);
+    await chrome.storage.local.set({ activeProxy: newProxy });
+
+    // Notify popup
+    chrome.runtime.sendMessage({
+      action: 'siteRuleApplied',
+      rule: matchingRule,
+      proxy: newProxy,
+      url: hostname
+    }).catch(() => {});
+
+  } catch (error) {
+    console.error('Site rule check error:', error);
   }
 });
