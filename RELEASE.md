@@ -4,6 +4,27 @@ Quick reference for building and publishing ProxyMania VPN Extension releases.
 
 ---
 
+## GitHub Actions Setup (First Time Only)
+
+### Configure GitHub Secrets
+
+For automated CRX signing in GitHub Actions, you need to store your PEM file as a secret:
+
+1. Go to: `Repository Settings → Secrets and variables → Actions`
+2. Click "New repository secret"
+3. Name: `CRX_PEM_FILE`
+4. Value: Copy entire content of `proxy-vpn-extension.pem`
+5. Click "Add secret"
+
+**Get PEM content:**
+```bash
+cat proxy-vpn-extension.pem
+```
+
+⚠️ **Never commit the PEM file to git!** It's already in `.gitignore`.
+
+---
+
 ## Quick Start
 
 ### Automated Release (Recommended)

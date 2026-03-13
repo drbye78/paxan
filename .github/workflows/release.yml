@@ -12,59 +12,75 @@ jobs:
   build-and-release:
     name: Build and Publish Release
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: proxy-vpn-extension/package-lock.json
-      
+
       - name: Install dependencies
-        working-directory: ./proxy-vpn-extension
         run: npm ci
-      
+
+      - name: Install crx3 for CRX building
+        run: npm install -g crx3
+
+      - name: Setup PEM file for signing
+        # Only needed if you want to sign CRX with the same key each time
+        # Store your PEM file content as CRX_PEM_FILE secret in GitHub
+        if: ${{ secrets.CRX_PEM_FILE != '' }}
+        run: |
+          echo "${{ secrets.CRX_PEM_FILE }}" > proxy-vpn-extension.pem
+
       - name: Build distribution packages
-        working-directory: ./proxy-vpn-extension
         run: npm run distribute
-      
+
+      - name: Verify build artifacts
+        run: |
+          echo "=== Distribution Files ==="
+          ls -la dist/
+          echo "=== File Sizes ==="
+          du -h dist/*
+          echo "=== File Types ==="
+          file dist/*
+
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
           name: Release ${{ github.ref_name }}
           body: |
             ## ProxyMania VPN Extension ${{ github.ref_name }}
-            
+
             ### 📦 Installation
-            
+
             #### Manual Installation
             1. Download `proxy-vpn-extension.zip`
             2. Extract to a folder
             3. Open `chrome://extensions/`
             4. Enable "Developer mode"
             5. Click "Load unpacked" and select the extracted folder
-            
+
             #### Direct CRX Installation
             1. Download `proxy-vpn-extension.crx`
             2. Open `chrome://extensions/`
             3. Enable "Developer mode"
             4. Drag and drop the CRX file
-            
+
             ### 🔧 Changes
-            
+
             See the [CHANGELOG](CHANGELOG.md) for detailed changes.
-            
+
             ### 📋 Files
-            
+
             - `proxy-vpn-extension.zip` - Distribution package for Chrome Web Store
             - `proxy-vpn-extension.crx` - Direct installation package
           files: |
-            proxy-vpn-extension/dist/proxy-vpn-extension.zip
-            proxy-vpn-extension/dist/proxy-vpn-extension.crx
+            dist/proxy-vpn-extension.zip
+            dist/proxy-vpn-extension.crx
           draft: false
           prerelease: false
           make_latest: true

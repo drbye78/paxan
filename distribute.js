@@ -10,8 +10,33 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const EXTENSION_DIR = __dirname;
 const DIST_DIR = join(EXTENSION_DIR, 'dist');
 const BUILD_DIR = join(DIST_DIR, 'build');
-const PEM_FILE = join(EXTENSION_DIR, '..', 'proxy-vpn-extension.pem');
 const ROOT_DIR = join(EXTENSION_DIR, '..');
+
+// Find PEM file in multiple locations
+function findPemFile() {
+  // Check environment variable first
+  if (process.env.PEM_FILE && existsSync(process.env.PEM_FILE)) {
+    return process.env.PEM_FILE;
+  }
+  
+  // Check common locations
+  const locations = [
+    join(EXTENSION_DIR, 'proxy-vpn-extension.pem'),
+    join(EXTENSION_DIR, '..', 'proxy-vpn-extension.pem'),
+    join(EXTENSION_DIR, 'extension.pem'),
+    join(process.cwd(), 'proxy-vpn-extension.pem')
+  ];
+  
+  for (const loc of locations) {
+    if (existsSync(loc)) {
+      return loc;
+    }
+  }
+  
+  return null;
+}
+
+const PEM_FILE = findPemFile();
 
 // Files/folders to exclude from distribution
 const EXCLUDE_PATTERNS = [
@@ -263,29 +288,40 @@ function copyFilesToBuildDir() {
 
 function createCrxPackage() {
   console.log('📦 Creating CRX package for sideloading...');
-  
+
   const crxPath = join(DIST_DIR, 'proxy-vpn-extension.crx');
-  
+
+  // Check if PEM file exists
+  if (!PEM_FILE) {
+    console.log('⚠️  PEM file not found. Cannot sign CRX.');
+    console.log('   Options:');
+    console.log('   1. Place proxy-vpn-extension.pem in the extension directory');
+    console.log('   2. Set PEM_FILE environment variable');
+    console.log('   3. For GitHub Actions, add CRX_PEM_FILE secret');
+    console.log('   Skipping CRX build, ZIP only.');
+    return null;
+  }
+
   try {
     // Copy files to clean build directory
     const buildDir = copyFilesToBuildDir();
-    
+
     // Run crx3 on the build directory
-    execSync(`crx3 -o "${crxPath}" -p "${PEM_FILE}" "${buildDir}"`, { 
+    execSync(`crx3 -o "${crxPath}" -p "${PEM_FILE}" "${buildDir}"`, {
       stdio: 'inherit'
     });
-    
+
     const stats = statSync(crxPath);
     console.log(`✓ CRX created: ${crxPath}`);
     console.log(`  Size: ${(stats.size / 1024).toFixed(2)} KB`);
-    
+
     // Cleanup build directory
     rmSync(BUILD_DIR, { recursive: true, force: true });
-    
+
     return crxPath;
   } catch (error) {
     console.log('⚠ crx3 error:', error.message);
-    
+
     // Check if we have existing CRX
     const existingCrx = join(ROOT_DIR, 'proxy-vpn-extension.crx');
     if (existsSync(existingCrx)) {
