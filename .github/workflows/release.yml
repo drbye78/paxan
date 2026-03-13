@@ -30,11 +30,18 @@ jobs:
         run: npm install -g crx3
 
       - name: Setup PEM file for signing
-        # Only needed if you want to sign CRX with the same key each time
-        # Store your PEM file content as CRX_PEM_FILE secret in GitHub
-        if: ${{ secrets.CRX_PEM_FILE != '' }}
+        # Create PEM file from secret if available
+        env:
+          CRX_PEM_FILE_CONTENT: ${{ vars.CRX_PEM_FILE || secrets.CRX_PEM_FILE }}
         run: |
-          echo "${{ secrets.CRX_PEM_FILE }}" > proxy-vpn-extension.pem
+          if [ -n "$CRX_PEM_FILE_CONTENT" ]; then
+            echo "Setting up PEM file from secret..."
+            echo "$CRX_PEM_FILE_CONTENT" > proxy-vpn-extension.pem
+            echo "PEM file created successfully"
+          else
+            echo "⚠️ No CRX_PEM_FILE secret found. CRX signing will be skipped."
+            echo "Add CRX_PEM_FILE secret in repository settings to enable CRX signing."
+          fi
 
       - name: Build distribution packages
         run: npm run distribute
