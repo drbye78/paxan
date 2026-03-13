@@ -1,5 +1,67 @@
 // ProxyMania VPN - Chrome Extension
-// MV3 Compatible Version 3.0.0 - Modern UX Refresh
+// MV3 Compatible - Version 2.3.0
+// Multi-source proxy manager with caching, blacklist, and modern UI
+
+// Mock Chrome API for testing
+if (typeof chrome === 'undefined') {
+  global.chrome = {
+    runtime: {
+      sendMessage: jest.fn(),
+      onMessage: {
+        addListener: jest.fn(),
+        removeListener: jest.fn()
+      },
+      lastError: null,
+    },
+    storage: {
+      local: {
+        get: jest.fn(),
+        set: jest.fn(),
+        clear: jest.fn(),
+        remove: jest.fn(),
+      }
+    },
+    proxy: {
+      settings: {
+        set: jest.fn(),
+        get: jest.fn(),
+        clear: jest.fn(),
+      }
+    },
+    tabs: {
+      query: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      remove: jest.fn(),
+    },
+    alarms: {
+      create: jest.fn(),
+      clear: jest.fn(),
+      clearAll: jest.fn(),
+      get: jest.fn(),
+      getAll: jest.fn(),
+      onAlarm: {
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+      }
+    },
+    notifications: {
+      create: jest.fn(),
+      clear: jest.fn(),
+      getAll: jest.fn(),
+      onClosed: {
+        addListener: jest.fn(),
+      }
+    },
+    extension: {
+      getURL: jest.fn((path) => `chrome-extension://test-id/${path}`),
+    }
+  };
+}
+
+// ============================================================================
+// STATE - Global application state
+// ============================================================================
 
 let proxies = [];
 let currentProxy = null;
@@ -112,10 +174,18 @@ const countryFlags = {
   'Barbados': '🇧🇧', 'Papua New Guinea': '🇵🇬', 'Vanuatu': '🇻🇺'
 };
 
+// ============================================================================
+// UTILITIES - Helper functions
+// ============================================================================
+
 function getFlag(country) {
   if (!country) return '🌍';
   return countryFlags[country] || countryFlags[country.split(' ')[0]] || '🌍';
 }
+
+// ============================================================================
+// UI INITIALIZATION - DOM setup and event binding
+// ============================================================================
 
 // DOM Elements - initialized lazily
 const $ = (id) => document.getElementById(id);
@@ -374,7 +444,9 @@ function setupEventListeners() {
   setupKeyboardShortcuts();
 }
 
-// ===== v3.0 New Functions =====
+// ============================================================================
+// UI EVENT HANDLERS - Button clicks, toggles, user interactions
+// ============================================================================
 
 // FAB Handler
 function handleFabClick() {
@@ -603,7 +675,10 @@ function setupMessageListener() {
   });
 }
 
-// Settings Management
+// ============================================================================
+// SETTINGS - Load, save, theme management
+// ============================================================================
+
 async function loadSettings() {
   try {
     const result = await chrome.storage.local.get(['settings']);
@@ -1027,6 +1102,10 @@ function matchesPattern(pattern, hostname, patternType = 'exact') {
   }
 }
 
+// ============================================================================
+// SITE RULES - Per-site proxy rules management
+// ============================================================================
+
 function showAddSiteRuleDialog() {
   const dialog = document.createElement('div');
   dialog.className = 'rule-dialog';
@@ -1315,7 +1394,10 @@ async function updateRotationInterval(e) {
   showToast(`Rotation interval: ${autoRotation.interval / 60000} min`, 'info');
 }
 
-// Country Blacklist Management
+// ============================================================================
+// COUNTRY BLACKLIST - Filter out countries from proxy list
+// ============================================================================
+
 function toggleBlacklistPanel() {
   if (!blacklistContainer) return;
   const isVisible = blacklistContainer.style.display !== 'none';
@@ -1391,6 +1473,10 @@ async function addToBlacklist(country) {
   }
 }
 
+// ============================================================================
+// AUTO ROTATION - Automatic proxy switching
+// ============================================================================
+
 function startAutoRotation() {
   if (autoRotation.timer) clearInterval(autoRotation.timer);
 
@@ -1440,7 +1526,10 @@ function stopAutoRotation() {
   }
 }
 
-// Task 7: Enhanced Onboarding for v2.2.0
+// ============================================================================
+// ONBOARDING - First-time user tutorial
+// ============================================================================
+
 const onboardingSteps = [
   {
     id: 'welcome',
@@ -1969,6 +2058,10 @@ async function mergeProxiesWithStats(newProxies) {
   }
 }
 
+// ============================================================================
+// PROXY FILTERING & RENDERING - List display, sorting, filtering
+// ============================================================================
+
 // Populate country filter
 function populateCountryFilter() {
   if (!countryFilter) return;
@@ -2392,6 +2485,10 @@ async function addToRecentlyUsed(proxy) {
   } catch (error) { console.error(error); }
 }
 
+// ============================================================================
+// MONITORING & TIMER - Connection monitoring, elapsed time
+// ============================================================================
+
 // Monitoring
 function startMonitoring() {
   if (currentProxy && !monitoringActive) {
@@ -2636,7 +2733,11 @@ function startAutoRefresh() {
 }
 
 // Import/Export
-async function importProxies() {
+// ============================================================================
+// IMPORT/EXPORT - Data management utilities
+// ============================================================================
+
+function importProxies() {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = '.txt,.json';
@@ -2788,3 +2889,124 @@ function drawSpeedGraph() {
   ctx.fillStyle = 'rgba(100, 255, 218, 0.15)';
   ctx.fill();
 }
+
+// ============================================================================
+// SECURITY - XSS prevention and input sanitization
+// ============================================================================
+
+// Sanitize HTML content to prevent XSS
+function sanitizeHtml(content) {
+  if (content === null || content === undefined) return '';
+  if (typeof content !== 'string') return String(content);
+  
+  return content
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '[SCRIPT REMOVED]')
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+=/gi, '')
+    .replace(/<[^>]*>/g, (match) => {
+      // Allow safe tags like <span>, <div>, etc. but not script, iframe, etc.
+      const safeTags = ['span', 'div', 'b', 'i', 'strong', 'em', 'u', 'br', 'hr', 'p', 'a'];
+      const tagName = match.match(/<\/?(\w+)/)?.[1]?.toLowerCase();
+      if (tagName && safeTags.includes(tagName)) {
+        return match;
+      }
+      return '';
+    })
+    .trim();
+}
+
+// Validate search input
+function validateSearchInput(input) {
+  if (typeof input !== 'string') return '';
+  return sanitizeHtml(input);
+}
+
+// Render proxy item with XSS protection
+function renderProxyItem(proxy) {
+  const safeProxy = sanitizeProxyForDisplay(proxy);
+  
+  return `
+    <div class="proxy-item" data-ip="${safeProxy.ipPort}" data-country="${safeProxy.country}">
+      <div class="proxy-info">
+        <span class="proxy-ip">${safeProxy.ipPort}</span>
+        <span class="proxy-country">${safeProxy.country}</span>
+        <span class="proxy-type">${safeProxy.type}</span>
+      </div>
+      <div class="proxy-speed">${safeProxy.speedMs}ms</div>
+    </div>
+  `;
+}
+
+// Sanitize proxy for display (removes HTML)
+function sanitizeProxyForDisplay(proxy) {
+  if (!proxy) return null;
+  
+  const sanitizeString = (str) => {
+    if (typeof str !== 'string') return str;
+    return str.replace(/<[^>]*>/g, '')
+              .replace(/javascript:/gi, '')
+              .replace(/on\w+=/gi, '')
+              .trim();
+  };
+  
+  return {
+    ...proxy,
+    ip: sanitizeString(proxy.ip),
+    country: sanitizeString(proxy.country),
+    type: sanitizeString(proxy.type),
+    speed: sanitizeString(proxy.speed),
+    ipPort: sanitizeString(proxy.ipPort)
+  };
+}
+
+// Handle proxy errors securely (security version)
+function handleProxyErrorSecurity(error) {
+  if (!error) return { message: 'Unknown error occurred' };
+  
+  // Sanitize error message to prevent XSS
+  const sanitized = error.toString().replace(/<[^>]*>/g, '');
+  
+  // Log error but don't expose sensitive info
+  const safeMessage = sanitized.replace(/ip:\s*\d+\.\d+\.\d+\.\d+/gi, 'ip: [REDACTED]');
+  
+  return { message: safeMessage };
+}
+
+// Handle search input (prevents XSS)
+function handleSearch() {
+  if (!proxySearch) return;
+  
+  const query = validateSearchInput(proxySearch.value);
+  proxySearch.value = query; // Set sanitized value
+  filterProxies();
+}
+
+// Module exports for testing
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    getFlag,
+    escapeHtml,
+    calculateProxyScore,
+    getRecommendedProxies,
+    getBestProxy,
+    filterProxies,
+    updateUI,
+    updateTimerDisplay,
+    updateProxyCount,
+    renderProxyList,
+    renderQuickConnect,
+    renderSparkline,
+    getWorkingStatus,
+    switchToTab,
+    showToast,
+    toggleFavorite,
+    renderProxyItem,
+    sanitizeHtml,
+    validateSearchInput,
+    sanitizeProxyForDisplay,
+    handleProxyErrorSecurity,
+    handleSearch
+  };
+}
+
+

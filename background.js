@@ -1,6 +1,69 @@
 // ProxyMania VPN - Background Script (MV3 Compatible)
 // Enhanced with Chrome 120+ support
 
+// Mock Chrome API for testing
+if (typeof chrome === 'undefined' || typeof chrome.runtime === 'undefined') {
+  if (typeof global !== 'undefined') {
+    global.chrome = {
+      runtime: {
+        sendMessage: jest.fn ? jest.fn() : () => {},
+        onMessage: {
+          addListener: jest.fn ? jest.fn() : () => {},
+          removeListener: jest.fn ? jest.fn() : () => {}
+        },
+        onInstalled: {
+          addListener: jest.fn ? jest.fn() : () => {},
+          removeListener: jest.fn ? jest.fn() : () => {}
+        },
+        lastError: null,
+      },
+      storage: {
+        local: {
+          get: jest.fn ? jest.fn() : () => {},
+          set: jest.fn ? jest.fn() : () => {},
+          clear: jest.fn ? jest.fn() : () => {},
+          remove: jest.fn ? jest.fn() : () => {},
+        }
+      },
+      proxy: {
+        settings: {
+          set: jest.fn ? jest.fn() : () => {},
+          get: jest.fn ? jest.fn() : () => {},
+          clear: jest.fn ? jest.fn() : () => {},
+        }
+      },
+      tabs: {
+        query: jest.fn ? jest.fn() : () => {},
+        create: jest.fn ? jest.fn() : () => {},
+        update: jest.fn ? jest.fn() : () => {},
+        remove: jest.fn ? jest.fn() : () => {},
+      },
+      alarms: {
+        create: jest.fn ? jest.fn() : () => {},
+        clear: jest.fn ? jest.fn() : () => {},
+        clearAll: jest.fn ? jest.fn() : () => {},
+        get: jest.fn ? jest.fn() : () => {},
+        getAll: jest.fn ? jest.fn() : () => {},
+        onAlarm: {
+          addListener: jest.fn ? jest.fn() : () => {},
+          removeListener: jest.fn ? jest.fn() : () => {},
+        }
+      },
+      notifications: {
+        create: jest.fn ? jest.fn() : () => {},
+        clear: jest.fn ? jest.fn() : () => {},
+        getAll: jest.fn ? jest.fn() : () => {},
+        onClosed: {
+          addListener: jest.fn ? jest.fn() : () => {},
+        }
+      },
+      extension: {
+        getURL: jest.fn ? jest.fn((path) => `chrome-extension://test-id/${path}`) : (path) => `chrome-extension://test-id/${path}`,
+      }
+    };
+  }
+}
+
 const MONITORING_ALARM_NAME = 'proxyMonitoring';
 const HEALTH_ALARM_NAME = 'healthMonitoring';
 const SECURITY_ALARM_NAME = 'securityMonitoring';
@@ -572,8 +635,23 @@ function normalizeProxyType(typeStr) {
 }
 
 function parseSpeed(speedStr) {
-  const match = speedStr?.match(/(\d+)/);
-  return match ? parseInt(match[1]) : 9999;
+  if (!speedStr) return 9999;
+  
+  const match = speedStr.match(/(\d+\.?\d*)/);
+  if (!match) return 9999;
+  
+  const value = parseFloat(match[1]);
+  
+  // Handle unit conversion
+  if (speedStr.toLowerCase().includes('sec')) {
+    return Math.round(value * 1000);
+  } else if (speedStr.toLowerCase().includes('s') && !speedStr.toLowerCase().includes('ms')) {
+    return Math.round(value * 1000);
+  } else if (speedStr.toLowerCase().includes('ms') || speedStr.match(/\d+\s*ms/)) {
+    return Math.round(value);
+  }
+  
+  return Math.round(value);
 }
 
 async function testProxyConnectivity(proxy, keepProxy = false) {
@@ -1039,3 +1117,43 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     console.error('Site rule check error:', error);
   }
 });
+
+// Export functions for testing
+if (typeof module !== 'undefined' && module.exports) {
+  // Import security functions from the security module
+  const security = require('./src/modules/security.js');
+  
+  module.exports = {
+    fetchProxies,
+    parseProxyMania,
+    parseProxyScrapeCSV,
+    parseProxyScrape,
+    parseCSVLine,
+    getCountryName,
+    normalizeProxyType,
+    parseSpeed,
+    testProxyConnectivity,
+    setProxy,
+    clearProxy,
+    updateProxyStats,
+    getProxyStats,
+    handleMessage,
+    // Security functions
+    validateProxyInput: security.validateProxyInput,
+    validateProxyPort: security.validateProxyPort,
+    validateProxyType: security.validateProxyType,
+    validateProxyUrl: security.validateProxyUrl,
+    validateProxyAuth: security.validateProxyAuth,
+    validateProxySource: security.validateProxySource,
+    validateStorageData: security.validateStorageData,
+    sanitizeProxyData: security.sanitizeProxyData,
+    sanitizeProxyForDisplay: security.sanitizeProxyForDisplay,
+    filterMaliciousProxies: security.filterMaliciousProxies,
+    rateLimitProxyFetch: security.rateLimitProxyFetch,
+    rateLimitConnection: security.rateLimitConnection,
+    encryptProxyData: security.encryptProxyData,
+    decryptProxyData: security.decryptProxyData,
+    handleProxyError: security.handleProxyError,
+    logProxyActivity: security.logProxyActivity
+  };
+}
