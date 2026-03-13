@@ -1,0 +1,23 @@
+{
+  "name": "proxymania-extension",
+  "version": "3.0.0",
+  "description": "ProxyMania - Smart Proxy Router Chrome Extension",
+  "type": "module",
+  "scripts": {
+    "build": "node build.js",
+    "build:background": "node build.js --target=background",
+    "build:popup": "node build.js --target=popup",
+    "watch": "node build.js --watch",
+    "test": "cd tests && npm test",
+    "lint": "cd tests && npm run lint",
+    "distribute": "node distribute.js both",
+    "distribute:zip": "node distribute.js zip",
+    "distribute:crx": "node distribute.js crx",
+    "release": "node release.js",
+    "release:draft": "node release.js --draft",
+    "release:prerelease": "node release.js --prerelease"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.0"
+  }
+}

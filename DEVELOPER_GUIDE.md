@@ -9,8 +9,9 @@ This guide is for developers who want to understand, modify, or contribute to th
 3. [Code Structure](#code-structure)
 4. [API Reference](#api-reference)
 5. [Building & Testing](#building--testing)
-6. [Debugging](#debugging)
-7. [Contributing](#contributing)
+6. [Publishing to GitHub Releases](#publishing-to-github-releases)
+7. [Debugging](#debugging)
+8. [Contributing](#contributing)
 
 ---
 
@@ -22,6 +23,7 @@ This guide is for developers who want to understand, modify, or contribute to th
 - **Node.js** (v16+, optional for tooling)
 - **Text Editor** (VS Code recommended)
 - **Git** (for version control)
+- **crx3** (optional, for CRX building: `npm install -g crx3`)
 
 ### Setup
 
@@ -57,6 +59,46 @@ code .
 
 ### Component Diagram
 
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Chrome Browser                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌──────────────┐    Messages    ┌──────────────────────────┐  │
+│  │  popup.html  │ ◀────────────▶ │   src/background/        │  │
+│  │  popup.js    │                │   (Service Worker)       │  │
+│  │  styles.css  │                │   index.js (ES Module)   │  │
+│  └──────────────┘                │                          │  │
+│         │                          │  ┌────────────────────┐  │  │
+│         │ UI Updates             │  │  Chrome APIs       │  │  │
+│         ▼                          │  │  - proxy.settings  │  │  │
+│  ┌──────────────┐                │  │  - storage.local   │  │  │
+│  │   DOM Render │                │  │  - runtime         │  │  │
+│  │   Virtual    │                │  │  - alarms          │  │  │
+│  │   Scrolling  │                │  └────────────────────┘  │  │
+│  └──────────────┘                │           │               │  │
+│         │                        │           ▼               │  │
+│         │                        │  ┌────────────────────┐  │  │
+│         │                        │  │ Reputation Engine │  │  │
+│         │                        │  │ (Trust Scoring)   │  │  │
+│         │                        │  └────────────────────┘  │  │
+│         │                        │           │               │  │
+│         │                        │           ▼               │  │
+│         │                        │  ┌────────────────────┐  │  │
+│         │                        │  │ Tamper Detection   │  │  │
+│         │                        │  │ (MITM Protection)  │  │  │
+│         │                        │  └────────────────────┘  │  │
+│         │                        └──────────────────────────┘  │
+│         │                                      │                │
+│         │                                      │ HTTP Fetch     │
+│         │                                      ▼                │
+│         │                        ┌─────────────────────────────┐  │
+│         │                        │   External Sources:       │  │
+│         │                        │   - ProxyMania (proxymania.su)│
+│         │                        │   - ProxyScrape (api.proxyscrape.com)│
+│         │                        └─────────────────────────────┘  │
+│         │                                                      │
+└─────────────────────────────────────────────────────────────────┘
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Chrome Browser                           │
@@ -113,25 +155,21 @@ User Action → popup.js → chrome.runtime.sendMessage → background.js
 ### File Responsibilities
 
 #### `manifest.json`
-Extension configuration and permissions.
+Extension configuration and permissions (Manifest V3).
 
 ```json
 {
   "manifest_version": 3,
-  "name": "ProxyMania VPN",
-  "version": "1.0.1",
-  "permissions": ["proxy", "storage", "tabs"],
-  "background": { "service_worker": "background.js" },
+  "name": "__MSG_extension_name__",
+  "version": "3.0.0",
+  "permissions": ["proxy", "storage", "tabs", "scripting", "alarms", "notifications"],
+  "background": { "service_worker": "src/background/index.js", "type": "module" },
   "action": { "default_popup": "popup.html" }
 }
 ```
 
-#### `background.js`
-Service worker handling:
-- Proxy fetching from ProxyMania or ProxyScrape
-- HTML/CSV parsing
-- Chrome proxy configuration
-- Message handling from popup
+#### `src/background/index.js`
+Main service worker entry point (ES Module).
 
 **Key Functions:**
 - `fetchProxies()` - Fetches from selected source (ProxyMania or ProxyScrape)
@@ -142,6 +180,30 @@ Service worker handling:
 - `testProxy(proxy)` - Checks proxy health
 - `parseProxyMania(html)` - Parses HTML table
 - `parseProxyScrapeCSV(csv)` - Parses CSV format
+- `initReputationEngine()` - Initialize trust scoring
+- `initTamperDetector()` - Initialize MITM detection
+
+#### `src/core/reputation-engine.js`
+Trust scoring system for proxies.
+
+**Key Functions:**
+- `calculateScore(proxy)` - Calculate trust score (0-100)
+- `recordTest(proxy, success, latency)` - Record test result
+- `getReputation(proxy)` - Get reputation data
+
+#### `src/security/tamper-detection.js`
+MITM attack detection.
+
+**Key Functions:**
+- `testProxy(proxy)` - Test for tampering
+- `markTampered(ipPort, tampered)` - Mark proxy as tampered
+
+#### `src/utils/rate-limiter.js`
+Rate limiting and debouncing utilities.
+
+**Key Functions:**
+- `debounce(fn, delay)` - Debounce function calls
+- `throttle(fn, limit)` - Throttle function calls
 
 #### `popup.js`
 Popup UI logic:
@@ -149,6 +211,7 @@ Popup UI logic:
 - Filtering (country, type, speed, blacklist)
 - User interaction handling
 - Settings management
+- Virtual scrolling for large lists
 
 **Key Functions:**
 - `loadProxies(forceRefresh)` - Loads from cache with 5-min TTL, optional force refresh
@@ -157,6 +220,13 @@ Popup UI logic:
 - `renderProxyList(proxies)` - Renders proxy items
 - `switchToTab(tabName)` - Switches between All/Favorites/Recent
 - `calculateProxyScore(proxy)` - Enhanced scoring with historical data
+- `initVirtualScroller()` - Initialize virtual scrolling
+
+#### `src/popup/i18n.js`
+Internationalization system for RU/EN.
+
+#### `src/popup/virtual-scroller.js`
+Virtual scrolling for large proxy lists.
 
 #### `popup.html`
 UI structure with:
@@ -164,6 +234,29 @@ UI structure with:
 - Control buttons
 - Filter dropdowns
 - Proxy list container
+- Settings panel
+- Stats panel
+
+#### `distribute.js`
+Distribution build script - creates ZIP and CRX packages for release.
+
+**Features:**
+- Pure Node.js implementation (no external dependencies)
+- Excludes development files automatically
+- Creates Chrome Web Store-ready ZIP
+- Creates signed CRX using existing PEM key
+
+#### `release.js`
+GitHub release publisher - uploads distribution packages to GitHub Releases.
+
+**Features:**
+- Auto-detects version from package.json
+- Creates release with generated notes
+- Uploads ZIP and CRX as assets
+- Supports draft and prerelease modes
+
+#### `.github/workflows/release.yml`
+GitHub Actions workflow for automated releases on version tag push.
 
 #### `styles.css`
 Visual styling including:
@@ -303,6 +396,149 @@ interface Proxy {
    - Click extension icon
    - Verify UI updates
    - Test proxy connection
+
+### Building for Distribution
+
+To create production-ready packages for distribution:
+
+```bash
+# Build both ZIP and CRX packages
+npm run distribute
+
+# Build ZIP only (for Chrome Web Store submission)
+npm run distribute:zip
+
+# Build CRX only (for sideloading/enterprise distribution)
+npm run distribute:crx
+```
+
+**Output:** Packages are created in the `dist/` directory:
+- `dist/proxy-vpn-extension.zip` (~100 KB) - For Chrome Web Store upload
+- `dist/proxy-vpn-extension.crx` (~75 KB) - For direct installation
+
+**What's excluded from distribution builds:**
+- `node_modules/`
+- `.git/`, `.github/`
+- `tests/`
+- `*.md` documentation files
+- Build scripts (`build.js`, `distribute.js`, `distribute.sh`)
+- `.gitignore`, `.gitattributes`
+- `package-lock.json`
+
+**CRX Signing:**
+- The build script uses your existing `.pem` key for signing
+- To rebuild CRX with updated source, install `crx3`: `npm install -g crx3`
+- Without `crx3`, the existing CRX file is copied (may be outdated)
+
+### Distribution Channels
+
+| Package | Use Case | Upload/Install Location |
+|---------|----------|------------------------|
+| **ZIP** | Chrome Web Store | https://chrome.google.com/webstore/devconsole |
+| **CRX** | Sideloading | `chrome://extensions/` (Developer mode) |
+| **CRX** | Enterprise | Group Policy / MDM distribution |
+
+### Testing Distribution Build
+
+Before submitting to Chrome Web Store:
+
+1. **Test the ZIP package:**
+   ```bash
+   npm run distribute:zip
+   ```
+   
+2. **Load unpacked from ZIP:**
+   - Extract the ZIP to a temporary folder
+   - Load in Chrome via `chrome://extensions/` → "Load unpacked"
+   - Verify all features work correctly
+
+3. **Test the CRX package:**
+   ```bash
+   npm run distribute:crx
+   ```
+   
+4. **Install CRX:**
+   - Open `chrome://extensions/`
+   - Enable "Developer mode"
+   - Drag and drop the CRX file
+   - Verify installation and functionality
+
+---
+
+## Publishing to GitHub Releases
+
+### Manual Release
+
+To manually publish a release to GitHub:
+
+```bash
+# 1. Set your GitHub token
+export GITHUB_TOKEN=ghp_...
+
+# 2. Build and publish
+npm run release
+
+# Or create as draft for review
+npm run release:draft
+```
+
+**Script options:**
+```bash
+node release.js --tag v1.0.0    # Specific version
+node release.js --draft         # Create as draft
+node release.js --prerelease    # Mark as prerelease
+node release.js --no-latest     # Don't set as latest
+```
+
+**Required permissions:**
+- GitHub token with `repo:public_repo` scope (or `repo` for private repos)
+- Create at: https://github.com/settings/tokens
+
+### Automated Releases (GitHub Actions)
+
+Releases are automatically published when you push a version tag:
+
+```bash
+# 1. Update version in package.json
+npm version patch  # or: minor, major, or specific version like 1.2.3
+
+# 2. Commit and push with tags
+git push --follow-tags
+```
+
+This triggers the `.github/workflows/release.yml` workflow which:
+1. Checks out the code
+2. Installs dependencies
+3. Builds ZIP and CRX packages
+4. Creates a GitHub release with the version tag
+5. Uploads distribution packages as release assets
+
+### Release Workflow
+
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  Update version │────▶│  Push tag to Git │────▶│ GitHub Actions  │
+│  (npm version)  │     │  (git push)      │     │ (release.yml)   │
+└─────────────────┘     └──────────────────┘     └────────┬────────┘
+                                                          │
+                                                          ▼
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  Release Live   │◀────│  Upload Assets   │◀────│  Build & Create │
+│  on GitHub      │     │  (ZIP + CRX)     │     │  Release        │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+```
+
+### Release Checklist
+
+- [ ] Update version in `package.json`
+- [ ] Update `CHANGELOG.md` with changes
+- [ ] Run tests: `npm test`
+- [ ] Build distribution: `npm run distribute`
+- [ ] Test built packages locally
+- [ ] Commit changes: `git commit -am "chore: release v1.0.0"`
+- [ ] Push with tags: `git push --follow-tags`
+- [ ] Verify release on GitHub
+- [ ] Share release notes with team/users
 
 ### Testing Checklist
 
@@ -508,6 +744,8 @@ function filterProxies() {
 | Filter response | < 100ms | ~50ms |
 | Connect time | < 2s | ~1s |
 | Memory usage | < 50MB | ~20MB |
+| Distribution ZIP | < 300KB | ~200KB |
+| Distribution CRX | < 300KB | ~200KB |
 
 ---
 
@@ -537,6 +775,46 @@ function filterProxies() {
 - [Manifest V3 Guide](https://developer.chrome.com/docs/extensions/mv3/intro/)
 - [Chrome Proxy API](https://developer.chrome.com/docs/extensions/reference/proxy/)
 - [Chrome Storage API](https://developer.chrome.com/docs/extensions/reference/storage/)
+- [GitHub Releases Documentation](https://docs.github.com/en/repositories/releasing-projects-on-github)
+- [crx3 Package](https://www.npmjs.com/package/crx3) - CRX builder
+
+---
+
+## Development Tools Reference
+
+### npm Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run build` | Build bundled modules |
+| `npm run watch` | Watch mode for development |
+| `npm run distribute` | Build ZIP + CRX packages |
+| `npm run distribute:zip` | Build ZIP only (Chrome Web Store) |
+| `npm run distribute:crx` | Build CRX only (sideloading) |
+| `npm run release` | Publish to GitHub Releases |
+| `npm run release:draft` | Create draft release |
+| `npm run release:prerelease` | Create prerelease |
+| `npm test` | Run tests |
+| `npm run lint` | Run linter |
+
+### Distribution Files
+
+After running `npm run distribute`:
+
+```
+dist/
+├── proxy-vpn-extension.zip    # ~200KB - Chrome Web Store
+└── proxy-vpn-extension.crx    # ~200KB - Direct installation
+```
+
+### Environment Variables
+
+| Variable | Description | Required For |
+|----------|-------------|--------------|
+| `GITHUB_TOKEN` | GitHub personal access token | Manual releases |
+| `GITHUB_OWNER` | GitHub username/org | Optional (auto-detected) |
+| `GITHUB_REPO` | Repository name | Optional (auto-detected) |
+| `GITHUB_REPOSITORY` | Full repo path (owner/repo) | GitHub Actions |
 
 ---
 

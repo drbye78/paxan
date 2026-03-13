@@ -1,0 +1,214 @@
+{
+  "proxies": [
+    {
+      "ip": "192.168.1.1",
+      "port": 8080,
+      "ipPort": "192.168.1.1:8080",
+      "country": "Germany",
+      "type": "HTTPS",
+      "speed": "45 ms",
+      "lastCheck": "Recently",
+      "speedMs": 45,
+      "workingStatus": "good"
+    },
+    {
+      "ip": "192.168.1.2",
+      "port": 8080,
+      "ipPort": "192.168.1.2:8080",
+      "country": "USA",
+      "type": "SOCKS5",
+      "speed": "120 ms",
+      "lastCheck": "Recently",
+      "speedMs": 120,
+      "workingStatus": "good"
+    },
+    {
+      "ip": "192.168.1.3",
+      "port": 3128,
+      "ipPort": "192.168.1.3:3128",
+      "country": "France",
+      "type": "HTTPS",
+      "speed": "89 ms",
+      "lastCheck": "Recently",
+      "speedMs": 89,
+      "workingStatus": "good"
+    },
+    {
+      "ip": "192.168.1.4",
+      "port": 1080,
+      "ipPort": "192.168.1.4:1080",
+      "country": "Japan",
+      "type": "SOCKS5",
+      "speed": "200 ms",
+      "lastCheck": "Recently",
+      "speedMs": 200,
+      "workingStatus": "warning"
+    },
+    {
+      "ip": "192.168.1.5",
+      "port": 8080,
+      "ipPort": "192.168.1.5:8080",
+      "country": "United Kingdom",
+      "type": "HTTPS",
+      "speed": "350 ms",
+      "lastCheck": "Recently",
+      "speedMs": 350,
+      "workingStatus": "warning"
+    },
+    {
+      "ip": "192.168.1.6",
+      "port": 8888,
+      "ipPort": "192.168.1.6:8888",
+      "country": "Canada",
+      "type": "HTTPS",
+      "speed": "500 ms",
+      "lastCheck": "Recently",
+      "speedMs": 500,
+      "workingStatus": "poor"
+    },
+    {
+      "ip": "192.168.1.7",
+      "port": 80,
+      "ipPort": "192.168.1.7:80",
+      "country": "Australia",
+      "type": "HTTPS",
+      "speed": "750 ms",
+      "lastCheck": "Recently",
+      "speedMs": 750,
+      "workingStatus": "poor"
+    },
+    {
+      "ip": "192.168.1.8",
+      "port": 8080,
+      "ipPort": "192.168.1.8:8080",
+      "country": "Netherlands",
+      "type": "SOCKS5",
+      "speed": "25 ms",
+      "lastCheck": "Recently",
+      "speedMs": 25,
+      "workingStatus": "excellent"
+    },
+    {
+      "ip": "192.168.1.9",
+      "port": 3128,
+      "ipPort": "192.168.1.9:3128",
+      "country": "Sweden",
+      "type": "HTTPS",
+      "speed": "60 ms",
+      "lastCheck": "Recently",
+      "speedMs": 60,
+      "workingStatus": "good"
+    },
+    {
+      "ip": "192.168.1.10",
+      "port": 1080,
+      "ipPort": "192.168.1.10:1080",
+      "country": "Switzerland",
+      "type": "SOCKS5",
+      "speed": "180 ms",
+      "lastCheck": "Recently",
+      "speedMs": 180,
+      "workingStatus": "good"
+    }
+  ],
+  "proxyStats": {
+    "192.168.1.1:8080": {
+      "attempts": 10,
+      "successes": 9,
+      "failures": 1,
+      "latencies": [45, 48, 42, 50, 44, 46, 43, 47, 49, 41],
+      "successRate": 90,
+      "avgLatency": 45,
+      "lastSuccess": 1640995200000,
+      "lastFailure": 1640995100000
+    },
+    "192.168.1.2:8080": {
+      "attempts": 8,
+      "successes": 6,
+      "failures": 2,
+      "latencies": [120, 125, 118, 130, 115, 122],
+      "successRate": 75,
+      "avgLatency": 122,
+      "lastSuccess": 1640995200000,
+      "lastFailure": 1640995000000
+    },
+    "192.168.1.3:3128": {
+      "attempts": 12,
+      "successes": 11,
+      "failures": 1,
+      "latencies": [89, 92, 85, 88, 91, 87, 90, 86, 93, 84, 88, 91],
+      "successRate": 92,
+      "avgLatency": 89,
+      "lastSuccess": 1640995200000,
+      "lastFailure": 1640994900000
+    }
+  },
+  "favorites": [
+    {
+      "ip": "192.168.1.1",
+      "port": 8080,
+      "ipPort": "192.168.1.1:8080",
+      "country": "Germany",
+      "type": "HTTPS",
+      "speed": "45 ms",
+      "lastCheck": "Recently",
+      "speedMs": 45,
+      "favoritedAt": 1640995200000
+    },
+    {
+      "ip": "192.168.1.8",
+      "port": 8080,
+      "ipPort": "192.168.1.8:8080",
+      "country": "Netherlands",
+      "type": "SOCKS5",
+      "speed": "25 ms",
+      "lastCheck": "Recently",
+      "speedMs": 25,
+      "favoritedAt": 1640995100000
+    }
+  ],
+  "recentlyUsed": [
+    {
+      "proxy": {
+        "ip": "192.168.1.1",
+        "port": 8080,
+        "ipPort": "192.168.1.1:8080",
+        "country": "Germany",
+        "type": "HTTPS",
+        "speed": "45 ms",
+        "lastCheck": "Recently",
+        "speedMs": 45
+      },
+      "lastUsed": 1640995200000
+    },
+    {
+      "proxy": {
+        "ip": "192.168.1.2",
+        "port": 8080,
+        "ipPort": "192.168.1.2:8080",
+        "country": "USA",
+        "type": "SOCKS5",
+        "speed": "120 ms",
+        "lastCheck": "Recently",
+        "speedMs": 120
+      },
+      "lastUsed": 1640995100000
+    }
+  ],
+  "dailyStats": {
+    "proxiesUsed": 5,
+    "connectionTime": 3600,
+    "attempts": 10,
+    "successes": 8
+  },
+  "settings": {
+    "theme": "dark",
+    "autoFailover": true,
+    "testBeforeConnect": true,
+    "autoConnect": false,
+    "notifications": true,
+    "refreshInterval": 300000,
+    "proxySource": "proxymania",
+    "countryBlacklist": ["China", "Russia"]
+  }
+}

@@ -18,7 +18,10 @@ Complete API reference for the ProxyMania VPN Chrome extension.
 This extension uses Chrome's extension APIs for communication between components:
 
 - **popup.js** - UI layer (runs in popup context)
-- **background.js** - Service worker (runs in background context)
+- **src/background/index.js** - Service worker (runs in background context, ES modules)
+- **src/core/** - Core modules (reputation engine)
+- **src/security/** - Security modules (tamper detection)
+- **src/popup/** - Popup modules (i18n, virtual scroller)
 
 Communication happens via `chrome.runtime.sendMessage()`.
 
@@ -53,7 +56,7 @@ chrome.runtime.sendMessage({
 
 Fetches the latest proxy list from configured source (ProxyMania or ProxyScrape).
 
-**Direction:** popup.js → background.js
+**Direction:** popup.js → background.js (ES Module)
 
 **Request:**
 ```javascript
@@ -91,12 +94,89 @@ Fetches the latest proxy list from configured source (ProxyMania or ProxyScrape)
 }
 ```
 
-**Example Usage:**
+---
+
+### getAllReputation
+
+Gets all proxy reputation data from the reputation engine.
+
+**Direction:** popup.js → background.js
+
+**Request:**
 ```javascript
-const response = await chrome.runtime.sendMessage({ 
-  action: 'fetchProxies' 
-});
-console.log(`Loaded ${response.proxies.length} proxies`);
+{
+  action: 'getAllReputation'
+}
+```
+
+**Response (Success):**
+```javascript
+{
+  "192.168.1.1:8080": {
+    ip: "192.168.1.1",
+    port: 8080,
+    ipPort: "192.168.1.1:8080",
+    country: "Germany",
+    type: "HTTPS",
+    totalTests: 10,
+    successes: 8,
+    failures: 2,
+    successRate: 80,
+    avgLatency: 45,
+    reputationScore: 75,
+    lastTested: 1699999999999
+  }
+}
+```
+
+---
+
+### testProxyTampering
+
+Tests a proxy for tampering/MITM attacks.
+
+**Direction:** popup.js → background.js
+
+**Request:**
+```javascript
+{
+  action: 'testProxyTampering',
+  proxy: { ipPort: "192.168.1.1:8080" }
+}
+```
+
+**Response:**
+```javascript
+{
+  tampered: false,
+  suspicious: false,
+  details: "Certificate validation passed"
+}
+```
+
+---
+
+### getReputationStats
+
+Gets reputation engine statistics.
+
+**Direction:** popup.js → background.js
+
+**Request:**
+```javascript
+{
+  action: 'getReputationStats'
+}
+```
+
+**Response:**
+```javascript
+{
+  totalProxies: 150,
+  trustedProxies: 45,
+  riskyProxies: 12,
+  avgReputationScore: 65
+}
 ```
 
 ---

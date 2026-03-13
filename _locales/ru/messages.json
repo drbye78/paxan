@@ -1,0 +1,558 @@
+{
+  "extension_name": {
+    "message": "ProxyMania - Умный прокси-роутер",
+    "description": "Name of the extension"
+  },
+  "extension_description": {
+    "message": "Маршрутизация трафика браузера через ротируемые прокси с мониторингом работоспособности",
+    "description": "Description of the extension"
+  },
+  "security_warning": {
+    "message": "⚠️ Предупреждение безопасности: Бесплатные прокси могут перехватывать трафик. Не используйте для банковских операций или важных данных. Используйте только HTTPS сайты.",
+    "description": "Security warning banner"
+  },
+  "disconnected": {
+    "message": "Отключено",
+    "description": "Connection status"
+  },
+  "connected": {
+    "message": "Подключено",
+    "description": "Connection status"
+  },
+  "details": {
+    "message": "Подробнее",
+    "description": "Details toggle"
+  },
+  "offline": {
+    "message": "Не в сети",
+    "description": "Health status"
+  },
+  "secure": {
+    "message": "Безопасно",
+    "description": "Security status"
+  },
+  "ip_address_check": {
+    "message": "Проверка IP-адреса",
+    "description": "IP detector section"
+  },
+  "check_ips": {
+    "message": "Проверить IP",
+    "description": "Check IPs button"
+  },
+  "real_ip": {
+    "message": "Реальный IP:",
+    "description": "Real IP label"
+  },
+  "proxy_ip": {
+    "message": "IP прокси:",
+    "description": "Proxy IP label"
+  },
+  "latency": {
+    "message": "Задержка",
+    "description": "Latency label"
+  },
+  "search_placeholder": {
+    "message": "Поиск по стране, IP или типу...",
+    "description": "Search input placeholder"
+  },
+  "all": {
+    "message": "Все",
+    "description": "All tab"
+  },
+  "favorites": {
+    "message": "Избранное",
+    "description": "Favorites tab"
+  },
+  "recent": {
+    "message": "Недавние",
+    "description": "Recent tab"
+  },
+  "best": {
+    "message": "Лучшие",
+    "description": "Best filter"
+  },
+  "fast": {
+    "message": "Быстрые",
+    "description": "Fast filter"
+  },
+  "quick_connect": {
+    "message": "Быстрое подключение",
+    "description": "Quick connect section"
+  },
+  "available_proxies": {
+    "message": "Доступные прокси",
+    "description": "Proxy list title"
+  },
+  "loading_proxies": {
+    "message": "Загрузка прокси...",
+    "description": "Loading text"
+  },
+  "loading_hint": {
+    "message": "Обычно занимает 2-3 секунды",
+    "description": "Loading hint"
+  },
+  "no_proxies_found": {
+    "message": "Прокси не найдены",
+    "description": "Empty state title"
+  },
+  "try_adjusting_filters": {
+    "message": "Попробуйте изменить фильтры или обновить список",
+    "description": "Empty state message"
+  },
+  "refresh": {
+    "message": "Обновить",
+    "description": "Refresh button"
+  },
+  "settings": {
+    "message": "Настройки",
+    "description": "Settings panel title"
+  },
+  "appearance": {
+    "message": "Внешний вид",
+    "description": "Appearance settings group"
+  },
+  "theme": {
+    "message": "Тема",
+    "description": "Theme setting"
+  },
+  "dark": {
+    "message": "Тёмная",
+    "description": "Dark theme"
+  },
+  "light": {
+    "message": "Светлая",
+    "description": "Light theme"
+  },
+  "system": {
+    "message": "Системная",
+    "description": "System theme"
+  },
+  "connection": {
+    "message": "Подключение",
+    "description": "Connection settings group"
+  },
+  "auto_connect_startup": {
+    "message": "Автоподключение при запуске",
+    "description": "Auto-connect on startup"
+  },
+  "auto_failover": {
+    "message": "Автопереключение",
+    "description": "Auto-failover"
+  },
+  "test_before_connect": {
+    "message": "Тестировать перед подключением",
+    "description": "Test before connect"
+  },
+  "auto_refresh": {
+    "message": "Автообновление",
+    "description": "Auto-refresh"
+  },
+  "proxy_source": {
+    "message": "Источник прокси",
+    "description": "Proxy source"
+  },
+  "notifications": {
+    "message": "Уведомления",
+    "description": "Notifications settings group"
+  },
+  "enable_notifications": {
+    "message": "Включить уведомления",
+    "description": "Enable notifications"
+  },
+  "security": {
+    "message": "Безопасность",
+    "description": "Security settings group"
+  },
+  "dns_leak_protection": {
+    "message": "Защита от DNS-утечек",
+    "description": "DNS leak protection"
+  },
+  "webrtc_protection": {
+    "message": "Защита WebRTC",
+    "description": "WebRTC protection"
+  },
+  "advanced_features": {
+    "message": "Дополнительные функции",
+    "description": "Advanced features group"
+  },
+  "per_site_proxy_rules": {
+    "message": "Правила прокси для сайтов",
+    "description": "Per-site proxy rules"
+  },
+  "per_site_description": {
+    "message": "Автопереключение прокси для определённых сайтов",
+    "description": "Per-site rules description"
+  },
+  "manage_rules": {
+    "message": "Управление",
+    "description": "Manage rules button"
+  },
+  "auto_rotation": {
+    "message": "Авторотация",
+    "description": "Auto-rotation"
+  },
+  "auto_rotation_description": {
+    "message": "Автоматическое переключение на свежие прокси",
+    "description": "Auto-rotation description"
+  },
+  "rotation_interval": {
+    "message": "Интервал ротации",
+    "description": "Rotation interval"
+  },
+  "country_blacklist": {
+    "message": "Чёрный список стран",
+    "description": "Country blacklist"
+  },
+  "country_blacklist_description": {
+    "message": "Исключить прокси из этих стран",
+    "description": "Country blacklist description"
+  },
+  "manage": {
+    "message": "Управление",
+    "description": "Manage button"
+  },
+  "data": {
+    "message": "Данные",
+    "description": "Data settings group"
+  },
+  "import": {
+    "message": "Импорт",
+    "description": "Import button"
+  },
+  "export": {
+    "message": "Экспорт",
+    "description": "Export button"
+  },
+  "clear_all": {
+    "message": "Очистить всё",
+    "description": "Clear all button"
+  },
+  "statistics": {
+    "message": "Статистика",
+    "description": "Statistics panel title"
+  },
+  "proxies_used": {
+    "message": "Использовано прокси",
+    "description": "Proxies used stat"
+  },
+  "connected_time": {
+    "message": "Время подключения",
+    "description": "Connection time stat"
+  },
+  "success_rate": {
+    "message": "Успешных подключений",
+    "description": "Success rate stat"
+  },
+  "top_countries": {
+    "message": "Популярные страны",
+    "description": "Top countries section"
+  },
+  "recent_connections": {
+    "message": "Недавние подключения",
+    "description": "Recent connections section"
+  },
+  "more_actions": {
+    "message": "Дополнительные действия",
+    "description": "More actions button tooltip"
+  },
+  "statistics_menu": {
+    "message": "Статистика",
+    "description": "Statistics menu item"
+  },
+  "favorites_menu": {
+    "message": "Избранное",
+    "description": "Favorites menu item"
+  },
+  "apply_rule_site": {
+    "message": "Применить правило для сайта",
+    "description": "Apply rule for site menu item"
+  },
+  "toggle_theme": {
+    "message": "Сменить тему",
+    "description": "Toggle theme menu item"
+  },
+  "proxy_manager": {
+    "message": "Менеджер прокси",
+    "description": "Logo badge"
+  },
+  "excellent": {
+    "message": "Отлично",
+    "description": "Excellent quality"
+  },
+  "good": {
+    "message": "Хорошо",
+    "description": "Good quality"
+  },
+  "fair": {
+    "message": "Нормально",
+    "description": "Fair quality"
+  },
+  "poor": {
+    "message": "Плохо",
+    "description": "Poor quality"
+  },
+  "connect": {
+    "message": "Подключить",
+    "description": "Connect button"
+  },
+  "disconnect": {
+    "message": "Отключить",
+    "description": "Disconnect button"
+  },
+  "connected_to": {
+    "message": "Подключено к $COUNTRY",
+    "description": "Connected to country message"
+  },
+  "connection_failed": {
+    "message": "Ошибка подключения",
+    "description": "Connection failed message"
+  },
+  "proxy_test_failed": {
+    "message": "Тест прокси не пройден",
+    "description": "Proxy test failed"
+  },
+  "disconnected_message": {
+    "message": "Отключено",
+    "description": "Disconnected message"
+  },
+  "no_fast_proxies": {
+    "message": "Нет быстрых прокси",
+    "description": "No fast proxies available"
+  },
+  "proxy_source_changed": {
+    "message": "Источник прокси изменён на $SOURCE",
+    "description": "Proxy source changed"
+  },
+  "auto_connect_enabled": {
+    "message": "Автоподключение включено",
+    "description": "Auto-connect enabled"
+  },
+  "auto_connect_disabled": {
+    "message": "Автоподключение выключено",
+    "description": "Auto-connect disabled"
+  },
+  "dns_protection_enabled": {
+    "message": "Защита от DNS-утечек включена",
+    "description": "DNS protection enabled"
+  },
+  "dns_protection_disabled": {
+    "message": "Защита от DNS-утечек выключена",
+    "description": "DNS protection disabled"
+  },
+  "webrtc_protection_enabled": {
+    "message": "Защита WebRTC включена",
+    "description": "WebRTC protection enabled"
+  },
+  "webrtc_protection_disabled": {
+    "message": "Защита WebRTC выключена",
+    "description": "WebRTC protection disabled"
+  },
+  "security_status": {
+    "message": "Безопасность: $STATUS | DNS: $DNS | WebRTC: $WEBRTC",
+    "description": "Security status toast"
+  },
+  "warning_proxy_ip_match": {
+    "message": "⚠️ Внимание: IP прокси совпадает с реальным IP!",
+    "description": "Warning proxy IP matches real IP"
+  },
+  "proxy_working": {
+    "message": "✓ Прокси работает корректно",
+    "description": "Proxy is working correctly"
+  },
+  "ip_check_failed": {
+    "message": "Ошибка проверки IP",
+    "description": "IP check failed"
+  },
+  "disconnect_undo": {
+    "message": "Отменить",
+    "description": "Undo button"
+  },
+  "site_rules_saved": {
+    "message": "Правила для сайтов сохранены",
+    "description": "Site rules saved"
+  },
+  "failed_save_rules": {
+    "message": "Не удалось сохранить правила",
+    "description": "Failed to save rules"
+  },
+  "rule_added": {
+    "message": "Правило добавлено",
+    "description": "Rule added"
+  },
+  "rule_deleted": {
+    "message": "Правило удалено",
+    "description": "Rule deleted"
+  },
+  "rule_enabled": {
+    "message": "Правило включено",
+    "description": "Rule enabled"
+  },
+  "rule_disabled": {
+    "message": "Правило выключено",
+    "description": "Rule disabled"
+  },
+  "fill_all_fields": {
+    "message": "Пожалуйста, заполните все поля",
+    "description": "Fill all fields warning"
+  },
+  "no_proxies_for_country": {
+    "message": "Нет прокси для $COUNTRY",
+    "description": "No proxies for country"
+  },
+  "add_site_rule": {
+    "message": "Добавить правило",
+    "description": "Add site rule"
+  },
+  "website_url": {
+    "message": "URL сайта (например, netflix.com)",
+    "description": "Website URL label"
+  },
+  "pattern_type": {
+    "message": "Тип соответствия",
+    "description": "Pattern type label"
+  },
+  "exact_match": {
+    "message": "Точное совпадение (netflix.com)",
+    "description": "Exact match option"
+  },
+  "wildcard": {
+    "message": "Шаблон (*.netflix.com)",
+    "description": "Wildcard option"
+  },
+  "contains": {
+    "message": "Содержит (*netflix*)",
+    "description": "Contains option"
+  },
+  "regex": {
+    "message": "Регулярное выражение",
+    "description": "Regex option"
+  },
+  "priority": {
+    "message": "Приоритет (1 = высший)",
+    "description": "Priority label"
+  },
+  "proxy_country": {
+    "message": "Страна прокси",
+    "description": "Proxy country label"
+  },
+  "save": {
+    "message": "Сохранить",
+    "description": "Save button"
+  },
+  "cancel": {
+    "message": "Отмена",
+    "description": "Cancel button"
+  },
+  "auto_rotation_enabled": {
+    "message": "Авторотация включена ($MIN мин)",
+    "description": "Auto-rotation enabled"
+  },
+  "auto_rotation_disabled": {
+    "message": "Авторотация выключена",
+    "description": "Auto-rotation disabled"
+  },
+  "rotation_interval_set": {
+    "message": "Интервал ротации: $MIN мин",
+    "description": "Rotation interval set"
+  },
+  "added_to_blacklist": {
+    "message": "$COUNTRY добавлен в чёрный список",
+    "description": "Added to blacklist"
+  },
+  "removed_from_blacklist": {
+    "message": "$COUNTRY удалён из чёрного списка",
+    "description": "Removed from blacklist"
+  },
+  "connect_to_proxy_first": {
+    "message": "Сначала подключитесь к прокси",
+    "description": "Connect to proxy first"
+  },
+  "health_monitoring_started": {
+    "message": "Мониторинг состояния запущен",
+    "description": "Health monitoring started"
+  },
+  "health_monitoring_stopped": {
+    "message": "Мониторинг состояния остановлен",
+    "description": "Health monitoring stopped"
+  },
+  "quality_latency": {
+    "message": "Качество: $QUALITY | Задержка: $LATENCYмс",
+    "description": "Quality and latency toast"
+  },
+  "no_active_tab": {
+    "message": "Нет активной вкладки",
+    "description": "No active tab"
+  },
+  "invalid_tab_url": {
+    "message": "Неверный URL вкладки",
+    "description": "Invalid tab URL"
+  },
+  "no_rule_for_site": {
+    "message": "Нет правила для этого сайта. Создайте его в Настройках.",
+    "description": "No rule for site"
+  },
+  "no_available_proxies": {
+    "message": "Нет доступных прокси для $COUNTRY",
+    "description": "No available proxies"
+  },
+  "applied_proxy_for": {
+    "message": "Применён прокси $COUNTRY для $SITE",
+    "description": "Applied proxy for site"
+  },
+  "failed_apply_rule": {
+    "message": "Не удалось применить правило",
+    "description": "Failed to apply rule"
+  },
+  "powered_by": {
+    "message": "Работает на",
+    "description": "Powered by text"
+  },
+  "loading": {
+    "message": "Загрузка...",
+    "description": "Loading text"
+  },
+  "checking": {
+    "message": "Проверка...",
+    "description": "Checking text"
+  },
+  "unable_to_detect": {
+    "message": "Не удалось определить",
+    "description": "Unable to detect"
+  },
+  "not_connected": {
+    "message": "Не подключено",
+    "description": "Not connected"
+  },
+  "proxy_blocked": {
+    "message": "Прокси заблокирован",
+    "description": "Proxy blocked"
+  },
+  "all_countries": {
+    "message": "Все страны",
+    "description": "All countries filter"
+  },
+  "no_rules_yet": {
+    "message": "Правил пока нет. Нажмите \"Управление\" чтобы добавить.",
+    "description": "No rules yet message"
+  },
+  "add_country": {
+    "message": "+ Добавить страну...",
+    "description": "Add country option"
+  },
+  "minute": {
+    "message": "мин",
+    "description": "Minute abbreviation"
+  },
+  "hour": {
+    "message": "ч",
+    "description": "Hour abbreviation"
+  },
+  "minutes": {
+    "message": "мин",
+    "description": "Minutes plural"
+  },
+  "seconds": {
+    "message": "сек",
+    "description": "Seconds abbreviation"
+  }
+}

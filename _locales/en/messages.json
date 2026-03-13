@@ -1,0 +1,562 @@
+{
+  "extension_name": {
+    "message": "ProxyMania - Smart Proxy Router",
+    "description": "Name of the extension"
+  },
+  "extension_description": {
+    "message": "Route browser traffic through rotating proxies with health monitoring and failover",
+    "description": "Description of the extension"
+  },
+  "security_warning": {
+    "message": "⚠️ Security Notice: Free proxies can intercept traffic. Do not use for banking or sensitive logins. Use HTTPS sites only.",
+    "description": "Security warning banner"
+  },
+  "disconnected": {
+    "message": "Disconnected",
+    "description": "Connection status"
+  },
+  "connected": {
+    "message": "Connected",
+    "description": "Connection status"
+  },
+  "details": {
+    "message": "Details",
+    "description": "Details toggle"
+  },
+  "offline": {
+    "message": "Offline",
+    "description": "Health status"
+  },
+  "secure": {
+    "message": "Secure",
+    "description": "Security status"
+  },
+  "ip_address_check": {
+    "message": "IP Address Check",
+    "description": "IP detector section"
+  },
+  "check_ips": {
+    "message": "Check IPs",
+    "description": "Check IPs button"
+  },
+  "real_ip": {
+    "message": "Real IP:",
+    "description": "Real IP label"
+  },
+  "proxy_ip": {
+    "message": "Proxy IP:",
+    "description": "Proxy IP label"
+  },
+  "latency": {
+    "message": "Latency",
+    "description": "Latency label"
+  },
+  "search_placeholder": {
+    "message": "Search by country, IP, or type...",
+    "description": "Search input placeholder"
+  },
+  "all": {
+    "message": "All",
+    "description": "All tab"
+  },
+  "favorites": {
+    "message": "Favorites",
+    "description": "Favorites tab"
+  },
+  "recent": {
+    "message": "Recent",
+    "description": "Recent tab"
+  },
+  "best": {
+    "message": "Best",
+    "description": "Best filter"
+  },
+  "fast": {
+    "message": "Fast",
+    "description": "Fast filter"
+  },
+  "quick_connect": {
+    "message": "Quick Connect",
+    "description": "Quick connect section"
+  },
+  "available_proxies": {
+    "message": "Available Proxies",
+    "description": "Proxy list title"
+  },
+  "loading_proxies": {
+    "message": "Loading proxies...",
+    "description": "Loading text"
+  },
+  "loading_hint": {
+    "message": "Usually takes 2-3 seconds",
+    "description": "Loading hint"
+  },
+  "no_proxies_found": {
+    "message": "No proxies found",
+    "description": "Empty state title"
+  },
+  "try_adjusting_filters": {
+    "message": "Try adjusting your filters or refresh the list",
+    "description": "Empty state message"
+  },
+  "refresh": {
+    "message": "Refresh",
+    "description": "Refresh button"
+  },
+  "settings": {
+    "message": "Settings",
+    "description": "Settings panel title"
+  },
+  "appearance": {
+    "message": "Appearance",
+    "description": "Appearance settings group"
+  },
+  "theme": {
+    "message": "Theme",
+    "description": "Theme setting"
+  },
+  "dark": {
+    "message": "Dark",
+    "description": "Dark theme"
+  },
+  "light": {
+    "message": "Light",
+    "description": "Light theme"
+  },
+  "system": {
+    "message": "System",
+    "description": "System theme"
+  },
+  "language": {
+    "message": "Language",
+    "description": "Language setting"
+  },
+  "connection": {
+    "message": "Connection",
+    "description": "Connection settings group"
+  },
+  "auto_connect_startup": {
+    "message": "Auto-Connect on Startup",
+    "description": "Auto-connect on startup"
+  },
+  "auto_failover": {
+    "message": "Auto-Failover",
+    "description": "Auto-failover"
+  },
+  "test_before_connect": {
+    "message": "Test Before Connect",
+    "description": "Test before connect"
+  },
+  "auto_refresh": {
+    "message": "Auto-Refresh",
+    "description": "Auto-refresh"
+  },
+  "proxy_source": {
+    "message": "Proxy Source",
+    "description": "Proxy source"
+  },
+  "notifications": {
+    "message": "Notifications",
+    "description": "Notifications settings group"
+  },
+  "enable_notifications": {
+    "message": "Enable Notifications",
+    "description": "Enable notifications"
+  },
+  "security": {
+    "message": "Security",
+    "description": "Security settings group"
+  },
+  "dns_leak_protection": {
+    "message": "DNS Leak Protection",
+    "description": "DNS leak protection"
+  },
+  "webrtc_protection": {
+    "message": "WebRTC Protection",
+    "description": "WebRTC protection"
+  },
+  "advanced_features": {
+    "message": "Advanced Features",
+    "description": "Advanced features group"
+  },
+  "per_site_proxy_rules": {
+    "message": "Per-Site Proxy Rules",
+    "description": "Per-site proxy rules"
+  },
+  "per_site_description": {
+    "message": "Auto-switch proxies for specific websites",
+    "description": "Per-site rules description"
+  },
+  "manage_rules": {
+    "message": "Manage Rules",
+    "description": "Manage rules button"
+  },
+  "auto_rotation": {
+    "message": "Auto-Rotation",
+    "description": "Auto-rotation"
+  },
+  "auto_rotation_description": {
+    "message": "Automatically switch to fresh proxies",
+    "description": "Auto-rotation description"
+  },
+  "rotation_interval": {
+    "message": "Rotation Interval",
+    "description": "Rotation interval"
+  },
+  "country_blacklist": {
+    "message": "Country Blacklist",
+    "description": "Country blacklist"
+  },
+  "country_blacklist_description": {
+    "message": "Exclude proxies from these countries",
+    "description": "Country blacklist description"
+  },
+  "manage": {
+    "message": "Manage",
+    "description": "Manage button"
+  },
+  "data": {
+    "message": "Data",
+    "description": "Data settings group"
+  },
+  "import": {
+    "message": "Import",
+    "description": "Import button"
+  },
+  "export": {
+    "message": "Export",
+    "description": "Export button"
+  },
+  "clear_all": {
+    "message": "Clear All",
+    "description": "Clear all button"
+  },
+  "statistics": {
+    "message": "Statistics",
+    "description": "Statistics panel title"
+  },
+  "proxies_used": {
+    "message": "Proxies Used",
+    "description": "Proxies used stat"
+  },
+  "connected_time": {
+    "message": "Connected",
+    "description": "Connection time stat"
+  },
+  "success_rate": {
+    "message": "Success Rate",
+    "description": "Success rate stat"
+  },
+  "top_countries": {
+    "message": "Top Countries",
+    "description": "Top countries section"
+  },
+  "recent_connections": {
+    "message": "Recent Connections",
+    "description": "Recent connections section"
+  },
+  "more_actions": {
+    "message": "More actions",
+    "description": "More actions button tooltip"
+  },
+  "statistics_menu": {
+    "message": "Statistics",
+    "description": "Statistics menu item"
+  },
+  "favorites_menu": {
+    "message": "Favorites",
+    "description": "Favorites menu item"
+  },
+  "apply_rule_site": {
+    "message": "Apply Rule for This Site",
+    "description": "Apply rule for site menu item"
+  },
+  "toggle_theme": {
+    "message": "Toggle Theme",
+    "description": "Toggle theme menu item"
+  },
+  "proxy_manager": {
+    "message": "Proxy Manager",
+    "description": "Logo badge"
+  },
+  "excellent": {
+    "message": "Excellent",
+    "description": "Excellent quality"
+  },
+  "good": {
+    "message": "Good",
+    "description": "Good quality"
+  },
+  "fair": {
+    "message": "Fair",
+    "description": "Fair quality"
+  },
+  "poor": {
+    "message": "Poor",
+    "description": "Poor quality"
+  },
+  "connect": {
+    "message": "Connect",
+    "description": "Connect button"
+  },
+  "disconnect": {
+    "message": "Disconnect",
+    "description": "Disconnect button"
+  },
+  "connected_to": {
+    "message": "Connected to $COUNTRY",
+    "description": "Connected to country message"
+  },
+  "connection_failed": {
+    "message": "Connection failed",
+    "description": "Connection failed message"
+  },
+  "proxy_test_failed": {
+    "message": "Proxy test failed",
+    "description": "Proxy test failed"
+  },
+  "disconnected_message": {
+    "message": "Disconnected",
+    "description": "Disconnected message"
+  },
+  "no_fast_proxies": {
+    "message": "No fast proxies available",
+    "description": "No fast proxies available"
+  },
+  "proxy_source_changed": {
+    "message": "Proxy source changed to $SOURCE",
+    "description": "Proxy source changed"
+  },
+  "auto_connect_enabled": {
+    "message": "Auto-connect enabled",
+    "description": "Auto-connect enabled"
+  },
+  "auto_connect_disabled": {
+    "message": "Auto-connect disabled",
+    "description": "Auto-connect disabled"
+  },
+  "dns_protection_enabled": {
+    "message": "DNS leak protection enabled",
+    "description": "DNS protection enabled"
+  },
+  "dns_protection_disabled": {
+    "message": "DNS leak protection disabled",
+    "description": "DNS protection disabled"
+  },
+  "webrtc_protection_enabled": {
+    "message": "WebRTC protection enabled",
+    "description": "WebRTC protection enabled"
+  },
+  "webrtc_protection_disabled": {
+    "message": "WebRTC protection disabled",
+    "description": "WebRTC protection disabled"
+  },
+  "security_status": {
+    "message": "Security: $STATUS | DNS: $DNS | WebRTC: $WEBRTC",
+    "description": "Security status toast"
+  },
+  "warning_proxy_ip_match": {
+    "message": "⚠️ Warning: Proxy IP matches real IP!",
+    "description": "Warning proxy IP matches real IP"
+  },
+  "proxy_working": {
+    "message": "✓ Proxy is working correctly",
+    "description": "Proxy is working correctly"
+  },
+  "ip_check_failed": {
+    "message": "IP check failed",
+    "description": "IP check failed"
+  },
+  "disconnect_undo": {
+    "message": "Undo",
+    "description": "Undo button"
+  },
+  "site_rules_saved": {
+    "message": "Site rules saved",
+    "description": "Site rules saved"
+  },
+  "failed_save_rules": {
+    "message": "Failed to save rules",
+    "description": "Failed to save rules"
+  },
+  "rule_added": {
+    "message": "Rule added",
+    "description": "Rule added"
+  },
+  "rule_deleted": {
+    "message": "Rule deleted",
+    "description": "Rule deleted"
+  },
+  "rule_enabled": {
+    "message": "Rule enabled",
+    "description": "Rule enabled"
+  },
+  "rule_disabled": {
+    "message": "Rule disabled",
+    "description": "Rule disabled"
+  },
+  "fill_all_fields": {
+    "message": "Please fill all fields",
+    "description": "Fill all fields warning"
+  },
+  "no_proxies_for_country": {
+    "message": "No proxies for $COUNTRY",
+    "description": "No proxies for country"
+  },
+  "add_site_rule": {
+    "message": "Add Site Rule",
+    "description": "Add site rule"
+  },
+  "website_url": {
+    "message": "Website URL (e.g., netflix.com)",
+    "description": "Website URL label"
+  },
+  "pattern_type": {
+    "message": "Pattern Type",
+    "description": "Pattern type label"
+  },
+  "exact_match": {
+    "message": "Exact Match (netflix.com)",
+    "description": "Exact match option"
+  },
+  "wildcard": {
+    "message": "Wildcard (*.netflix.com)",
+    "description": "Wildcard option"
+  },
+  "contains": {
+    "message": "Contains (*netflix*)",
+    "description": "Contains option"
+  },
+  "regex": {
+    "message": "Regex Pattern",
+    "description": "Regex option"
+  },
+  "priority": {
+    "message": "Priority (1 = highest)",
+    "description": "Priority label"
+  },
+  "proxy_country": {
+    "message": "Proxy Country",
+    "description": "Proxy country label"
+  },
+  "save": {
+    "message": "Save",
+    "description": "Save button"
+  },
+  "cancel": {
+    "message": "Cancel",
+    "description": "Cancel button"
+  },
+  "auto_rotation_enabled": {
+    "message": "Auto-rotation enabled ($MIN min)",
+    "description": "Auto-rotation enabled"
+  },
+  "auto_rotation_disabled": {
+    "message": "Auto-rotation disabled",
+    "description": "Auto-rotation disabled"
+  },
+  "rotation_interval_set": {
+    "message": "Rotation interval: $MIN min",
+    "description": "Rotation interval set"
+  },
+  "added_to_blacklist": {
+    "message": "$COUNTRY added to blacklist",
+    "description": "Added to blacklist"
+  },
+  "removed_from_blacklist": {
+    "message": "$COUNTRY removed from blacklist",
+    "description": "Removed from blacklist"
+  },
+  "connect_to_proxy_first": {
+    "message": "Connect to a proxy first",
+    "description": "Connect to proxy first"
+  },
+  "health_monitoring_started": {
+    "message": "Health monitoring started",
+    "description": "Health monitoring started"
+  },
+  "health_monitoring_stopped": {
+    "message": "Health monitoring stopped",
+    "description": "Health monitoring stopped"
+  },
+  "quality_latency": {
+    "message": "Quality: $QUALITY | Latency: $LATENCYms",
+    "description": "Quality and latency toast"
+  },
+  "no_active_tab": {
+    "message": "No active tab found",
+    "description": "No active tab"
+  },
+  "invalid_tab_url": {
+    "message": "Invalid tab URL",
+    "description": "Invalid tab URL"
+  },
+  "no_rule_for_site": {
+    "message": "No rule for this site. Create one in Settings.",
+    "description": "No rule for site"
+  },
+  "no_available_proxies": {
+    "message": "No available proxies for $COUNTRY",
+    "description": "No available proxies"
+  },
+  "applied_proxy_for": {
+    "message": "Applied $COUNTRY proxy for $SITE",
+    "description": "Applied proxy for site"
+  },
+  "failed_apply_rule": {
+    "message": "Failed to apply rule",
+    "description": "Failed to apply rule"
+  },
+  "powered_by": {
+    "message": "Powered by",
+    "description": "Powered by text"
+  },
+  "loading": {
+    "message": "Loading...",
+    "description": "Loading text"
+  },
+  "checking": {
+    "message": "Checking...",
+    "description": "Checking text"
+  },
+  "unable_to_detect": {
+    "message": "Unable to detect",
+    "description": "Unable to detect"
+  },
+  "not_connected": {
+    "message": "Not connected",
+    "description": "Not connected"
+  },
+  "proxy_blocked": {
+    "message": "Proxy blocked",
+    "description": "Proxy blocked"
+  },
+  "all_countries": {
+    "message": "All countries",
+    "description": "All countries filter"
+  },
+  "no_rules_yet": {
+    "message": "No rules yet. Click Manage to add one.",
+    "description": "No rules yet message"
+  },
+  "add_country": {
+    "message": "+ Add country...",
+    "description": "Add country option"
+  },
+  "minute": {
+    "message": "min",
+    "description": "Minute abbreviation"
+  },
+  "hour": {
+    "message": "h",
+    "description": "Hour abbreviation"
+  },
+  "minutes": {
+    "message": "min",
+    "description": "Minutes plural"
+  },
+  "seconds": {
+    "message": "sec",
+    "description": "Seconds abbreviation"
+  }
+}

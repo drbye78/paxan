@@ -3,32 +3,55 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ProxyMania VPN</title>
+  <meta name="description" content="Smart Proxy Router for Chrome - Route browser traffic through rotating proxies">
+  <title>ProxyMania - Smart Proxy Router</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="container">
-    <!-- Smart Header (Task 3) -->
-    <header class="header">
+  <!-- Skip link for keyboard users -->
+  <a href="#proxyList" class="skip-link">Skip to proxy list</a>
+  
+  <div class="container" role="application" aria-label="ProxyMania Proxy Manager">
+    <!-- Security Warning Banner -->
+    <div class="security-warning" id="securityWarning" role="alert" aria-live="polite">
+      <svg class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <span class="warning-text">
+        <strong>⚠️ Security Notice:</strong> Free proxies can intercept traffic. Do not use for banking or sensitive logins. Use HTTPS sites only.
+      </span>
+      <button class="warning-dismiss" id="warningDismiss" aria-label="Dismiss security warning">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Smart Header -->
+    <header class="header" role="banner">
       <div class="header-left">
-        <div class="logo">
-          <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div class="logo" role="img" aria-label="ProxyMania Logo">
+          <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           </svg>
           <span class="logo-text">ProxyMania</span>
+          <span class="logo-badge">Proxy Manager</span>
         </div>
       </div>
-      <div class="header-right">
+      <div class="header-right" role="navigation" aria-label="Header actions">
         <!-- Overflow menu button -->
-        <button class="icon-btn" id="overflowBtn" title="More actions">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="icon-btn" id="overflowBtn" title="More actions" aria-label="More actions" aria-haspopup="true">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <circle cx="12" cy="12" r="1"/>
             <circle cx="12" cy="5" r="1"/>
             <circle cx="12" cy="19" r="1"/>
           </svg>
         </button>
-        <button class="icon-btn" id="settingsBtn" title="Settings">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Open settings">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">>
             <circle cx="12" cy="12" r="3"/>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
@@ -118,6 +141,28 @@
             </svg>
             <span class="indicator-text">Secure</span>
           </div>
+          <div class="indicator" id="failoverIndicator" style="display: none;">
+            <svg class="indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6M1 20v-6h6"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            <span class="indicator-text">Auto-Failover</span>
+          </div>
+          <div class="indicator" id="dnsIndicator" title="DNS Leak Protection">
+            <svg class="indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <span class="indicator-text">DNS: On</span>
+          </div>
+          <div class="indicator" id="webrtcIndicator" title="WebRTC Protection">
+            <svg class="indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="23 7 16 12 23 17 23 7"/>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
+            <span class="indicator-text">WebRTC: On</span>
+          </div>
         </div>
 
         <!-- IP Detector (collapsible) -->
@@ -150,26 +195,28 @@
     </div>
 
     <!-- Smart Filters Bar with Integrated Tabs -->
-    <div class="smart-filters">
+    <div class="smart-filters" role="search" aria-label="Proxy filters">
       <div class="search-wrapper">
-        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <circle cx="11" cy="11" r="8"/>
           <line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
-        <input type="text" id="proxySearch" class="search-input" placeholder="Search by country, IP, or type...">
-        <kbd class="search-shortcut">/</kbd>
+        <input type="text" id="proxySearch" class="search-input" placeholder="Search by country, IP, or type..." aria-label="Search proxies">
+        <kbd class="search-shortcut" aria-label="Press slash to search">/</kbd>
       </div>
-      <div class="tab-chips" id="tabChips">
-        <button class="chip chip-active" data-tab="all">All</button>
-        <button class="chip" data-tab="favorites">⭐</button>
-        <button class="chip" data-tab="recent">🕐</button>
+      <div class="tab-chips" id="tabChips" role="tablist" aria-label="Proxy categories">
+        <button class="chip chip-active" data-tab="all" role="tab" aria-selected="true">All</button>
+        <button class="chip" data-tab="favorites" role="tab" aria-selected="false">⭐</button>
+        <button class="chip" data-tab="recent" role="tab" aria-selected="false">🕐</button>
       </div>
-      <div class="filter-chips" id="filterChips">
-        <button class="chip chip-active" data-filter="speed" data-value="all">All</button>
-        <button class="chip" data-filter="speed" data-value="best">⭐ Best</button>
-        <button class="chip" data-filter="speed" data-value="fast">⚡ &lt;100ms</button>
-        <button class="chip" data-filter="type" data-value="HTTPS">HTTPS</button>
-        <button class="chip" data-filter="type" data-value="SOCKS5">SOCKS5</button>
+      <div class="filter-chips" id="filterChips" role="group" aria-label="Filter proxies">
+        <button class="chip chip-active" data-filter="speed" data-value="all" aria-pressed="true">All</button>
+        <button class="chip" data-filter="speed" data-value="best" aria-pressed="false">⭐ Best</button>
+        <button class="chip" data-filter="speed" data-value="fast" aria-pressed="false">⚡ &lt;100ms</button>
+        <button class="chip" data-filter="trust" data-value="trusted" aria-pressed="false">🟢 Trusted</button>
+        <button class="chip" data-filter="trust" data-value="tampered" aria-pressed="false">⚠️ Tampered</button>
+        <button class="chip" data-filter="type" data-value="HTTPS" aria-pressed="false">HTTPS</button>
+        <button class="chip" data-filter="type" data-value="SOCKS5" aria-pressed="false">SOCKS5</button>
       </div>
     </div>
 
@@ -186,9 +233,12 @@
 
     <!-- Proxy List Container -->
     <div class="proxy-list-container">
+      <!-- Live region for screen readers -->
+      <div id="liveRegion" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+      
       <div class="proxy-list-header">
         <span id="listTitle">Available Proxies</span>
-        <span class="proxy-count" id="proxyCount">0</span>
+        <span class="proxy-count" id="proxyCount" aria-label="Proxy count">0</span>
       </div>
       
       <!-- Loading State (Task 7) -->
@@ -207,7 +257,7 @@
       </div>
       
       <!-- Proxy Grid (Task 8) -->
-      <div class="proxy-list" id="proxyList"></div>
+      <div class="proxy-list" id="proxyList" role="list" aria-label="Proxy servers list"></div>
     </div>
 
     <!-- Toast Container -->
@@ -262,6 +312,15 @@
               <option value="dark">Dark</option>
               <option value="light">Light</option>
               <option value="auto">System</option>
+            </select>
+          </div>
+          <div class="setting">
+            <div class="setting-info">
+              <span class="setting-label">Language</span>
+            </div>
+            <select id="languageSelect" class="dropdown dropdown-sm">
+              <option value="ru">Русский</option>
+              <option value="en">English</option>
             </select>
           </div>
         </div>
@@ -435,6 +494,11 @@
           <div id="topCountriesList" class="stats-list"></div>
         </div>
 
+        <div class="stats-section" id="suspiciousProxiesSection" style="display: none;">
+          <h4 style="color: #ff5252;">⚠️ Suspicious Proxies</h4>
+          <div id="suspiciousProxiesList" class="stats-list"></div>
+        </div>
+
         <div class="stats-section">
           <h4>Recent Connections</h4>
           <div id="connectionHistoryList" class="stats-list"></div>
@@ -443,6 +507,8 @@
     </div>
   </div>
 
+  <script src="src/popup/virtual-scroller.js"></script>
+  <script src="src/popup/i18n.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

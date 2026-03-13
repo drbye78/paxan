@@ -1,6 +1,6 @@
-# User Guide - ProxyMania VPN
+# User Guide - ProxyMania - Smart Proxy Router
 
-Welcome to the ProxyMania VPN user guide. This document provides detailed instructions for using the extension effectively.
+Welcome to the ProxyMania Smart Proxy Router user guide. This document provides detailed instructions for using the extension effectively.
 
 ## Table of Contents
 
@@ -30,22 +30,24 @@ Welcome to the ProxyMania VPN user guide. This document provides detailed instru
 
 ```
 ┌─────────────────────────────────────┐
-│  🛡️ ProxyMania VPN          ⚙     │
+│  ⚠️ Security Notice           [X]  │  <- Security Banner
 ├─────────────────────────────────────┤
-│  ● Disconnected           [Connect] │
+│  🛡️ ProxyMania          ⚙️    ⋮    │  <- Header
+├─────────────────────────────────────┤
+│  ● Disconnected           [Connect] │  <- Connection Card
+│  ── Details ▼                     │  <- Collapsible
+│    🌐 Offline  🔒 Secure           │
+├─────────────────────────────────────┤
+│  🔍 Search...                    /  │  <- Search
+│  [All] [⭐] [🕐]                  │  <- Tabs
+│  [All] [Best] [Fast] [🟢] [HTTPS] │  <- Filters
+├─────────────────────────────────────┤
 │  Quick Connect ▼                    │
-│  ┌────┐ ┌────┐ ┌────┐ ┌────┐      │
-│  │ 🇩🇪 │ │ 🇫🇷 │ │ 🇬🇧 │ │ 🇯🇵 │      │
-│  └────┘ └────┘ └────┘ └────┘      │
 ├─────────────────────────────────────┤
-│  [All] [⭐] [🕐]                   │
-│  🔍 Search...                       │
-│  [All] [HTTPS] [SOCKS5]            │
-├─────────────────────────────────────┤
-│  Available Proxies           [100+]  │
+│  Available Proxies            [150] │  <- Header
 │  ┌─────────────────────────────┐   │
-│  │ 🇺🇸 192.168.1.1            │   │
-│  │ USA • HTTPS • 45ms         │   │
+│  │ 🇺🇸 192.168.1.1 🟢⭐      │   │
+│  │ USA • HTTPS • 45ms • ✓    │   │
 │  └─────────────────────────────┘   │
 └─────────────────────────────────────┘
 ```
@@ -150,6 +152,9 @@ Blacklisted countries are filtered from all proxy lists.
 |--------|-------|---------|
 | ✓ | Green | Verified < 3 minutes ago - **Recommended** |
 | ⚠ | Yellow | Verified > 3 minutes ago - May be unstable |
+| 🟢 | Green badge | Trusted proxy (score 70+) |
+| 🟡 | Yellow badge | Unverified proxy (score 40-69) |
+| 🔴 | Red badge | Risky proxy (score < 40) |
 | (none) | — | No verification data available |
 
 ---

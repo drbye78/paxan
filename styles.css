@@ -28,6 +28,47 @@
   --border: rgba(255, 255, 255, 0.06);
   --border-active: rgba(99, 102, 241, 0.4);
 
+/* Skip link for accessibility */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--accent);
+  color: white;
+  padding: 8px 16px;
+  z-index: 1000;
+  text-decoration: none;
+  border-radius: 0 0 4px 0;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Focus visible for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.proxy-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
@@ -107,6 +148,78 @@ body {
 .container::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 3px;
+}
+
+/* ===== Security Warning Banner ===== */
+.security-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  color: var(--warning);
+  margin-bottom: 8px;
+  animation: slideDown 0.3s ease;
+}
+
+.security-warning.hidden {
+  display: none;
+}
+
+.warning-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.warning-text {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.warning-text strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.warning-dismiss {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--warning);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.warning-dismiss:hover {
+  background: rgba(245, 158, 11, 0.2);
+}
+
+.warning-dismiss svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ===== Logo Badge ===== */
+.logo-badge {
+  padding: 2px 6px;
+  background: var(--accent);
+  border-radius: var(--radius-sm);
+  font-size: 9px;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 6px;
 }
 
 /* ===== Header (Task 3 - Smart Header) ===== */
@@ -441,6 +554,12 @@ body {
   background: var(--success-bg);
 }
 
+.indicator.inactive {
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  opacity: 0.6;
+}
+
 .indicator-icon {
   width: 14px;
   height: 14px;
@@ -752,6 +871,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1;
+  min-height: 200px;
+  overflow: hidden;
 }
 
 .proxy-list-header {
@@ -832,6 +954,9 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: 8px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .proxy-item {
@@ -930,6 +1055,46 @@ body {
 
 .proxy-status.warning {
   color: var(--warning);
+}
+
+/* Trust Score Badges (v3.0) */
+.trust-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.trust-badge.trusted {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.trust-badge.unverified {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.trust-badge.risky {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.trust-badge.tampered {
+  background: rgba(255, 82, 82, 0.2);
+  color: #ff5252;
+  border: 1px solid rgba(255, 82, 82, 0.4);
+  animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-warning {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 /* ===== Buttons ===== */

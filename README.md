@@ -1,12 +1,15 @@
-# ProxyMania VPN - Chrome Extension
+# ProxyMania - Smart Proxy Router
 
-[![Version](https://img.shields.io/badge/version-2.3.0-blue?style=flat-square)](https://github.com)
+[![Version](https://img.shields.io/badge/version-3.0.0-blue?style=flat-square)](https://github.com)
 [![Manifest V3](https://img.shields.io/badge/manifest-v3-green?style=flat-square)](https://developer.chrome.com/docs/extensions/mv3/intro/)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/your-org/proxy-vpn-extension?style=flat-square)](https://github.com/your-org/proxy-vpn-extension/releases)
 
-A professional-grade free VPN service Chrome extension that routes your traffic through proxy servers from [ProxyMania](https://proxymania.su/free-proxy) or [ProxyScrape](https://proxyscrape.com/). Features intelligent proxy selection, real-time monitoring, and a beautiful modern UI.
+A professional-grade proxy manager Chrome extension that routes your traffic through rotating proxy servers from [ProxyMania](https://proxymania.su/free-proxy) or [ProxyScrape](https://proxyscrape.com/). Features intelligent proxy selection, real-time monitoring, reputation scoring, and tampering detection.
 
-![Features](https://img.shields.io/badge/features-proxy%20testing%20%7C%20auto--failover%20%7C%20smart%20recommendations-green?style=flat-square)
+**⚠️ Important:** This is NOT a VPN. Free proxies can intercept traffic. Do not use for banking or sensitive logins.
+
+![Features](https://img.shields.io/badge/features-proxy%20testing%20%7C%20auto--failover%20%7C%20reputation%20scoring-green?style=flat-square)
 
 ---
 
@@ -75,10 +78,54 @@ A professional-grade free VPN service Chrome extension that routes your traffic 
 
 ### Production Build
 
+For building distribution packages (ZIP for Chrome Web Store, CRX for sideloading):
+
 ```bash
-# Package for distribution
-# In Chrome: chrome://extensions/ → Pack extension
-# Generates: .crx and .pem files
+# Build both ZIP and CRX packages
+npm run distribute
+
+# Build ZIP only (for Chrome Web Store)
+npm run distribute:zip
+
+# Build CRX only (for sideloading)
+npm run distribute:crx
+```
+
+Packages are created in the `dist/` folder:
+- `dist/proxy-vpn-extension.zip` - Upload to Chrome Web Store
+- `dist/proxy-vpn-extension.crx` - Direct installation
+
+> **Note:** To rebuild the CRX with the latest changes, install `crx3` globally:
+> ```bash
+> npm install -g crx3
+> ```
+
+### Publishing to GitHub Releases
+
+To publish distribution packages to GitHub Releases:
+
+```bash
+# Set your GitHub token (required)
+export GITHUB_TOKEN=ghp_...
+
+# Build and publish release
+npm run release
+
+# Create draft release (for review before publishing)
+npm run release:draft
+
+# Create prerelease
+npm run release:prerelease
+```
+
+**Automatic Releases:** When you push a version tag (e.g., `v1.0.0`), GitHub Actions will automatically build and publish the release:
+
+```bash
+# Update version in package.json
+npm version patch  # or minor, major
+
+# Push tag to trigger automated release
+git push --follow-tags
 ```
 
 ---
@@ -223,6 +270,13 @@ proxy-vpn-extension/
         ├── onboarding.js
         ├── visualization.js
         └── proxyValidator.js
+
+├── dist/                   # Distribution packages (generated)
+│   ├── proxy-vpn-extension.zip
+│   └── proxy-vpn-extension.crx
+├── distribute.js          # Distribution build script
+├── release.js             # GitHub release publisher
+└── package.json           # Project config & scripts
 ```
 
 ---
@@ -328,28 +382,69 @@ score = (speedScore × 0.4) +
 
 ## ⚠️ Security & Privacy
 
-### Important Warnings
+### Security Model
 
-> **⚠️ Free Proxy Risks** - Do NOT use for:
-> - Online banking
-> - Credit card transactions
-> - Sensitive account logins
+This extension uses **free public proxies**, which introduces security risks. Understanding these risks is critical:
+
+#### Threats
+
+| Threat | Description | Mitigation |
+|--------|-------------|------------|
+| **MITM Attacks** | Malicious proxy operators can intercept traffic | Use HTTPS-only websites; extension flags suspicious proxies |
+| **Traffic Logging** | Proxies may log your browsing activity | Assume all traffic is logged; don't access sensitive accounts |
+| **Content Injection** | Proxies can inject ads, scripts, or malware | Extension includes tampering detection; avoid HTTP sites |
+| **Credential Theft** | Session cookies and passwords can be captured | Never enter passwords on HTTP sites; use 2FA |
+| **Proxy Instability** | Free proxies can disappear or stop working | Auto-failover switches to working proxies automatically |
+
+#### Trust Scores
+
+ProxyMania now includes **reputation scoring** to help identify safer proxies:
+
+- 🟢 **Trusted** - 90%+ uptime, 100+ tests, no tampering detected
+- 🟡 **Unverified** - New proxy or limited test data
+- 🔴 **Risky** - High failure rate or suspicious behavior detected
+
+### Critical Warnings
+
+> **⚠️ NEVER use free proxies for:**
+> - Online banking or financial transactions
+> - Credit card payments
+> - Sensitive account logins (email, social media, work accounts)
 > - Confidential data transmission
+> - Torrenting or P2P file sharing
+
+> **✅ SAFE uses:**
+> - Bypassing geo-blocks for general browsing
+> - Accessing public content
+> - Testing website availability from different regions
+> - Research and educational purposes
 
 ### What This Extension Does
 
-✅ Routes traffic through selected proxy  
+✅ Routes browser traffic through selected proxy  
 ✅ Bypasses local addresses (localhost, private IPs)  
-✅ Stores settings locally  
-✅ Tests proxy connectivity  
+✅ Stores settings locally (no cloud sync)  
+✅ Tests proxy connectivity and health  
+✅ Monitors proxy reputation and uptime  
+✅ Detects potential content tampering (v3.0+)  
+✅ Auto-failover on proxy failure  
 
 ### What This Extension Does NOT Do
 
-❌ Encrypt traffic (use HTTPS websites)  
-❌ Log browsing activity  
-❌ Collect personal data  
-❌ Modify website content  
-❌ Track user behavior  
+❌ **Encrypt traffic** - Use HTTPS websites for encryption  
+❌ **Provide anonymity** - Your ISP can still see you're using a proxy  
+❌ **Log browsing activity** - No data leaves your browser  
+❌ **Collect personal data** - All data stored locally  
+❌ **Modify website content** - Proxies might, but extension doesn't  
+❌ **Guarantee security** - Free proxies are inherently risky  
+
+### Best Practices
+
+1. **HTTPS Only** - Only visit HTTPS websites when using proxies
+2. **No Sensitive Logins** - Don't log into important accounts
+3. **Use Trusted Proxies** - Prefer proxies with 🟢 Trusted status
+4. **Monitor Security Badge** - Disconnect if security warning appears
+5. **Regular Rotation** - Switch proxies periodically
 
 ---
 
@@ -434,6 +529,7 @@ See [CHANGELOG.md](CHANGELOG.md) for details.
 - [Chrome Extensions Docs](https://developer.chrome.com/docs/extensions/)
 - [Manifest V3 Guide](https://developer.chrome.com/docs/extensions/mv3/intro/)
 - [Chrome Proxy API](https://developer.chrome.com/docs/extensions/reference/proxy/)
+- [GitHub Releases](https://github.com/your-org/proxy-vpn-extension/releases) - Download latest version
 
 ---
 
@@ -459,6 +555,7 @@ For issues or questions:
 2. Review [Troubleshooting](#-troubleshooting) section
 3. Check browser console for errors
 4. Review [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)
+5. Open an issue on [GitHub](https://github.com/your-org/proxy-vpn-extension/issues)
 
 ---
 
