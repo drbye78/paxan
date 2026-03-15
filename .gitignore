@@ -3,6 +3,19 @@
 *.pem
 *.zip
 
+# Android Build Files
+.gradle/
+app/build/
+app/*.apk
+app/*.ap_
+app/*.aab
+build/
+local.properties
+
+# IntelliJ IDEA (Android Studio)
+*.iml
+.idea/
+
 # Node Modules
 node_modules/
 

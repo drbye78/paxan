@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">ProxyMania</string>
+    <string name="app_description">Умный маршрутизатор прокси</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Главная</string>
+    <string name="nav_proxies">Прокси</string>
+    <string name="nav_settings">Настройки</string>
+    <string name="nav_statistics">Статистика</string>
+
+    <!-- Connection -->
+    <string name="vpn_notification_channel">VPN Сервис</string>
+    <string name="vpn_notification_title">ProxyMania VPN</string>
+    <string name="vpn_connected">Подключено</string>
+    <string name="vpn_disconnected">Отключено</string>
+    <string name="vpn_connecting">Подключение...</string>
+    <string name="vpn_error">Ошибка подключения</string>
+    <string name="action_connect">Подключить</string>
+    <string name="action_disconnect">Отключить</string>
+    <string name="quick_connect">Быстрое подключение</string>
+    <string name="select_proxy">Выбрать прокси</string>
+    <string name="connection_status">Статус подключения</string>
+
+    <!-- Proxy List -->
+    <string name="proxy_list">Список прокси</string>
+    <string name="proxy_count">%d прокси доступно</string>
+    <string name="no_proxies">Прокси не найдены</string>
+    <string name="search_proxies">Поиск прокси...</string>
+    <string name="filter_all">Все</string>
+    <string name="filter_favorites">Избранные</string>
+    <string name="filter_trusted">Надёжные</string>
+    <string name="filter_recent">Недавно использованные</string>
+    <string name="latency">Задержка</string>
+    <string name="trust_score">Рейтинг доверия</string>
+    <string name="protocol">Протокол</string>
+
+    <!-- Settings -->
+    <string name="settings">Настройки</string>
+    <string name="connection_settings">Подключение</string>
+    <string name="auto_connect">Автоподключение при запуске</string>
+    <string name="auto_connect_desc">Автоматически подключаться при запуске приложения</string>
+    <string name="auto_reconnect">Автопереподключение</string>
+    <string name="auto_reconnect_desc">Автоматически переподключаться при разрыве</string>
+    <string name="failover_enabled">Переключение при разрыве</string>
+    <string name="failover_desc">Переключиться на резервный прокси при потере соединения</string>
+    <string name="kill_switch">Аварийное отключение</string>
+    <string name="kill_switch_desc">Блокировать весь трафик при разрыве VPN</string>
+    <string name="auto_rotate">Авторотация</string>
+    <string name="auto_rotate_desc">Автоматически менять прокси</string>
+    <string name="rotate_interval">Интервал ротации</string>
+    <string name="rotation_strategy">Стратегия ротации</string>
+    <string name="appearance">Внешний вид</string>
+    <string name="theme">Тема</string>
+    <string name="theme_light">Светлая</string>
+    <string name="theme_dark">Тёмная</string>
+    <string name="theme_amoled">AMOLED тёмная</string>
+    <string name="theme_system">Системная</string>
+    <string name="advanced">Дополнительно</string>
+    <string name="app_routing">Маршрутизация приложений</string>
+    <string name="app_routing_desc">Настроить VPN для отдельных приложений</string>
+    <string name="dns_settings">Настройки DNS</string>
+    <string name="dns_settings_desc">Настроить собственные DNS серверы</string>
+    <string name="import_export">Импорт/Экспорт</string>
+    <string name="import_export_desc">Резервное копирование и восстановление</string>
+    <string name="advanced_settings">Расширенные настройки</string>
+    <string name="connection_timeout">Тайм-аут подключения</string>
+    <string name="health_check_interval">Интервал проверки</string>
+
+    <!-- App Routing -->
+    <string name="app_routing_title">Маршрутизация приложений</string>
+    <string name="routing_mode">Режим маршрутизации</string>
+    <string name="include_apps">Включить приложения</string>
+    <string name="include_apps_desc">Только выбранные приложения будут использовать VPN</string>
+    <string name="exclude_apps">Исключить приложения</string>
+    <string name="exclude_apps_desc">Выбранные приложения НЕ будут использовать VPN</string>
+    <string name="split_tunnel">Раздельное туннелирование</string>
+    <string name="split_tunnel_desc">Направить определённые приложения через VPN или обойти его</string>
+    <string name="apps_selected">%d приложений выбрано</string>
+
+    <!-- DNS -->
+    <string name="dns_title">Настройки DNS</string>
+    <string name="custom_dns">Пользовательский DNS</string>
+    <string name="custom_dns_desc">Использовать свои DNS серверы</string>
+    <string name="primary_dns">Основной DNS</string>
+    <string name="secondary_dns">Резервный DNS</string>
+    <string name="dns_leak_protection">Защита от DNS утечек</string>
+    <string name="dns_leak_desc">Все DNS запросы проходят через VPN туннель</string>
+    <string name="recommended_dns">Рекомендуемые DNS</string>
+
+    <!-- Statistics -->
+    <string name="statistics">Статистика</string>
+    <string name="total_connections">Всего подключений</string>
+    <string name="success_rate">Процент успешных</string>
+    <string name="data_downloaded">Загружено</string>
+    <string name="data_uploaded">Отправлено</string>
+    <string name="average_latency">Средняя задержка</string>
+    <string name="top_proxies">Лучшие прокси</string>
+
+    <!-- Notifications -->
+    <string name="notifications">Уведомления</string>
+    <string name="connection_notifications">Уведомления о подключении</string>
+    <string name="connection_notifications_desc">Показывать уведомления при подключении/отключении</string>
+    <string name="error_alerts">Оповещения об ошибках</string>
+    <string name="notification_sound">Звук уведомления</string>
+    <string name="vibration">Вибрация</string>
+
+    <!-- Import/Export -->
+    <string name="import_export_title">Импорт/Экспорт</string>
+    <string name="export_proxies">Экспорт прокси</string>
+    <string name="export_desc">Экспортировать все прокси в JSON файл</string>
+    <string name="import_proxies">Импорт прокси</string>
+    <string name="import_desc">Импортировать прокси из JSON файла</string>
+    <string name="clear_all">Удалить все прокси</string>
+    <string name="clear_warning">Это удалит все сохранённые прокси</string>
+    <string name="import_success">Успешно импортировано %d прокси</string>
+    <string name="import_error">Ошибка импорта: %s</string>
+
+    <!-- About -->
+    <string name="about">О приложении</string>
+    <string name="version">Версия</string>
+    <string name="build">Сборка</string>
+
+    <!-- Widget -->
+    <string name="widget_description">Виджет ProxyMania VPN</string>
+    <string name="widget_tap_to_connect">Нажмите для подключения</string>
+    <string name="widget_connected">Подключено</string>
+
+    <!-- Errors -->
+    <string name="error_connection_failed">Ошибка подключения</string>
+    <string name="error_proxy_unreachable">Прокси недоступен</string>
+    <string name="error_timeout">Превышен тайм-аут</string>
+    <string name="error_no_proxies">Нет доступных прокси</string>
+
+    <!-- Quality -->
+    <string name="quality_excellent">Отлично</string>
+    <string name="quality_good">Хорошо</string>
+    <string name="quality_fair">Средне</string>
+    <string name="quality_poor">Плохо</string>
+
+    <!-- Kill Switch -->
+    <string name="kill_switch_notification_channel">Аварийное отключение</string>
+    <string name="kill_switch_blocking_title">Трафик заблокирован</string>
+    <string name="kill_switch_blocking_text">Весь трафик заблокирован до переподключения VPN</string>
+    <string name="kill_switch_active_title">Аварийное отключение активно</string>
+    <string name="kill_switch_active_text">VPN отключен - ваш трафик защищён</string>
+</resources>

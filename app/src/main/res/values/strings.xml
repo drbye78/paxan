@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">ProxyMania</string>
+    <string name="app_description">Smart Proxy Router</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_proxies">Proxies</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_statistics">Statistics</string>
+
+    <!-- Connection -->
+    <string name="vpn_notification_channel">VPN Service</string>
+    <string name="vpn_notification_title">ProxyMania VPN</string>
+    <string name="vpn_connected">Connected</string>
+    <string name="vpn_disconnected">Disconnected</string>
+    <string name="vpn_connecting">Connecting...</string>
+    <string name="vpn_error">Connection Error</string>
+    <string name="action_connect">Connect</string>
+    <string name="action_disconnect">Disconnect</string>
+    <string name="quick_connect">Quick Connect</string>
+    <string name="select_proxy">Select Proxy</string>
+    <string name="connection_status">Connection Status</string>
+
+    <!-- Proxy List -->
+    <string name="proxy_list">Proxy List</string>
+    <string name="proxy_count">%d proxies available</string>
+    <string name="no_proxies">No proxies found</string>
+    <string name="search_proxies">Search proxies...</string>
+    <string name="filter_all">All</string>
+    <string name="filter_favorites">Favorites</string>
+    <string name="filter_trusted">Trusted</string>
+    <string name="filter_recent">Recently Used</string>
+    <string name="latency">Latency</string>
+    <string name="trust_score">Trust Score</string>
+    <string name="protocol">Protocol</string>
+
+    <!-- Settings -->
+    <string name="settings">Settings</string>
+    <string name="connection_settings">Connection</string>
+    <string name="auto_connect">Auto-connect on start</string>
+    <string name="auto_connect_desc">Automatically connect when app starts</string>
+    <string name="auto_reconnect">Auto-reconnect</string>
+    <string name="auto_reconnect_desc">Automatically reconnect on disconnect</string>
+    <string name="failover_enabled">Failover on disconnect</string>
+    <string name="failover_desc">Switch to backup proxy on connection loss</string>
+    <string name="kill_switch">Kill switch</string>
+    <string name="kill_switch_desc">Block all traffic when VPN disconnects</string>
+    <string name="auto_rotate">Auto-rotate</string>
+    <string name="auto_rotate_desc">Automatically change proxy periodically</string>
+    <string name="rotate_interval">Rotate interval</string>
+    <string name="rotation_strategy">Rotation strategy</string>
+    <string name="appearance">Appearance</string>
+    <string name="theme">Theme</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_amoled">AMOLED Dark</string>
+    <string name="theme_system">System</string>
+    <string name="advanced">Advanced</string>
+    <string name="app_routing">App Routing</string>
+    <string name="app_routing_desc">Configure per-app VPN routing</string>
+    <string name="dns_settings">DNS Settings</string>
+    <string name="dns_settings_desc">Configure custom DNS servers</string>
+    <string name="import_export">Import/Export</string>
+    <string name="import_export_desc">Backup and restore proxies</string>
+    <string name="advanced_settings">Advanced Settings</string>
+    <string name="connection_timeout">Connection timeout</string>
+    <string name="health_check_interval">Health check interval</string>
+
+    <!-- App Routing -->
+    <string name="app_routing_title">App Routing</string>
+    <string name="routing_mode">Routing Mode</string>
+    <string name="include_apps">Include Apps</string>
+    <string name="include_apps_desc">Only selected apps will use the VPN tunnel</string>
+    <string name="exclude_apps">Exclude Apps</string>
+    <string name="exclude_apps_desc">Selected apps will NOT use the VPN tunnel</string>
+    <string name="split_tunnel">Split Tunneling</string>
+    <string name="split_tunnel_desc">Route specific apps through VPN or bypass it</string>
+    <string name="apps_selected">%d apps selected</string>
+
+    <!-- DNS -->
+    <string name="dns_title">DNS Settings</string>
+    <string name="custom_dns">Custom DNS</string>
+    <string name="custom_dns_desc">Use custom DNS servers instead of system DNS</string>
+    <string name="primary_dns">Primary DNS</string>
+    <string name="secondary_dns">Secondary DNS</string>
+    <string name="dns_leak_protection">DNS Leak Protection</string>
+    <string name="dns_leak_desc">All DNS queries are forced through the VPN tunnel</string>
+    <string name="recommended_dns">Recommended DNS</string>
+
+    <!-- Statistics -->
+    <string name="statistics">Statistics</string>
+    <string name="total_connections">Total Connections</string>
+    <string name="success_rate">Success Rate</string>
+    <string name="data_downloaded">Downloaded</string>
+    <string name="data_uploaded">Uploaded</string>
+    <string name="average_latency">Average Latency</string>
+    <string name="top_proxies">Top Proxies</string>
+
+    <!-- Notifications -->
+    <string name="notifications">Notifications</string>
+    <string name="connection_notifications">Connection notifications</string>
+    <string name="connection_notifications_desc">Show notifications on connect/disconnect</string>
+    <string name="error_alerts">Error alerts</string>
+    <string name="notification_sound">Notification sound</string>
+    <string name="vibration">Vibration</string>
+
+    <!-- Import/Export -->
+    <string name="import_export_title">Import/Export</string>
+    <string name="export_proxies">Export Proxies</string>
+    <string name="export_desc">Export all proxies to a JSON file</string>
+    <string name="import_proxies">Import Proxies</string>
+    <string name="import_desc">Import proxies from a JSON file</string>
+    <string name="clear_all">Clear All Proxies</string>
+    <string name="clear_warning">This will delete all saved proxies</string>
+    <string name="import_success">Successfully imported %d proxies</string>
+    <string name="import_error">Import failed: %s</string>
+
+    <!-- About -->
+    <string name="about">About</string>
+    <string name="version">Version</string>
+    <string name="build">Build</string>
+
+    <!-- Widget -->
+    <string name="widget_description">ProxyMania VPN widget</string>
+    <string name="widget_tap_to_connect">Tap to connect</string>
+    <string name="widget_connected">Connected</string>
+
+    <!-- Errors -->
+    <string name="error_connection_failed">Connection failed</string>
+    <string name="error_proxy_unreachable">Proxy is not reachable</string>
+    <string name="error_timeout">Connection timeout</string>
+    <string name="error_no_proxies">No proxies available</string>
+
+    <!-- Quality -->
+    <string name="quality_excellent">Excellent</string>
+    <string name="quality_good">Good</string>
+    <string name="quality_fair">Fair</string>
+    <string name="quality_poor">Poor</string>
+
+    <!-- Kill Switch -->
+    <string name="kill_switch_notification_channel">Kill Switch</string>
+    <string name="kill_switch_blocking_title">Traffic Blocked</string>
+    <string name="kill_switch_blocking_text">All traffic is blocked until VPN reconnects</string>
+    <string name="kill_switch_active_title">Kill Switch Active</string>
+    <string name="kill_switch_active_text">VPN disconnected - protecting your traffic</string>
+</resources>
