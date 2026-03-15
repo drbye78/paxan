@@ -67,13 +67,14 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
 
-      - name: Build Android APK
-        run: ./gradlew assembleRelease
+      - name: Clean and Build Android APK
+        run: |
+          ./gradlew clean
+          ./gradlew assembleRelease --no-daemon
 
       - name: Copy APK to dist
         run: |
