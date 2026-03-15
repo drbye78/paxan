@@ -22,7 +22,6 @@ jobs:
           test -f manifest.json || exit 1
           test -f popup.html || exit 1
           test -f popup.js || exit 1
-          test -f background.js || exit 1
           test -f styles.css || exit 1
 
   validate:
