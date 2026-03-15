@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "YOUR_APP_ID",
         "android_client_info": {
-          "package_name": "com.peasyproxy.app"
+          "package_name": "com.proxymania.app"
         }
       },
       "oauth_client": [],
