@@ -1,7 +1,6 @@
 package com.proxymania.app.service
 
 import android.content.Context
-import androidx.hilt.work.HiltWorker
 import androidx.work.*
 import com.proxymania.app.data.remote.ProxyTester
 import com.proxymania.app.data.repository.ProxyRepository
@@ -9,15 +8,12 @@ import com.proxymania.app.data.repository.SettingsRepository
 import com.proxymania.app.data.repository.StatisticsRepository
 import com.proxymania.app.domain.model.Proxy
 import com.proxymania.app.domain.model.ProxyTestResult
-import dagger.assisted.Assisted
-import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
-@HiltWorker
-class HealthWorker @AssistedInject constructor(
-    @Assisted context: Context,
-    @Assisted workerParams: WorkerParameters,
+class HealthWorker(
+    context: Context,
+    workerParams: WorkerParameters,
     private val proxyRepository: ProxyRepository,
     private val settingsRepository: SettingsRepository,
     private val statisticsRepository: StatisticsRepository,

@@ -5,24 +5,18 @@ import android.content.Context
 import android.content.res.Configuration
 import android.os.Build
 import android.os.LocaleList
-import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.proxymania.app.BuildConfig
-import com.proxymania.app.service.HealthWorker
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 import java.util.Locale
-import javax.inject.Inject
 
 @HiltAndroidApp
 class ProxyManiaApp : Application(), Configuration.Provider {
 
-    @Inject
-    lateinit var workerFactory: HiltWorkerFactory
-
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
-            .setWorkerFactory(workerFactory)
+            .setMinimumLoggingLevel(android.util.Log.INFO)
             .build()
 
     override fun attachBaseContext(base: Context) {
@@ -33,9 +27,6 @@ class ProxyManiaApp : Application(), Configuration.Provider {
         super.onCreate()
 
         initLogging()
-        initCrashReporting()
-
-        HealthWorker.schedule(this, 30)
     }
 
     fun setLocale(languageCode: String) {
