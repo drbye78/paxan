@@ -157,6 +157,8 @@ tasks.register<Copy>("copyToDist") {
             distDir.mkdirs()
         }
     }
+}
+
 ksp {
     arg("dagger.fastInitialization", "true")
 }
