@@ -40,7 +40,7 @@ tasks.register("syncVersion") {
             "versionCode = ${currentVersionCode + 1}"
         )
 
-        appBuildFile.write(buildContent)
+        appBuildFile.writeText(buildContent)
 
         println("✅ Synced version: $version (versionCode: ${currentVersionCode + 1})")
     }
@@ -74,7 +74,7 @@ tasks.register("setVersion") {
             "versionCode = ${currentVersionCode + 1}"
         )
 
-        appBuildFile.write(buildContent)
+        appBuildFile.writeText(buildContent)
 
         // Also update package.json
         val packageJsonFile = file("package.json")
@@ -83,7 +83,7 @@ tasks.register("setVersion") {
             """"version": "[\d.]+"""".toRegex(),
             """ "version": "$newVersion""""
         )
-        packageJsonFile.write(packageContent)
+        packageJsonFile.writeText(packageContent)
 
         println("✅ Set version to: $newVersion (versionCode: ${currentVersionCode + 1})")
     }
