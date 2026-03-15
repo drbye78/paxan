@@ -152,7 +152,7 @@ tasks.register<Copy>("copyToDist") {
     
     from(apkFile)
     into(distDir)
-    rename { "peasyproxy-android-debug.apk" }
+    rename { "proxymania-android-debug.apk" }
     
     doFirst {
         if (!distDir.exists()) {
@@ -169,7 +169,7 @@ tasks.register<Copy>("copyReleaseToDist") {
     
     from(apkFile)
     into(distDir)
-    rename { "peasyproxy-android-release-unsigned.apk" }
+    rename { "proxymania-android-release-unsigned.apk" }
     
     doFirst {
         if (!distDir.exists()) {

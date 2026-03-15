@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Accessibility Module
+// ProxyMania VPN - Accessibility Module
 // Screen reader support and keyboard navigation
 
 import { $ } from './dom.js';

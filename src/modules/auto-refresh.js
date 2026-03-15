@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Auto-Refresh Module
+// ProxyMania VPN - Auto-Refresh Module
 // Periodic proxy list refresh
 
 import { getSettings } from './state.js';

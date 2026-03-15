@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Stats Module
+// ProxyMania VPN - Stats Module
 // Statistics display and management
 
 import { getDailyStats, getProxyStats } from './state.js';

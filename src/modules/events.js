@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Events Module
+// ProxyMania VPN - Events Module
 // All event listeners and user interaction handlers
 
 import { getState, setState, getCurrentProxy, getSettings } from './state.js';

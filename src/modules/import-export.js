@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Import/Export Module
+// ProxyMania VPN - Import/Export Module
 // Data import/export and cleanup
 
 import { showToast, showSuccess, showError } from './toast.js';
@@ -103,7 +103,7 @@ export function exportProxies() {
       const url = URL.createObjectURL(dataBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `peasyproxy-proxies-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `proxymania-proxies-${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
       
@@ -137,7 +137,7 @@ export function exportProxiesAsText() {
       const url = URL.createObjectURL(dataBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `peasyproxy-proxies-${new Date().toISOString().split('T')[0]}.txt`;
+      a.download = `proxymania-proxies-${new Date().toISOString().split('T')[0]}.txt`;
       a.click();
       URL.revokeObjectURL(url);
       
@@ -193,7 +193,7 @@ export function exportSettings() {
       const url = URL.createObjectURL(dataBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `peasyproxy-settings-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `proxymania-settings-${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
       

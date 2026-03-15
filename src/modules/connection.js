@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Connection Module
+// ProxyMania VPN - Connection Module
 // Connect/disconnect logic, failover, proxy selection
 
 import { 

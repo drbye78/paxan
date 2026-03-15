@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Module Bundler
+// ProxyMania VPN - Module Bundler
 // Bundles ES modules into a single popup.js file for Chrome Extension compatibility
 
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
@@ -37,7 +37,7 @@ const MODULES = [
   'accessibility.js'
 ];
 
-console.log('🔧 Bundling PeasyProxy VPN modules...\n');
+console.log('🔧 Bundling ProxyMania VPN modules...\n');
 
 // Read entry file (main popup.js entry point)
 let entryContent = '';
@@ -51,7 +51,7 @@ try {
 }
 
 // Bundle modules
-let bundledContent = `// PeasyProxy VPN - Bundled Modules
+let bundledContent = `// ProxyMania VPN - Bundled Modules
 // Generated: ${new Date().toISOString()}
 // DO NOT EDIT - This file is auto-generated
 

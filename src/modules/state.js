@@ -1,4 +1,4 @@
-// PeasyProxy VPN - State Management Module
+// ProxyMania VPN - State Management Module
 // Centralized global application state
 
 // ============================================================================
@@ -22,7 +22,7 @@ let settings = {
   autoConnect: false,
   notifications: true,
   refreshInterval: 300000,
-  proxySource: 'peasyproxy',
+  proxySource: 'proxymania',
   countryBlacklist: []
 };
 let dailyStats = {

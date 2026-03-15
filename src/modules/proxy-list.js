@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Proxy List Module
+// ProxyMania VPN - Proxy List Module
 // Proxy list rendering, filtering, virtual scrolling
 
 import { 

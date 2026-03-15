@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Country Blacklist Module
+// ProxyMania VPN - Country Blacklist Module
 // Filter out countries from proxy list
 
 import { getState, setState, getCountryBlacklist, getProxies, updateCountryBlacklist, addToCountryBlacklist, removeFromCountryBlacklist } from './state.js';

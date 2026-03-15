@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Auto-Rotation Module
+// ProxyMania VPN - Auto-Rotation Module
 // Automatic proxy switching at intervals
 
 import { getState, setState, getAutoRotation, setAutoRotation } from './state.js';

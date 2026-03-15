@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Utility Functions Module
+// ProxyMania VPN - Utility Functions Module
 // Pure helper functions with no dependencies on DOM or Chrome API
 
 import { countryFlags, getProxyStats, getProxyReputation, getFavorites } from './state.js';

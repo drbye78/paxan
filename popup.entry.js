@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Main Entry Point
+// ProxyMania VPN - Main Entry Point
 // Initializes all modules and starts the application
 
 // ============================================================================
@@ -70,7 +70,7 @@ import { setupHealthListeners } from './modules/monitoring.js';
  * Initialize the application
  */
 async function init() {
-  console.log('🚀 Initializing PeasyProxy VPN...');
+  console.log('🚀 Initializing ProxyMania VPN...');
   
   try {
     // 1. Initialize DOM references
@@ -143,7 +143,7 @@ async function init() {
       showOnboarding();
     }
     
-    console.log('✅ PeasyProxy VPN initialized successfully!');
+    console.log('✅ ProxyMania VPN initialized successfully!');
     
   } catch (error) {
     console.error('❌ Initialization error:', error);

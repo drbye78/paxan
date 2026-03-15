@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Tabs & Filters Module
+// ProxyMania VPN - Tabs & Filters Module
 // Tab switching and filter management
 
 import { getState, setState, getCurrentTab, setCurrentTab } from './state.js';

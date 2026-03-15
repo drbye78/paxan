@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Toast Notification Module
+// ProxyMania VPN - Toast Notification Module
 // Display toast notifications with undo support
 
 import { toastContainer } from './dom.js';

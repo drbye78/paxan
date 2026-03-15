@@ -1,4 +1,4 @@
-// PeasyProxy VPN - IP Detector Module
+// ProxyMania VPN - IP Detector Module
 // Check real IP and proxy IP, DNS leak testing
 
 import { getState, setState, getIpInfo, getCurrentProxy, getSettings } from './state.js';

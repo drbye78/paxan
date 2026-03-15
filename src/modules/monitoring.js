@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Monitoring Module
+// ProxyMania VPN - Monitoring Module
 // Connection monitoring, speed graph, health status
 
 import { getState, setState, getHealthStatus, setHealthStatus, setSpeedData, getSpeedData } from './state.js';

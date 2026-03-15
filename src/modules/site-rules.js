@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Site Rules Module
+// ProxyMania VPN - Site Rules Module
 // Per-site proxy rules management
 
 import { getState, setState, getSiteRules, getCurrentProxy, getProxies } from './state.js';

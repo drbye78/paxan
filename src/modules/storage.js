@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Storage Module
+// ProxyMania VPN - Storage Module
 // All Chrome storage interactions
 
 import { 

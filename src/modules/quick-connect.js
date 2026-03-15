@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Quick Connect Module
+// ProxyMania VPN - Quick Connect Module
 // Quick connect grid and recommended proxies
 
 import { getProxies, getCurrentProxy, getProxyStats } from './state.js';

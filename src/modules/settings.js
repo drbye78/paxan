@@ -1,4 +1,4 @@
-// PeasyProxy VPN - Settings Module
+// ProxyMania VPN - Settings Module
 // Settings management, theme application, language handling
 
 import { getState, setState, updateSetting, getSettings } from './state.js';
@@ -48,7 +48,7 @@ function updateSettingsUI() {
   if (themeSelect) themeSelect.value = settings.theme || 'dark';
   if (languageSelect) languageSelect.value = settings.language || 'ru';
   if (refreshInterval) refreshInterval.value = settings.refreshInterval?.toString() || '300000';
-  if (proxySource) proxySource.value = settings.proxySource || 'peasyproxy';
+  if (proxySource) proxySource.value = settings.proxySource || 'proxymania';
   if (autoFailoverToggle) autoFailoverToggle.classList.toggle('active', settings.autoFailover !== false);
   if (testBeforeConnectToggle) testBeforeConnectToggle.classList.toggle('active', settings.testBeforeConnect !== false);
   if (autoConnectToggle) autoConnectToggle.classList.toggle('active', settings.autoConnect !== false);
@@ -180,7 +180,7 @@ function getTranslation(key, lang) {
   // Simple translation map - expand as needed
   const translations = {
     'en': {
-      'extension_name': 'PeasyProxy VPN',
+      'extension_name': 'ProxyMania VPN',
       'connect': 'Connect',
       'disconnect': 'Disconnect',
       'settings': 'Settings',
@@ -195,7 +195,7 @@ function getTranslation(key, lang) {
       'all': 'All Proxies'
     },
     'ru': {
-      'extension_name': 'PeasyProxy VPN',
+      'extension_name': 'ProxyMania VPN',
       'connect': 'Подключиться',
       'disconnect': 'Отключиться',
       'settings': 'Настройки',
@@ -347,7 +347,7 @@ export function exportSettings() {
   const url = URL.createObjectURL(dataBlob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `peasyproxy-settings-${new Date().toISOString().split('T')[0]}.json`;
+  a.download = `proxymania-settings-${new Date().toISOString().split('T')[0]}.json`;
   a.click();
   URL.revokeObjectURL(url);
   

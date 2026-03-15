@@ -1,4 +1,4 @@
-// PeasyProxy VPN - UI Core Module
+// ProxyMania VPN - UI Core Module
 // Core UI update functions and display logic
 
 import { getState, setState, getCurrentProxy, getSettings, getCountryBlacklist } from './state.js';

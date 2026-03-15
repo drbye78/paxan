@@ -1,4 +1,4 @@
-// PeasyProxy VPN - DOM Module
+// ProxyMania VPN - DOM Module
 // Centralize DOM element references and initialization
 
 // ============================================================================
