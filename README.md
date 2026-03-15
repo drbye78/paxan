@@ -58,7 +58,9 @@ A professional-grade proxy manager Chrome extension that routes your traffic thr
 
 ## 📦 Installation
 
-### Development Mode
+### Chrome Extension
+
+#### Development Mode
 
 1. **Open Extensions Page**
    ```
@@ -76,7 +78,7 @@ A professional-grade proxy manager Chrome extension that routes your traffic thr
    - Click puzzle icon in toolbar
    - Pin "ProxyMania VPN" for easy access
 
-### Production Build
+#### Production Build
 
 For building distribution packages (ZIP for Chrome Web Store, CRX for sideloading):
 
@@ -94,6 +96,40 @@ npm run distribute:crx
 Packages are created in the `dist/` folder:
 - `dist/proxy-vpn-extension.zip` - Upload to Chrome Web Store
 - `dist/proxy-vpn-extension.crx` - Direct installation
+
+---
+
+### Android App
+
+#### Requirements
+- Android 8.0 (Oreo) or higher
+- JDK 17+
+- Gradle 8.x
+
+#### Build Commands
+
+```bash
+# Debug build
+./gradlew assembleDebug
+
+# Release build (unsigned)
+./gradlew assembleRelease
+
+# Build and copy to dist/ directory
+./gradlew copyToDist          # Debug APK
+./gradlew copyReleaseToDist  # Release APK
+```
+
+#### Output
+
+All build artifacts are placed in the `dist/` directory:
+
+| File | Description |
+|------|-------------|
+| `proxymania-android-debug.apk` | Android debug build |
+| `proxymania-android-release-unsigned.apk` | Android release build (unsigned) |
+| `proxy-vpn-extension.zip` | Chrome extension (Web Store) |
+| `proxy-vpn-extension.crx` | Chrome extension (sideload) |
 
 > **Note:** To rebuild the CRX with the latest changes, install `crx3` globally:
 > ```bash
@@ -549,13 +585,17 @@ MIT License - See [LICENSE](LICENSE) file.
 
 ## 📞 Support
 
-For issues or questions:
+For detailed user instructions, troubleshooting, and FAQ, see [USER_GUIDE.md](USER_GUIDE.md).
 
-1. Check [USER_GUIDE.md](USER_GUIDE.md)
-2. Review [Troubleshooting](#-troubleshooting) section
-3. Check browser console for errors
-4. Review [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)
-5. Open an issue on [GitHub](https://github.com/your-org/proxy-vpn-extension/issues)
+For developer documentation, see [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md).
+
+For API reference, see [API.md](API.md).
+
+For architecture overview, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+For release process, see [RELEASE.md](RELEASE.md).
+
+For contributing guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 

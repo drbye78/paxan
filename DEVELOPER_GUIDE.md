@@ -5,13 +5,12 @@ This guide is for developers who want to understand, modify, or contribute to th
 ## Table of Contents
 
 1. [Development Environment](#development-environment)
-2. [Architecture Overview](#architecture-overview)
+2. [Architecture](#architecture)
 3. [Code Structure](#code-structure)
-4. [API Reference](#api-reference)
-5. [Building & Testing](#building--testing)
-6. [Publishing to GitHub Releases](#publishing-to-github-releases)
-7. [Debugging](#debugging)
-8. [Contributing](#contributing)
+4. [Building & Testing](#building--testing)
+5. [Publishing](#publishing)
+6. [Debugging](#debugging)
+7. [Contributing](#contributing)
 
 ---
 
@@ -19,22 +18,18 @@ This guide is for developers who want to understand, modify, or contribute to th
 
 ### Prerequisites
 
-- **Google Chrome** (v88 or later for Manifest V3 support)
-- **Node.js** (v16+, optional for tooling)
+- **Google Chrome** (v88+ for Manifest V3)
+- **Node.js** (v16+)
 - **Text Editor** (VS Code recommended)
-- **Git** (for version control)
-- **crx3** (optional, for CRX building: `npm install -g crx3`)
+- **Git**
+- **crx3** (optional): `npm install -g crx3`
 
 ### Setup
 
 ```bash
-# Clone or navigate to the project
 cd proxy-vpn-extension
 
-# Open in your editor
-code .
-
-# Load in Chrome
+# Load in Chrome:
 # 1. Navigate to chrome://extensions/
 # 2. Enable Developer mode
 # 3. Click "Load unpacked"
@@ -55,97 +50,32 @@ code .
 
 ---
 
-## Architecture Overview
+## Architecture
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture documentation.
 
 ### Component Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Chrome Browser                           │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌──────────────┐    Messages    ┌──────────────────────────┐  │
-│  │  popup.html  │ ◀────────────▶ │   src/background/        │  │
-│  │  popup.js    │                │   (Service Worker)       │  │
-│  │  styles.css  │                │   index.js (ES Module)   │  │
-│  └──────────────┘                │                          │  │
-│         │                          │  ┌────────────────────┐  │  │
-│         │ UI Updates             │  │  Chrome APIs       │  │  │
-│         ▼                          │  │  - proxy.settings  │  │  │
-│  ┌──────────────┐                │  │  - storage.local   │  │  │
-│  │   DOM Render │                │  │  - runtime         │  │  │
-│  │   Virtual    │                │  │  - alarms          │  │  │
-│  │   Scrolling  │                │  └────────────────────┘  │  │
-│  └──────────────┘                │           │               │  │
-│         │                        │           ▼               │  │
-│         │                        │  ┌────────────────────┐  │  │
-│         │                        │  │ Reputation Engine │  │  │
-│         │                        │  │ (Trust Scoring)   │  │  │
-│         │                        │  └────────────────────┘  │  │
-│         │                        │           │               │  │
-│         │                        │           ▼               │  │
-│         │                        │  ┌────────────────────┐  │  │
-│         │                        │  │ Tamper Detection   │  │  │
-│         │                        │  │ (MITM Protection)  │  │  │
-│         │                        │  └────────────────────┘  │  │
-│         │                        └──────────────────────────┘  │
-│         │                                      │                │
-│         │                                      │ HTTP Fetch     │
-│         │                                      ▼                │
-│         │                        ┌─────────────────────────────┐  │
-│         │                        │   External Sources:       │  │
-│         │                        │   - ProxyMania (proxymania.su)│
-│         │                        │   - ProxyScrape (api.proxyscrape.com)│
-│         │                        └─────────────────────────────┘  │
-│         │                                                      │
-└─────────────────────────────────────────────────────────────────┘
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Chrome Browser                           │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌──────────────┐    Messages    ┌──────────────────────────┐  │
-│  │  popup.html  │ ◀────────────▶ │     background.js        │  │
-│  │  popup.js    │                │   (Service Worker)       │  │
-│  │  styles.css  │                │                          │  │
-│  └──────────────┘                │  ┌────────────────────┐  │  │
-│         │                          │  │  Chrome APIs       │  │  │
-│         │ UI Updates             │  │  - proxy.settings  │  │  │
-│         ▼                          │  │  - storage.local   │  │  │
-│  ┌──────────────┐                │  │  - runtime         │  │  │
-│  │   DOM Render │                │  └────────────────────┘  │  │
-│  └──────────────┘                └──────────────────────────┘  │
-│         │                                      │                │
-│         │                                      │ HTTP Fetch     │
-│         │                                      ▼                │
-│         │                        ┌─────────────────────────────┐  │
-│         │                        │   External Sources:        │  │
-│         │                        │   - ProxyMania (proxymania.su)│
-│         │                        │   - ProxyScrape (api.proxyscrape.com)│
-│         │                        └─────────────────────────────┘  │
-│         │                                                      │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Data Flow
-
-```
-User Action → popup.js → chrome.runtime.sendMessage → background.js
-                                                          │
-                                                          ▼
-                                                  Fetch ProxyMania HTML
-                                                          │
-                                                          ▼
-                                                  Parse Proxy Data
-                                                          │
-                                                          ▼
-                                                  Store in chrome.storage
-                                                          │
-                                                          ▼
-                                                  Return to popup.js
-                                                          │
-                                                          ▼
-                                                  Render UI
+┌──────────────┐    Messages    ┌──────────────────────────┐
+│  popup.html │ ◀────────────▶ │   src/background/       │
+│  popup.js   │                │   (Service Worker)      │
+│  styles.css │                │   index.js (ES Module)  │
+└──────────────┘                │                          │
+        │                       │  ┌────────────────────┐ │
+        │ UI Updates            │  │  Chrome APIs       │ │
+        ▼                       │  │  - proxy.settings  │ │
+┌──────────────┐               │  │  - storage.local   │ │
+│   DOM Render │               │  └────────────────────┘ │
+└──────────────┘               └───────────┬────────────┘
+                                           │
+                                           │ HTTP Fetch
+                                           ▼
+                          ┌─────────────────────────────┐
+                          │   External Sources:         │
+                          │   - ProxyMania (proxymania.su)
+                          │   - ProxyScrape (proxyscrape.com)
+                          └─────────────────────────────┘
 ```
 
 ---
@@ -154,44 +84,121 @@ User Action → popup.js → chrome.runtime.sendMessage → background.js
 
 ### File Responsibilities
 
-#### `manifest.json`
-Extension configuration and permissions (Manifest V3).
+| File | Description |
+|------|-------------|
+| `manifest.json` | Extension config (MV3) |
+| `popup.html` | UI structure |
+| `popup.js` | Main UI logic |
+| `background.js` | Service worker |
+| `styles.css` | Styling |
+| `src/background/` | Service worker modules |
+| `src/popup/` | Popup modules (i18n, virtual-scroller) |
+| `src/core/` | Core modules (reputation engine) |
+| `src/security/` | Security modules |
 
-```json
-{
-  "manifest_version": 3,
-  "name": "__MSG_extension_name__",
-  "version": "3.0.0",
-  "permissions": ["proxy", "storage", "tabs", "scripting", "alarms", "notifications"],
-  "background": { "service_worker": "src/background/index.js", "type": "module" },
-  "action": { "default_popup": "popup.html" }
-}
+For detailed API documentation, see [API.md](API.md).
+
+---
+
+## Building & Testing
+
+### npm Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run build` | Build bundled modules |
+| `npm run watch` | Watch mode for development |
+| `npm run distribute` | Build ZIP + CRX packages |
+| `npm run release` | Publish to GitHub Releases |
+| `npm test` | Run tests |
+
+### Distribution Build
+
+```bash
+npm run distribute
 ```
 
-#### `src/background/index.js`
-Main service worker entry point (ES Module).
+Output in `dist/`:
+- `proxy-vpn-extension.zip` - Chrome Web Store
+- `proxy-vpn-extension.crx` - Direct installation
 
-**Key Functions:**
-- `fetchProxies()` - Fetches from selected source (ProxyMania or ProxyScrape)
-- `fetchProxyMania()` - Fetches from proxymania.su (multiple pages)
-- `fetchProxyScrape()` - Fetches from api.proxyscrape.com (CSV format)
-- `setProxy(proxy)` - Configures Chrome proxy
-- `clearProxy()` - Removes proxy configuration
-- `testProxy(proxy)` - Checks proxy health
-- `parseProxyMania(html)` - Parses HTML table
-- `parseProxyScrapeCSV(csv)` - Parses CSV format
-- `initReputationEngine()` - Initialize trust scoring
-- `initTamperDetector()` - Initialize MITM detection
+---
 
-#### `src/core/reputation-engine.js`
-Trust scoring system for proxies.
+## Publishing
 
-**Key Functions:**
-- `calculateScore(proxy)` - Calculate trust score (0-100)
-- `recordTest(proxy, success, latency)` - Record test result
-- `getReputation(proxy)` - Get reputation data
+See [RELEASE_GUIDE.md](RELEASE_GUIDE.md) for detailed release process.
 
-#### `src/security/tamper-detection.js`
+### Quick Release
+
+```bash
+npm version patch  # or minor, major
+git push --follow-tags
+```
+
+---
+
+## Debugging
+
+### Console Access
+
+**Popup:** Right-click extension icon → Inspect popup  
+**Background:** `chrome://extensions/` → Inspect views: background page
+
+### Common Debug Commands
+
+```javascript
+// Check storage
+chrome.storage.local.get(null, console.log);
+
+// Clear storage
+chrome.storage.local.clear();
+
+// Check proxy settings
+chrome.proxy.settings.get({}, console.log);
+
+// Test message
+chrome.runtime.sendMessage({ action: 'fetchProxies' }, console.log);
+```
+
+---
+
+## Contributing
+
+### Code Style
+
+- ES6+ (async/await, arrow functions)
+- `const` over `let`, avoid `var`
+- Template literals for strings
+- JSDoc comments for functions
+
+### Pull Request Process
+
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/your-feature`
+3. Make changes and test
+4. Commit with clear messages
+5. Push and create PR
+
+### Commit Message Format
+
+```
+type: subject
+
+Examples:
+feat: add dark mode toggle
+fix: resolve connection timer issue
+docs: update installation instructions
+```
+
+---
+
+## Support
+
+- [API.md](API.md) - API reference
+- [ARCHITECTURE.md](ARCHITECTURE.md) - Architecture details
+- [RELEASE_GUIDE.md](RELEASE_GUIDE.md) - Release process
+
+Happy coding!
 MITM attack detection.
 
 **Key Functions:**

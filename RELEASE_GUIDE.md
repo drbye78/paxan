@@ -1,27 +1,6 @@
 # Release Guide
 
-Quick reference for building and publishing ProxyMania VPN Extension releases.
-
----
-
-## GitHub Actions Setup (First Time Only)
-
-### Configure GitHub Secrets
-
-For automated CRX signing in GitHub Actions, you need to store your PEM file as a secret:
-
-1. Go to: `Repository Settings → Secrets and variables → Actions`
-2. Click "New repository secret"
-3. Name: `CRX_PEM_FILE`
-4. Value: Copy entire content of `proxy-vpn-extension.pem`
-5. Click "Add secret"
-
-**Get PEM content:**
-```bash
-cat proxy-vpn-extension.pem
-```
-
-⚠️ **Never commit the PEM file to git!** It's already in `.gitignore`.
+Complete guide for building and publishing ProxyMania VPN Extension releases.
 
 ---
 
@@ -57,6 +36,27 @@ npm run release:draft
 
 ---
 
+## GitHub Actions Setup
+
+### Configure GitHub Secrets
+
+For automated CRX signing, store your PEM file as a secret:
+
+1. Go to: `Repository Settings → Secrets and variables → Actions`
+2. Click "New repository secret"
+3. Name: `CRX_PEM_FILE`
+4. Value: Copy entire content of `proxy-vpn-extension.pem`
+5. Click "Add secret"
+
+**Get PEM content:**
+```bash
+cat proxy-vpn-extension.pem
+```
+
+⚠️ **Never commit the PEM file to git!** It's already in `.gitignore`.
+
+---
+
 ## Distribution Packages
 
 ### Build Only (No Publish)
@@ -75,6 +75,15 @@ npm run distribute:crx
 **Output:** `dist/` directory
 - `proxy-vpn-extension.zip` (~200KB)
 - `proxy-vpn-extension.crx` (~200KB)
+
+### Distribution Channels
+
+| Package | Use Case | Location |
+|---------|----------|----------|
+| **ZIP** | Chrome Web Store | https://chrome.google.com/webstore/devconsole |
+| **CRX** | Sideloading | `chrome://extensions/` (Developer mode) |
+| **CRX** | Enterprise | Group Policy / MDM |
+| **GitHub** | Direct download | Releases page |
 
 ---
 
@@ -171,6 +180,24 @@ on:
 
 ---
 
+## Testing the Workflow
+
+Before pushing a real tag, you can test the workflow:
+
+```bash
+# Create a test tag
+git tag v0.0.1-test
+
+# Push to trigger workflow
+git push origin v0.0.1-test
+
+# After testing, delete the tag
+git tag -d v0.0.1-test
+git push origin :refs/tags/v0.0.1-test
+```
+
+---
+
 ## Troubleshooting
 
 ### "GITHUB_TOKEN is required"
@@ -205,16 +232,12 @@ Check Node.js version (requires v16+):
 node --version
 ```
 
----
+### CRX file not uploaded
 
-## Distribution Channels
-
-| Package | Use Case | Location |
-|---------|----------|----------|
-| **ZIP** | Chrome Web Store | https://chrome.google.com/webstore/devconsole |
-| **CRX** | Sideloading | `chrome://extensions/` (Developer mode) |
-| **CRX** | Enterprise | Group Policy / MDM |
-| **GitHub** | Direct download | Releases page |
+**Check:**
+1. Verify `CRX_PEM_FILE` secret is set
+2. Check workflow logs for "Setup PEM file" step
+3. Ensure PEM content includes BEGIN/END markers
 
 ---
 
@@ -253,6 +276,20 @@ node --version
 
 **Full Changelog**: https://github.com/owner/repo/compare/vPrevious...vCurrent
 ```
+
+---
+
+## Security Notes
+
+⚠️ **Never commit your PEM file to git!**
+
+- Add to `.gitignore`:
+  ```
+  *.pem
+  ```
+
+- Store only in GitHub Secrets
+- Rotate the key if compromised
 
 ---
 
