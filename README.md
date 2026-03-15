@@ -1,23 +1,38 @@
 # ProxyMania - Smart Proxy Router
 
 [![Version](https://img.shields.io/badge/version-3.0.0-blue?style=flat-square)](https://github.com)
+[![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-green?style=flat-square)](https://chrome.google.com/webstore)
+[![Android App](https://img.shields.io/badge/Android-App-green?style=flat-square)](https://play.google.com/store)
 [![Manifest V3](https://img.shields.io/badge/manifest-v3-green?style=flat-square)](https://developer.chrome.com/docs/extensions/mv3/intro/)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/your-org/proxy-vpn-extension?style=flat-square)](https://github.com/your-org/proxy-vpn-extension/releases)
 
-A professional-grade proxy manager Chrome extension that routes your traffic through rotating proxy servers from [ProxyMania](https://proxymania.su/free-proxy) or [ProxyScrape](https://proxyscrape.com/). Features intelligent proxy selection, real-time monitoring, reputation scoring, and tampering detection.
+A professional-grade proxy manager that works as both a **Chrome extension** and **Android app**. Routes your traffic through rotating proxy servers from [ProxyMania](https://proxymania.su/free-proxy) or [ProxyScrape](https://proxyscrape.com/). Features intelligent proxy selection, real-time monitoring, reputation scoring, and tampering detection.
 
 **⚠️ Important:** This is NOT a VPN. Free proxies can intercept traffic. Do not use for banking or sensitive logins.
 
-![Features](https://img.shields.io/badge/features-proxy%20testing%20%7C%20auto--failover%20%7C%20reputation%20scoring-green?style=flat-square)
+---
+
+## 📱 Projects
+
+| Project | Description | Status |
+|---------|-------------|--------|
+| **Chrome Extension** | Browser-based proxy manager (Manifest V3) | ✅ Stable |
+| **Android App** | System-wide VPN/proxy manager | ✅ Beta |
 
 ---
 
 ## ⚡ Quick Start
 
+### Chrome Extension
 1. **Install**: Load unpacked extension in Chrome
 2. **Connect**: Click any proxy or use Quick Connect
 3. **Browse**: Traffic now routes through selected proxy
+
+### Android App
+1. **Install**: Download APK from [Releases](https://github.com/your-org/proxy-vpn-extension/releases)
+2. **Grant VPN Permission**: Required for system-wide proxying
+3. **Connect**: Tap Quick Connect or select a proxy
 
 ---
 
@@ -561,10 +576,18 @@ See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ## 🔗 Resources
 
+### Chrome Extension
 - [ProxyMania](https://proxymania.su/free-proxy) - Proxy source
 - [Chrome Extensions Docs](https://developer.chrome.com/docs/extensions/)
 - [Manifest V3 Guide](https://developer.chrome.com/docs/extensions/mv3/intro/)
 - [Chrome Proxy API](https://developer.chrome.com/docs/extensions/reference/proxy/)
+
+### Android App
+- [ANDROID.md](ANDROID.md) - Android app documentation
+- [Android Jetpack Compose](https://developer.android.com/jetpack/compose)
+- [Android VPN Service](https://developer.android.com/guide/topics/connectivity/vpn)
+
+### General
 - [GitHub Releases](https://github.com/your-org/proxy-vpn-extension/releases) - Download latest version
 
 ---
@@ -577,16 +600,27 @@ MIT License - See [LICENSE](LICENSE) file.
 
 ## 🙏 Acknowledgments
 
+### Chrome Extension
 - Proxy list: [ProxyMania](https://proxymania.su/)
-- Icons: Generated programmatically
 - Framework: Vanilla JavaScript (no dependencies)
+
+### Android App
+- Framework: [Jetpack Compose](https://developer.android.com/jetpack/compose)
+- Architecture: [MVVM + Clean Architecture](https://developer.android.com/topic/architecture)
+- DI: [Hilt](https://dagger.dev/hilt/)
+- Database: [Room](https://developer.android.com/jetpack/androidx/releases/room)
 
 ---
 
 ## 📞 Support
 
+### Chrome Extension
 For detailed user instructions, troubleshooting, and FAQ, see [USER_GUIDE.md](USER_GUIDE.md).
 
+### Android App
+For Android app documentation, see [ANDROID.md](ANDROID.md).
+
+### Development
 For developer documentation, see [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md).
 
 For API reference, see [API.md](API.md).
