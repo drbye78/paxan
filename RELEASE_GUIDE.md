@@ -1,6 +1,37 @@
 # Release Guide
 
-Complete guide for building and publishing ProxyMania VPN Extension releases.
+Complete guide for building and publishing ProxyMania VPN releases (Chrome Extension + Android App).
+
+---
+
+## Version Management
+
+This project has two versions to manage:
+
+| Project | Version | File |
+|---------|---------|------|
+| Chrome Extension | `3.0.5` | `package.json` |
+| Android App | `1.0.0` | `app/build.gradle.kts` |
+
+### Version Commands
+
+#### Chrome Extension (npm)
+```bash
+npm version patch  # 3.0.5 → 3.0.6
+npm version minor  # 3.0.5 → 3.1.0
+npm version major  # 3.0.5 → 4.0.0
+npm version 1.2.3  # Specific version
+```
+
+#### Android App (Gradle)
+```bash
+./gradlew bumpPatch     # 1.0.0 → 1.0.1
+./gradlew bumpMinor     # 1.0.0 → 1.1.0
+./gradlew bumpMajor     # 1.0.0 → 2.0.0
+./gradlew setVersion -Pversion=1.2.3
+```
+
+**Note:** Gradle tasks automatically increment `versionCode` by 1 for each release.
 
 ---
 
@@ -9,17 +40,20 @@ Complete guide for building and publishing ProxyMania VPN Extension releases.
 ### Automated Release (Recommended)
 
 ```bash
-# 1. Update version (creates git tag)
-npm version patch  # or: minor, major, 1.2.3
+# 1. Update version for BOTH projects
+npm version patch              # Updates Chrome + creates tag
+./gradlew bumpPatch            # Updates Android versionName + increments versionCode
 
-# 2. Push to trigger automated release
+# 2. Commit and push to trigger automated release
+git add -A
+git commit -m "release: v3.0.6"
 git push --follow-tags
 ```
 
 GitHub Actions will automatically:
-- Build distribution packages
-- Create a GitHub release
-- Upload ZIP and CRX assets
+- Build Chrome extension (ZIP + CRX)
+- Build Android APK
+- Create a GitHub release with all artifacts
 
 ### Manual Release
 
@@ -59,7 +93,7 @@ cat proxy-vpn-extension.pem
 
 ## Distribution Packages
 
-### Build Only (No Publish)
+### Chrome Extension
 
 ```bash
 # Build both ZIP and CRX
@@ -72,9 +106,26 @@ npm run distribute:zip
 npm run distribute:crx
 ```
 
-**Output:** `dist/` directory
-- `proxy-vpn-extension.zip` (~200KB)
-- `proxy-vpn-extension.crx` (~200KB)
+### Android App
+
+```bash
+# Debug build
+./gradlew assembleDebug
+
+# Release build (unsigned)
+./gradlew assembleRelease
+
+# Copy to dist/
+./gradlew copyReleaseToDist
+```
+
+### Output: `dist/` directory
+
+| File | Description |
+|------|-------------|
+| `proxy-vpn-extension.zip` | Chrome Extension (Web Store) |
+| `proxy-vpn-extension.crx` | Chrome Extension (Sideload) |
+| `proxymania-android-release-unsigned.apk` | Android App |
 
 ### Distribution Channels
 
@@ -82,30 +133,19 @@ npm run distribute:crx
 |---------|----------|----------|
 | **ZIP** | Chrome Web Store | https://chrome.google.com/webstore/devconsole |
 | **CRX** | Sideloading | `chrome://extensions/` (Developer mode) |
-| **CRX** | Enterprise | Group Policy / MDM |
-| **GitHub** | Direct download | Releases page |
+| **APK** | Android Direct | Install via file manager |
+| **GitHub** | All Downloads | Releases page |
 
 ---
 
-## Version Management
-
-### Semantic Versioning
-
-```bash
-npm version patch    # 3.0.0 → 3.0.1 (bug fixes)
-npm version minor    # 3.0.0 → 3.1.0 (new features)
-npm version major    # 3.0.0 → 4.0.0 (breaking changes)
-npm version 1.2.3    # Specific version
-```
-
 ### Release Checklist
 
+- [ ] Update version: `npm version patch` + `./gradlew bumpPatch`
 - [ ] Update `CHANGELOG.md` with changes
-- [ ] Run tests: `npm test`
-- [ ] Build distribution: `npm run distribute`
+- [ ] Run tests: `npm test` + `./gradlew test`
+- [ ] Build distribution: `npm run distribute` + `./gradlew assembleRelease`
 - [ ] Test built packages locally
-- [ ] Update version: `npm version <type>`
-- [ ] Commit changes: `git commit -am "chore: release vX.X.X"`
+- [ ] Commit changes: `git add -A && git commit -m "release: vX.X.X"`
 - [ ] Push with tags: `git push --follow-tags`
 - [ ] Verify release on GitHub
 - [ ] Share release notes
