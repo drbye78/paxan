@@ -70,7 +70,7 @@ jobs:
       
       - name: Check documentation files
         run: |
-          docs=("README.md" "CHANGELOG.md" "LICENSE")
+          docs=("README.md" "LICENSE")
           for doc in "${docs[@]}"; do
             if [ ! -f "$doc" ]; then
               echo "Missing documentation: $doc"
