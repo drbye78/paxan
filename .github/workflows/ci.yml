@@ -33,7 +33,7 @@ jobs:
       
       - name: Check required files
         run: |
-          files=("manifest.json" "popup.html" "popup.js" "background.js" "styles.css")
+          files=("manifest.json" "popup.html" "popup.js" "styles.css")
           for file in "${files[@]}"; do
             if [ ! -f "$file" ]; then
               echo "Missing required file: $file"
