@@ -78,9 +78,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
 
     // Hilt
-    implementation("com.google.dagger:hilt-android:2.50")
-    ksp("com.google.dagger:hilt-android-compiler:2.50")
-    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    implementation("com.google.dagger:hilt-android:2.48.1")
+    ksp("com.google.dagger:hilt-android-compiler:2.48.1")
+    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
 
     // Network
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
@@ -89,9 +89,9 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 
     // Database
-    implementation("androidx.room:room-runtime:2.6.0")
-    implementation("androidx.room:room-ktx:2.6.0")
-    ksp("androidx.room:room-compiler:2.6.0")
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
 
     // Background Work
     implementation("androidx.work:work-runtime-ktx:2.9.0")
@@ -157,10 +157,6 @@ tasks.register<Copy>("copyToDist") {
             distDir.mkdirs()
         }
     }
-}
-
-ksp {
-    arg("dagger.fastInitialization", "true")
 }
 
 tasks.register<Copy>("copyReleaseToDist") {

@@ -4,18 +4,8 @@ import java.util.Properties
 plugins {
     id("com.android.application") version "8.2.2" apply false
     id("org.jetbrains.kotlin.android") version "1.9.22" apply false
-    id("com.google.dagger.hilt.android") version "2.50" apply false
+    id("com.google.dagger.hilt.android") version "2.48.1" apply false
     id("com.google.devtools.ksp") version "1.9.22-1.0.17" apply false
-}
-
-// Suppress warnings for JSON parsing
-allprojects {
-    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-        kotlinOptions {
-            freeCompilerArgs += "-Xjsr305=strict"
-            jvmTarget = "17"
-        }
-    }
 }
 
 // Version management tasks
@@ -50,7 +40,7 @@ tasks.register("syncVersion") {
             "versionCode = ${currentVersionCode + 1}"
         )
 
-        appBuildFile.writeText(buildContent)
+        appBuildFile.write(buildContent)
 
         println("✅ Synced version: $version (versionCode: ${currentVersionCode + 1})")
     }
@@ -84,7 +74,7 @@ tasks.register("setVersion") {
             "versionCode = ${currentVersionCode + 1}"
         )
 
-        appBuildFile.writeText(buildContent)
+        appBuildFile.write(buildContent)
 
         // Also update package.json
         val packageJsonFile = file("package.json")
@@ -93,7 +83,7 @@ tasks.register("setVersion") {
             """"version": "[\d.]+"""".toRegex(),
             """ "version": "$newVersion""""
         )
-        packageJsonFile.writeText(packageContent)
+        packageJsonFile.write(packageContent)
 
         println("✅ Set version to: $newVersion (versionCode: ${currentVersionCode + 1})")
     }
