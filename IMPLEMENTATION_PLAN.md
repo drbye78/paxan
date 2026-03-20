@@ -260,11 +260,11 @@ chrome.runtime.sendMessage({
 **Effort:** High
 
 #### Tasks:
-- [ ] Implement tab tracking
+- [x] Implement tab tracking
   - Track active tabs
   - Monitor tab URL changes
   - Store tab-proxy mappings
-- [ ] Create tab proxy assignment
+- [x] Create tab proxy assignment
   - Assign proxy to specific tab
   - Remember proxy per domain
   - Visual indicator per tab
@@ -272,7 +272,7 @@ chrome.runtime.sendMessage({
   - Tab list with proxy indicators
   - Quick proxy switch per tab
   - Domain-based rules
-- [ ] Implement tab proxy persistence
+- [x] Implement tab proxy persistence
   - Save tab-proxy mappings
   - Restore on browser restart
   - Export/import mappings
@@ -309,7 +309,7 @@ chrome.runtime.sendMessage({
 **Effort:** Medium
 
 #### Tasks:
-- [ ] Implement URL pattern matching
+- [x] Implement URL pattern matching
   - Exact match
   - Wildcard match
   - Regex match
@@ -318,11 +318,11 @@ chrome.runtime.sendMessage({
   - Add/remove URLs
   - Import/export lists
   - Test patterns
-- [ ] Add rule management
+- [x] Add rule management
   - Priority ordering
   - Enable/disable rules
   - Rule conflicts detection
-- [ ] Implement rule application
+- [x] Implement rule application
   - Apply rules on navigation
   - Override proxy selection
   - Log rule matches
