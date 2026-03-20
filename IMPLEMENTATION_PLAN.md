@@ -12,12 +12,12 @@ This document outlines the implementation plan for new features and improvements
 **Effort:** Medium
 
 #### Tasks:
-- [ ] Implement lazy loading for proxy lists
+- [x] Implement lazy loading for proxy lists
 - [ ] Add background sync for proxy updates
-- [ ] Optimize caching strategies (IndexedDB for large data)
-- [ ] Reduce memory footprint
-- [ ] Implement virtual scrolling optimizations
-- [ ] Add request debouncing/throttling
+- [x] Optimize caching strategies (IndexedDB for large data)
+- [x] Reduce memory footprint
+- [x] Implement virtual scrolling optimizations
+- [x] Add request debouncing/throttling
 
 #### Files to Modify:
 - `src/background/proxy-fetcher.js` - Add caching layer
@@ -36,14 +36,14 @@ This document outlines the implementation plan for new features and improvements
 **Effort:** Low
 
 #### Tasks:
-- [ ] Create backup export functionality
+- [x] Create backup export functionality
   - Export settings, favorites, proxy stats
   - Export as JSON file
-- [ ] Create restore import functionality
+- [x] Create restore import functionality
   - Validate backup file format
   - Merge or replace existing data
-- [ ] Add cloud sync support (optional, via Chrome sync)
-- [ ] Add backup scheduling (auto-backup)
+- [x] Add cloud sync support (optional, via Chrome sync)
+- [x] Add backup scheduling (auto-backup)
 
 #### Files to Create:
 - `src/popup-modules/popup.backup.js` - Backup/restore logic
