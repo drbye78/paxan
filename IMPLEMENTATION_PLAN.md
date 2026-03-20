@@ -73,17 +73,17 @@ chrome.runtime.sendMessage({ action: 'importBackup', data: {...} })
 **Effort:** Medium
 
 #### Tasks:
-- [ ] Implement multiple DNS test servers
+- [x] Implement multiple DNS test servers
   - Google DNS (8.8.8.8, 8.8.4.4)
   - Cloudflare DNS (1.1.1.1, 1.0.0.1)
   - Quad9 DNS (9.9.9.9)
-- [ ] Add real-time DNS leak monitoring
+- [x] Add real-time DNS leak monitoring
   - Periodic DNS checks while connected
   - Alert on leak detection
-- [ ] Create DNS test history
+- [x] Create DNS test history
   - Store test results
   - Display in statistics panel
-- [ ] Add DNS leak protection toggle
+- [x] Add DNS leak protection toggle
   - Force DNS through proxy
   - Block DNS requests outside proxy
 
