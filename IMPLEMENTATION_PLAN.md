@@ -114,17 +114,17 @@ chrome.runtime.sendMessage({ action: 'getDnsHistory' })
 **Effort:** Medium
 
 #### Tasks:
-- [ ] Implement anonymity level detection
+- [x] Implement anonymity level detection
   - Elite (high anonymity)
   - Anonymous
   - Transparent
-- [ ] Add proxy logging policy check
+- [x] Add proxy logging policy check
   - Test for logging indicators
   - Report logging status
-- [ ] Implement content injection detection
+- [x] Implement content injection detection
   - Check for injected scripts
   - Check for modified headers
-- [ ] Create validation report
+- [x] Create validation report
   - Detailed validation results
   - Risk assessment
 
