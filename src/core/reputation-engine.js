@@ -1,3 +1,5 @@
+import { THRESHOLDS, TRUST_THRESHOLDS, REPUTATION_WEIGHTS } from '../popup/constants.js';
+
 const REPUTATION_KEY = 'proxyReputation';
 const MAX_LATENCY_HISTORY = 50;
 const MAX_TEST_AGE_DAYS = 7;
@@ -102,11 +104,9 @@ class ReputationEngine {
     const now = Date.now();
     const hourAgo = now - hourMs;
     
-    const recentTests = rep.latencyHistory.length;
-    if (recentTests === 0) return 0;
+    if (!rep.totalTests || rep.totalTests === 0) return 0;
     
-    const recentFailures = rep.consecutiveFailures;
-    return Math.max(0, Math.round(((recentTests - recentFailures) / recentTests) * 100));
+    return Math.max(0, Math.round((rep.successes / rep.totalTests) * 100));
   }
 
   async getReputation(proxyIpPort) {
@@ -124,10 +124,10 @@ class ReputationEngine {
     const freshnessScore = this.calculateFreshnessScore(rep.lastTested);
     
     const score = Math.round(
-      (speedScore * 0.30) +
-      (reliabilityScore * 0.35) +
-      (trustScore * 0.25) +
-      (freshnessScore * 0.10)
+      (speedScore * REPUTATION_WEIGHTS.SPEED) +
+      (reliabilityScore * REPUTATION_WEIGHTS.RELIABILITY) +
+      (trustScore * REPUTATION_WEIGHTS.TRUST) +
+      (freshnessScore * REPUTATION_WEIGHTS.FRESHNESS)
     );
     
     rep.reputationScore = score;
@@ -165,7 +165,7 @@ class ReputationEngine {
     return Math.round(100 - (hoursSinceTest * 3));
   }
 
-  getTrustedProxies(threshold = 50) {
+  getTrustedProxies(threshold = TRUST_THRESHOLDS.UNVERIFIED) {
     return Object.values(this.reputation)
       .filter(rep => rep.reputationScore >= threshold)
       .sort((a, b) => b.reputationScore - a.reputationScore);
@@ -202,7 +202,7 @@ class ReputationEngine {
     return {
       totalProxies: reps.length,
       avgScore,
-      trustedCount: reps.filter(r => r.reputationScore >= 50).length,
+      trustedCount: reps.filter(r => r.reputationScore >= TRUST_THRESHOLDS.UNVERIFIED).length,
       suspiciousCount: reps.filter(r => r.tamperDetected || r.consecutiveFailures > 5).length
     };
   }

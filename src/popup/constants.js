@@ -1,57 +1,65 @@
-const countryFlags = {
-  'United States': '🇺🇸', 'USA': '🇺🇸', 'Germany': '🇩🇪', 'France': '🇫🇷',
-  'United Kingdom': '🇬🇧', 'UK': '🇬🇧', 'Japan': '🇯🇵', 'China': '🇨🇳',
-  'Brazil': '🇧🇷', 'Canada': '🇨🇦', 'Australia': '🇦🇺', 'Russia': '🇷🇺',
-  'India': '🇮🇳', 'South Korea': '🇰🇷', 'Netherlands': '🇳🇱', 'Spain': '🇪🇸',
-  'Italy': '🇮🇹', 'Poland': '🇵🇱', 'Singapore': '🇸🇬', 'Hong Kong': '🇭🇰',
-  'Taiwan': '🇹🇼', 'Indonesia': '🇮🇩', 'Thailand': '🇹🇭', 'Vietnam': '🇻🇳',
-  'Philippines': '🇵🇭', 'Malaysia': '🇲🇾', 'Argentina': '🇦🇷', 'Mexico': '🇲🇽',
-  'Ukraine': '🇺🇦', 'Turkey': '🇹🇷', 'South Africa': '🇿🇦', 'Sweden': '🇸🇪',
-  'Norway': '🇳🇴', 'Switzerland': '🇨🇭', 'Austria': '🇦🇹', 'Belgium': '🇧🇪',
-  'Portugal': '🇵🇹', 'Greece': '🇬🇷', 'Czech Republic': '🇨🇿', 'Romania': '🇷🇴',
-  'Hungary': '🇭🇺', 'Bulgaria': '🇧🇬', 'Ireland': '🇮🇪', 'New Zealand': '🇳🇿',
-  'Pakistan': '🇵🇰', 'Bangladesh': '🇧🇩', 'Iran': '🇮🇷', 'Israel': '🇮🇱',
-  'UAE': '🇦🇪', 'Saudi Arabia': '🇸🇦', 'Egypt': '🇪🇬', 'Nigeria': '🇳🇬',
-  'Kenya': '🇰🇪', 'Chile': '🇨🇱', 'Colombia': '🇨🇴', 'Peru': '🇵🇪',
-  'Venezuela': '🇻🇪', 'Ecuador': '🇪🇨', 'Uruguay': '🇺🇾', 'Costa Rica': '🇨🇷',
-  'Panama': '🇵🇦', 'Guatemala': '🇬🇹', 'Cuba': '🇨🇺', 'Jamaica': '🇯🇲',
-  'Fiji': '🇫🇯', 'Iceland': '🇮🇸', 'Luxembourg': '🇱🇺', 'Malta': '🇲🇹',
-  'Cyprus': '🇨🇾', 'Georgia': '🇬🇪', 'Armenia': '🇦🇲', 'Kazakhstan': '🇰🇿',
-  'Belarus': '🇧🇾', 'Lithuania': '🇱🇹', 'Latvia': '🇱🇻', 'Estonia': '🇪🇪',
-  'Croatia': '🇭🇷', 'Serbia': '🇷🇸', 'Slovakia': '🇸🇰', 'Slovenia': '🇸🇮',
-  'Denmark': '🇩🇰', 'Finland': '🇫🇮', 'Morocco': '🇲🇦', 'Tunisia': '🇹🇳',
-  'Algeria': '🇩🇿', 'Ghana': '🇬🇭', 'Ethiopia': '🇪🇹', 'Tanzania': '🇹🇿',
-  'Uganda': '🇺🇬', 'Zimbabwe': '🇿🇼', 'Angola': '🇦🇴', 'Zambia': '🇿🇲',
-  'Mozambique': '🇲🇿', 'Botswana': '🇧🇼', 'Namibia': '🇳🇦', 'Nepal': '🇳🇵',
-  'Sri Lanka': '🇱🇰', 'Myanmar': '🇲🇲', 'Cambodia': '🇰🇭', 'Laos': '🇱🇦',
-  'Mongolia': '🇲🇳', 'Iraq': '🇮🇶', 'Libya': '🇱🇾', 'Paraguay': '🇵🇾',
-  'Bolivia': '🇧🇴', 'Honduras': '🇭🇳', 'El Salvador': '🇸🇻', 'Nicaragua': '🇳🇮',
-  'Dominican Republic': '🇩🇴', 'Trinidad and Tobago': '🇹🇹', 'Bahamas': '🇧🇸',
-  'Barbados': '🇧🇧', 'Papua New Guinea': '🇵🇬', 'Vanuatu': '🇻🇺'
+// ProxyMania VPN - Constants
+// Scoring weights and configuration constants
+
+// Scoring weights for proxy ranking (must sum to 1.0)
+const SCORING_WEIGHTS = {
+  SPEED: 0.35,           // Latency-based score
+  RELIABILITY: 0.35,     // Success rate score
+  FRESHNESS: 0.15,       // Last check recency
+  FAVORITE_BONUS: 0.05,  // Bonus for favorited proxies
+  HISTORICAL_BONUS: 0.05, // Bonus for historical data
+  ATTEMPTS_BONUS: 0.05   // Bonus for proxies with enough test data
 };
 
-const DEFAULT_SETTINGS = {
-  theme: 'dark',
-  autoFailover: true,
-  testBeforeConnect: true,
-  autoConnect: false,
-  notifications: true,
-  refreshInterval: 300000,
-  proxySource: 'proxymania',
-  countryBlacklist: []
+// Thresholds
+const THRESHOLDS = {
+  CACHE_TTL: 300000,           // 5 minutes cache TTL
+  QUICK_CONNECT_SPEED: 150,    // Max speed for quick connect (ms)
+  FAST_PROXY_SPEED: 100,       // Max speed for "fast" filter (ms)
+  MEDIUM_PROXY_SPEED: 300,     // Max speed for "medium" filter (ms)
+  MAX_LATENCY_HISTORY: 20,     // Max latency measurements to store
+  MAX_RECENTLY_USED: 10,       // Max recently used proxies
+  PROXY_TEST_TIMEOUT: 5000,    // Proxy test timeout (ms)
+  QUICK_TEST_TIMEOUT: 3000,    // Quick test timeout (ms)
+  MONITORING_INTERVAL: 0.5,    // Health monitoring interval (minutes)
+  ROTATION_INTERVAL: 600000,   // Auto-rotation interval (ms)
+  HIGH_LATENCY_WARNING: 500,   // High latency warning threshold (ms)
+  POOR_QUALITY_LATENCY: 500,   // Poor quality latency threshold (ms)
+  POOR_QUALITY_PACKET_LOSS: 50 // Poor quality packet loss threshold (%)
 };
 
-const ONBOARDING_STEPS = [
-  { id: 'welcome', image: '🛡️', title: 'Welcome to ProxyMania VPN', content: 'Your free VPN service using ProxyMania proxy servers.' },
-  { id: 'connectivity', image: '🔌', title: 'Quick Connection', content: 'Click any proxy or use Quick Connect to start browsing securely.' },
-  { id: 'quality', image: '🟢', title: 'Connection Quality', content: 'See real-time connection quality. Green = excellent, Red = poor.' },
-  { id: 'ip-detector', image: '🌐', title: 'IP Detector', content: 'Click "Check IPs" to verify your proxy is working.' },
-  { id: 'site-rules', image: '🎯', title: 'Per-Site Rules', content: 'Auto-switch proxies for specific websites.' },
-  { id: 'auto-rotation', image: '🔄', title: 'Auto-Rotation', content: 'Automatically rotate to fresh proxies at set intervals.' },
-  { id: 'undo', image: '↩️', title: 'Undo Disconnect', content: 'Accidentally disconnected? Click Undo within 5 seconds!' },
-  { id: 'shortcuts', image: '⌨️', title: 'Keyboard Shortcuts', content: 'Use Ctrl+K for search, Ctrl+Q for quick connect, and more!' }
-];
+// Trust score thresholds
+const TRUST_THRESHOLDS = {
+  TRUSTED: 70,     // Score >= 70 = Trusted
+  UNVERIFIED: 40,  // Score >= 40 = Unverified
+  RISKY: 0         // Score < 40 = Risky
+};
 
+// Reputation score weights
+const REPUTATION_WEIGHTS = {
+  SPEED: 0.30,
+  RELIABILITY: 0.35,
+  TRUST: 0.25,
+  FRESHNESS: 0.10
+};
+
+// Connection quality thresholds
+const QUALITY_THRESHOLDS = {
+  EXCELLENT_LATENCY: 100,
+  EXCELLENT_PACKET_LOSS: 1,
+  GOOD_LATENCY: 300,
+  GOOD_PACKET_LOSS: 5,
+  FAIR_LATENCY: 500,
+  FAIR_PACKET_LOSS: 10
+};
+
+// Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { countryFlags, DEFAULT_SETTINGS, ONBOARDING_STEPS };
+  module.exports = {
+    SCORING_WEIGHTS,
+    THRESHOLDS,
+    TRUST_THRESHOLDS,
+    REPUTATION_WEIGHTS,
+    QUALITY_THRESHOLDS
+  };
 }

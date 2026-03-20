@@ -1,3 +1,5 @@
+import { THRESHOLDS } from '../popup/constants.js';
+
 const MAX_PAGES = 5;
 const BYPASS_LIST = [
   'localhost', '127.0.0.1', '::1', '*.local',
@@ -104,16 +106,8 @@ function parseProxyScrapeCSV(csvText) {
       const speedStr = parts[speedIndex]?.trim();
       
       if (ip && port && !isNaN(port)) {
-        proxyItems.push({
-          ip,
-          port,
-          ipPort: `${ip}:${port}`,
-          country: getCountryName(countryCode),
-          type: normalizeProxyType(type),
-          speed: speedStr,
-          lastCheck: 'Recently',
-          speedMs: parseSpeed(speedStr)
-        });
+        const proxy = createProxyObject(ip, port, getCountryName(countryCode), normalizeProxyType(type), speedStr, 'Recently');
+        proxyItems.push(proxy);
       }
     }
     
@@ -134,7 +128,12 @@ function parseCSVLine(line) {
     const char = line[i];
     
     if (char === '"') {
-      inQuotes = !inQuotes;
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
     } else if (char === ',' && !inQuotes) {
       result.push(current);
       current = '';
@@ -172,16 +171,8 @@ function parseProxyMania(html) {
       const [ip, port] = ipPort.split(':');
       
       if (ip && port && !isNaN(parseInt(port))) {
-        proxyItems.push({
-          ip,
-          port: parseInt(port),
-          ipPort,
-          country,
-          type,
-          speed,
-          lastCheck,
-          speedMs: parseSpeed(speed)
-        });
+        const proxy = createProxyObject(ip, parseInt(port), country, type, speed, lastCheck);
+        proxyItems.push(proxy);
       }
     }
   }
@@ -232,6 +223,19 @@ function parseSpeed(speedStr) {
   }
   
   return Math.round(value);
+}
+
+function createProxyObject(ip, port, country, type, speed, lastCheck) {
+  return {
+    ip,
+    port,
+    ipPort: `${ip}:${port}`,
+    country,
+    type: normalizeProxyType(type),
+    speed,
+    lastCheck,
+    speedMs: parseSpeed(speed)
+  };
 }
 
 function createProxyConfig(proxy) {
