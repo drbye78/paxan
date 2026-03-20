@@ -268,7 +268,7 @@ chrome.runtime.sendMessage({
   - Assign proxy to specific tab
   - Remember proxy per domain
   - Visual indicator per tab
-- [ ] Add tab proxy UI
+- [x] Add tab proxy UI
   - Tab list with proxy indicators
   - Quick proxy switch per tab
   - Domain-based rules
@@ -314,7 +314,7 @@ chrome.runtime.sendMessage({
   - Wildcard match
   - Regex match
   - Domain match
-- [ ] Create whitelist/blacklist UI
+- [x] Create whitelist/blacklist UI
   - Add/remove URLs
   - Import/export lists
   - Test patterns
