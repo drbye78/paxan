@@ -1,6 +1,6 @@
-# API Documentation - ProxyMania VPN
+# API Documentation - PeasyProxy
 
-Complete API reference for the ProxyMania VPN Chrome extension.
+Complete API reference for the PeasyProxy Chrome extension.
 
 ## Table of Contents
 

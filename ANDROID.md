@@ -1,4 +1,4 @@
-# ProxyMania Android - Documentation
+# PeasyProxy Android - Documentation
 
 ## Table of Contents
 1. [Overview](#overview)
@@ -15,7 +15,7 @@
 
 ## Overview
 
-**ProxyMania** is a system-wide VPN/proxy manager for Android that routes all device traffic through rotating proxy servers. Unlike browser extensions, ProxyMania provides complete device-wide privacy and anonymity.
+**PeasyProxy** is a system-wide VPN/proxy manager for Android that routes all device traffic through rotating proxy servers. Unlike browser extensions, PeasyProxy provides complete device-wide privacy and anonymity.
 
 ### Key Features
 - System-wide proxy routing

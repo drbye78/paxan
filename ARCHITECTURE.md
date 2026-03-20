@@ -1,4 +1,4 @@
-# ProxyMania - Smart Proxy Router
+# PeasyProxy - Smart Proxy Router
 
 ## Architecture
 

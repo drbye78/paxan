@@ -1,6 +1,6 @@
-# Developer Guide - ProxyMania VPN
+# Developer Guide - PeasyProxy
 
-This guide is for developers who want to understand, modify, or contribute to the ProxyMania VPN Chrome extension.
+This guide is for developers who want to understand, modify, or contribute to the PeasyProxy Chrome extension.
 
 ## Table of Contents
 

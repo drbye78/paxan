@@ -1,6 +1,6 @@
-# User Guide - ProxyMania - Smart Proxy Router
+# User Guide - PeasyProxy - Smart Proxy Router
 
-Welcome to the ProxyMania Smart Proxy Router user guide. This document provides detailed instructions for using the extension effectively.
+Welcome to the PeasyProxy Smart Proxy Router user guide. This document provides detailed instructions for using the extension effectively.
 
 ## Table of Contents
 
