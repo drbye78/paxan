@@ -63,3 +63,12 @@ if (typeof module !== 'undefined' && module.exports) {
     QUALITY_THRESHOLDS
   };
 }
+
+// ES Module exports
+export {
+  SCORING_WEIGHTS,
+  THRESHOLDS,
+  TRUST_THRESHOLDS,
+  REPUTATION_WEIGHTS,
+  QUALITY_THRESHOLDS
+};
