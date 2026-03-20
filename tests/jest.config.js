@@ -7,10 +7,12 @@ module.exports = {
   transform: {
     '^.+\\.js$': 'babel-jest'
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(.*popup-modules.*)/)'
+  ],
   collectCoverageFrom: [
     '../src/**/*.js',
-    '../background.js',
-    '../popup.js',
+    '../popup.entry.js',
     '!**/node_modules/**',
     '!**/tests/**'
   ],

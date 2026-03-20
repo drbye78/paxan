@@ -19,6 +19,29 @@ export function escapeHtml(text) {
   return div.innerHTML;
 }
 
+const MAX_REGEX_LENGTH = 200;
+const MAX_REGEX_COMPLEXITY = 10;
+
+function isRegexSafe(pattern) {
+  if (!pattern || pattern.length > MAX_REGEX_LENGTH) return false;
+  const complexityIndicators = (pattern.match(/[()*+?[\]{}|]/g) || []).length;
+  if (complexityIndicators > MAX_REGEX_COMPLEXITY) return false;
+  if (pattern.includes('(?=') || pattern.includes('(?!') || pattern.includes('(?<=') || pattern.includes('(?<!')) return false;
+  return true;
+}
+
+function safeRegexTest(pattern, text) {
+  if (!isRegexSafe(pattern)) return false;
+  try {
+    const regex = new RegExp(pattern, 'i');
+    const result = regex.test(text);
+    regex.lastIndex = 0;
+    return result;
+  } catch (e) {
+    return false;
+  }
+}
+
 /**
  * Sanitize HTML content for safe display
  * @param {string} content - HTML content to sanitize
@@ -26,11 +49,7 @@ export function escapeHtml(text) {
  */
 export function sanitizeHtml(content) {
   if (!content) return '';
-  // Basic sanitization - remove script tags and event handlers
-  return content
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/on\w+="[^"]*"/g, '')
-    .replace(/on\w+='[^']*'/g, '');
+  return escapeHtml(content);
 }
 
 /**
@@ -208,12 +227,7 @@ export function matchesPattern(pattern, hostname, patternType = 'exact') {
       return hostname.includes(pattern);
 
     case 'regex':
-      try {
-        const regex = new RegExp(pattern, 'i');
-        return regex.test(hostname);
-      } catch (e) {
-        return false;
-      }
+      return safeRegexTest(pattern, hostname);
 
     case 'exact':
     default:

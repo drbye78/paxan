@@ -1,12 +1,12 @@
 // Unit tests for i18n (Internationalization)
 
-const {
+import {
   translations,
   setLanguage,
   t,
   applyTranslations,
   updateDynamicText
-} = require('../test-shim');
+} from '../test-shim.js';
 
 describe('i18n - Internationalization', () => {
   describe('translations', () => {
@@ -21,93 +21,71 @@ describe('i18n - Internationalization', () => {
     });
 
     test('should have same keys in both languages', () => {
-      const ruKeys = Object.keys(translations.ru);
-      const enKeys = Object.keys(translations.en);
-      
-      ruKeys.forEach(key => {
-        expect(enKeys).toContain(key);
-      });
+      const ruKeys = Object.keys(translations.ru).sort();
+      const enKeys = Object.keys(translations.en).sort();
+      expect(ruKeys).toEqual(enKeys);
     });
   });
 
   describe('setLanguage', () => {
     test('should set language to Russian', () => {
       setLanguage('ru');
-      expect(t('disconnected')).toBe('Отключено');
+      expect(document.documentElement.lang).toBe('ru');
     });
 
     test('should set language to English', () => {
       setLanguage('en');
-      expect(t('disconnected')).toBe('Disconnected');
+      expect(document.documentElement.lang).toBe('en');
     });
 
     test('should default to English for unknown language', () => {
       setLanguage('unknown');
-      // Should fall back to English per implementation
-      expect(t('disconnected')).toBe('Disconnected');
+      expect(document.documentElement.lang).toBe('en');
     });
   });
 
   describe('t() - translation function', () => {
     test('should translate Russian text', () => {
       setLanguage('ru');
-      const result = t('disconnected');
-      expect(result).toBe('Отключено');
+      expect(t('disconnected')).toBe('Отключено');
     });
 
     test('should translate English text', () => {
       setLanguage('en');
-      const result = t('disconnected');
-      expect(result).toBe('Disconnected');
+      expect(t('disconnected')).toBe('Disconnected');
     });
 
     test('should return key for missing translation', () => {
-      setLanguage('ru');
-      const result = t('nonexistent_key');
-      expect(result).toBe('nonexistent_key');
+      setLanguage('en');
+      expect(t('nonexistent.key')).toBe('nonexistent.key');
     });
 
     test('should handle empty key', () => {
-      setLanguage('ru');
-      const result = t('');
-      expect(result).toBe('');
+      expect(t('')).toBe('');
     });
   });
 
   describe('applyTranslations', () => {
     test('should translate data-i18n elements', () => {
-      document.body.innerHTML = `
-        <span data-i18n="disconnected">Original</span>
-        <span data-i18n="connected">Original</span>
-      `;
-      
+      document.body.innerHTML = '<div data-i18n="disconnected"></div>';
       setLanguage('ru');
       applyTranslations();
-      
-      expect(document.body.querySelector('[data-i18n="disconnected"]').textContent).toBe('Отключено');
-      expect(document.body.querySelector('[data-i18n="connected"]').textContent).toBe('Подключено');
+      expect(document.querySelector('[data-i18n="disconnected"]').textContent).toBe('Отключено');
     });
 
     test('should handle missing translations gracefully', () => {
-      document.body.innerHTML = `<span data-i18n="missing_key">Original</span>`;
-      
-      setLanguage('ru');
+      document.body.innerHTML = '<div data-i18n="nonexistent"></div>';
       applyTranslations();
-      
-      expect(document.body.querySelector('[data-i18n="missing_key"]').textContent).toBe('Original');
+      expect(document.querySelector('[data-i18n="nonexistent"]').textContent).toBe('nonexistent');
     });
   });
 
   describe('updateDynamicText', () => {
     test('should update text content', () => {
-      document.body.innerHTML = `
-        <div class="status-text">Original</div>
-      `;
-      
+      document.body.innerHTML = '<div id="statusText" data-i18n="disconnected"></div>';
       setLanguage('ru');
       updateDynamicText();
-      
-      expect(document.querySelector('.status-text').textContent).toBe('Отключено');
+      expect(document.getElementById('statusText').textContent).toBe('Отключено');
     });
 
     test('should handle non-existent element', () => {

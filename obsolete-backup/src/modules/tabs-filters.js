@@ -1,7 +1,7 @@
 // ProxyMania VPN - Tabs & Filters Module
 // Tab switching and filter management
 
-import { getState, setState, getCurrentTab, setCurrentTab } from './state.js';
+import { getState, setState, getCurrentTab, setCurrentTab, countryFlags } from './state.js';
 import { proxyList, listTitle } from './dom.js';
 import { getProxies, getFavorites, getCountryBlacklist } from './state.js';
 import { filterProxies } from './proxy-list.js';
@@ -235,13 +235,5 @@ export function setFilters(filters) {
  */
 export function getCountryFlag(country) {
   if (!country) return '🌍';
-  
-  const { countryFlags } = require('./state.js');
   return countryFlags[country] || countryFlags[country.split(' ')[0]] || '🌍';
-}
-
-// Helper for require
-function require(module) {
-  console.warn(`Dynamic import not implemented: ${module}`);
-  return {};
 }

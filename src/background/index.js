@@ -7,6 +7,42 @@ import { TamperDetector } from '../security/tamper-detection.js';
 let reputationEngine = null;
 let tamperDetector = null;
 
+function compareVersions(a, b) {
+  const parseVersion = (v) => v.split('.').map(n => parseInt(n, 10) || 0);
+  const aParts = parseVersion(a);
+  const bParts = parseVersion(b);
+  for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+    const aPart = aParts[i] || 0;
+    const bPart = bParts[i] || 0;
+    if (aPart > bPart) return 1;
+    if (aPart < bPart) return -1;
+  }
+  return 0;
+}
+
+const MAX_REGEX_LENGTH = 200;
+const MAX_REGEX_COMPLEXITY = 10;
+
+function isRegexSafe(pattern) {
+  if (!pattern || pattern.length > MAX_REGEX_LENGTH) return false;
+  const complexityIndicators = (pattern.match(/[()*+?[\]{}|]/g) || []).length;
+  if (complexityIndicators > MAX_REGEX_COMPLEXITY) return false;
+  if (pattern.includes('(?=') || pattern.includes('(?!') || pattern.includes('(?<=') || pattern.includes('(?<!')) return false;
+  return true;
+}
+
+function safeRegexTest(pattern, text) {
+  if (!isRegexSafe(pattern)) return false;
+  try {
+    const regex = new RegExp(pattern, 'i');
+    const result = regex.test(text);
+    regex.lastIndex = 0;
+    return result;
+  } catch (e) {
+    return false;
+  }
+}
+
 async function initReputationEngine() {
   if (!reputationEngine) {
     reputationEngine = new ReputationEngine();
@@ -25,8 +61,34 @@ async function initTamperDetector() {
 
 const failoverManager = new proxyManager.ProxyFailoverManager();
 
-// DNS Leak Test - compares DNS resolution through proxy vs expected IP
-async function testDnsLeak(expectedProxyIp) {
+let realIp = null;
+
+async function getRealIp() {
+  if (realIp) return realIp;
+  try {
+    const response = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
+    const data = await response.json();
+    realIp = data.ip;
+    return realIp;
+  } catch (error) {
+    console.error('Failed to get real IP:', error);
+    return null;
+  }
+}
+
+async function storeRealIp() {
+  if (!realIp) {
+    await getRealIp();
+  }
+  await chrome.storage.local.set({ realIp: realIp });
+}
+
+async function getStoredRealIp() {
+  const result = await chrome.storage.local.get(['realIp']);
+  return result.realIp || null;
+}
+
+async function testDnsLeak() {
   const testDomains = [
     'dns.google',
     'cloudflare-dns.com',
@@ -34,7 +96,11 @@ async function testDnsLeak(expectedProxyIp) {
   ];
   
   try {
-    // Use a DNS-over-HTTPS API to check what IP our DNS resolves to
+    const userRealIp = await getStoredRealIp();
+    if (!userRealIp) {
+      return { success: false, error: 'Could not determine real IP - please refresh before connecting to proxy' };
+    }
+    
     const response = await fetch('https://dns.google/resolve?name=dns.google&type=A', {
       method: 'GET',
       cache: 'no-store'
@@ -47,15 +113,12 @@ async function testDnsLeak(expectedProxyIp) {
       return { success: false, error: 'Could not resolve DNS' };
     }
     
-    // If we're connected to a proxy, the resolved IP should be different from our real IP
-    // and should match the proxy's IP or be in the proxy's network
-    const isLeaking = resolvedIp === expectedProxyIp ? false : true;
+    const isLeaking = resolvedIp === userRealIp;
     
-    // More sophisticated check: if we have a proxy, DNS should route through it
-    // For now, we'll do a simple heuristic
     return {
       success: true,
       resolvedIp: resolvedIp,
+      realIp: userRealIp,
       leaking: isLeaking,
       message: isLeaking 
         ? '⚠️ DNS may be leaking - your real IP could be visible' 
@@ -79,6 +142,7 @@ async function handleMessage(request) {
   try {
     switch (request.action) {
       case 'setProxy':
+        await storeRealIp();
         await proxyManager.setProxy(request.proxy);
         return { success: true };
         
@@ -133,7 +197,7 @@ async function handleMessage(request) {
         return { success: true, enabled: request.enabled };
         
       case 'testDnsLeak':
-        return await testDnsLeak(request.proxyIp);
+        return await testDnsLeak();
         
       case 'getSecurityStatus':
         return {
@@ -274,7 +338,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     console.log('ProxyMania VPN updated from', details.previousVersion);
     
     const oldVersion = details.previousVersion || '2.0.0';
-    if (oldVersion < '2.2.0') {
+    if (compareVersions(oldVersion, '2.2.0') < 0) {
       try {
         const data = await chrome.storage.local.get(null);
         const updates = {};
@@ -314,11 +378,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
 chrome.runtime.onStartup.addListener(async () => {
   try {
-    const { settings, activeProxy } = await chrome.storage.local.get(['settings', 'activeProxy']);
-    if (settings?.autoConnect && activeProxy) {
+    const { activeProxy } = await chrome.storage.local.get(['activeProxy']);
+    if (activeProxy) {
       await proxyManager.setProxy(activeProxy);
       await healthMonitor.startProxyMonitoring(activeProxy);
-      console.log('Auto-connected to proxy:', activeProxy.ipPort);
+      console.log('Restored proxy connection after startup:', activeProxy.ipPort);
     }
   } catch (error) {
     console.error('Error restoring proxy:', error);
@@ -355,11 +419,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
         }
         return hostname.endsWith(rule.url);
       } else if (patternType === 'regex') {
-        try {
-          return new RegExp(rule.url, 'i').test(hostname);
-        } catch (e) {
-          return false;
-        }
+        return safeRegexTest(rule.url, hostname);
       }
       return false;
     });

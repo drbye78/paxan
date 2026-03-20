@@ -1,5 +1,4 @@
 // Proxy Validator Module - Enhanced Speed Testing & Quality Assurance
-// Phase 2: Quality & Polish
 
 class ProxyValidator {
   constructor() {
@@ -454,8 +453,10 @@ class ProxyValidator {
 }
 
 // Export for use in background.js and popup.js
-if (typeof module !== 'undefined') {
-  module.exports = ProxyValidator;
+export { ProxyValidator };
+
+export function createProxyValidator() {
+  return new ProxyValidator();
 }
 
 // Note: This module requires explicit initialization after context is ready

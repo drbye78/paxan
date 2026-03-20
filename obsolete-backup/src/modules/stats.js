@@ -170,9 +170,3 @@ export function getMostUsedCountry() {
   
   return topCountry ? topCountry[0] : null;
 }
-
-// Helper for require
-function require(module) {
-  console.warn(`Dynamic import not implemented: ${module}`);
-  return {};
-}

@@ -4,7 +4,7 @@
 import { getProxies, getCurrentProxy, getProxyStats } from './state.js';
 import { quickConnectGrid, quickConnectSection, bestProxyBtn } from './dom.js';
 import { calculateProxyScore, escapeHtml, getFlag } from './utils.js';
-import { connectToProxy, getRecommendedProxies } from './connection.js';
+import { connectToProxy, getRecommendedProxies, connectToBestProxy } from './connection.js';
 
 // ============================================================================
 // QUICK CONNECT RENDERING
@@ -140,13 +140,6 @@ export function setupBestProxyButton() {
   if (!bestProxyBtn) return;
   
   bestProxyBtn.addEventListener('click', () => {
-    const { connectToBestProxy } = require('./connection.js');
     connectToBestProxy();
   });
-}
-
-// Helper for require
-function require(module) {
-  console.warn(`Dynamic import not implemented: ${module}`);
-  return {};
 }

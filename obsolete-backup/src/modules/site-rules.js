@@ -1,7 +1,7 @@
 // ProxyMania VPN - Site Rules Module
 // Per-site proxy rules management
 
-import { getState, setState, getSiteRules, getCurrentProxy, getProxies } from './state.js';
+import { getState, setState, getSiteRules, getCurrentProxy, getProxies, countryFlags } from './state.js';
 import { showToast, showSuccess, showWarning, showError } from './toast.js';
 import { saveSiteRules } from './storage.js';
 import { matchesPattern } from './utils.js';
@@ -457,13 +457,6 @@ function escapeHtml(text) {
  * @returns {string} - Flag emoji
  */
 function getFlag(country) {
-  const { countryFlags } = require('./state.js');
   if (!country) return '🌍';
   return countryFlags[country] || countryFlags[country.split(' ')[0]] || '🌍';
-}
-
-// Helper for require
-function require(module) {
-  console.warn(`Dynamic import not implemented: ${module}`);
-  return {};
 }

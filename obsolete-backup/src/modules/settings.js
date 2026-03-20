@@ -4,6 +4,7 @@
 import { getState, setState, updateSetting, getSettings } from './state.js';
 import { $ } from './dom.js';
 import { saveSettings } from './storage.js';
+import { showToast } from './toast.js';
 
 // ============================================================================
 // SETTINGS MANAGEMENT
@@ -384,15 +385,4 @@ export async function importSettings(file) {
     showToast('Failed to import settings', 'error');
     return false;
   }
-}
-
-// Helper for toast - will be replaced with proper import
-function showToast(message, type) {
-  console.log(`[Toast] ${type}: ${message}`);
-}
-
-// Helper for require - will be replaced with proper import
-function require(module) {
-  console.warn(`Dynamic import not implemented: ${module}`);
-  return {};
 }

@@ -6,7 +6,7 @@ import { join, relative, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
-const MODULES_DIR = join(__dirname, 'modules');
+const MODULES_DIR = join(__dirname, 'popup');
 const OUTPUT_FILE = join(__dirname, '..', 'popup.bundle.js');
 const ENTRY_FILE = join(__dirname, '..', 'popup.entry.js');
 

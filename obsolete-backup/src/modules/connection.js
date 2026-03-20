@@ -419,7 +419,6 @@ async function updateSpeedData() {
   }
   
   try {
-    // Test latency
     const start = Date.now();
     await fetch('https://www.google.com/favicon.ico', { 
       method: 'HEAD',
@@ -427,19 +426,16 @@ async function updateSpeedData() {
     });
     const latency = Date.now() - start;
     
-    // Update connection quality
     updateConnectionQuality(latency);
     
-    // Update speed data
     const { speedData } = getState();
-    speedData.push({ time: Date.now(), latency });
+    const newSpeedData = [...speedData, { time: Date.now(), latency }];
     
-    // Keep last 30 data points
-    if (speedData.length > 30) {
-      speedData.shift();
+    if (newSpeedData.length > 30) {
+      newSpeedData.shift();
     }
     
-    setState({ speedData });
+    setState({ speedData: newSpeedData });
     
   } catch (error) {
     // Ignore errors in speed testing

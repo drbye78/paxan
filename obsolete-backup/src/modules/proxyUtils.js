@@ -1,6 +1,29 @@
 // Proxy Utilities - Pure functions for proxy management
 // Extracted from popup.js for better testability
 
+const MAX_REGEX_LENGTH = 200;
+const MAX_REGEX_COMPLEXITY = 10;
+
+function isRegexSafe(pattern) {
+  if (!pattern || pattern.length > MAX_REGEX_LENGTH) return false;
+  const complexityIndicators = (pattern.match(/[()*+?[\]{}|]/g) || []).length;
+  if (complexityIndicators > MAX_REGEX_COMPLEXITY) return false;
+  if (pattern.includes('(?=') || pattern.includes('(?!') || pattern.includes('(?<=') || pattern.includes('(?<!')) return false;
+  return true;
+}
+
+function safeRegexTest(pattern, text) {
+  if (!isRegexSafe(pattern)) return false;
+  try {
+    const regex = new RegExp(pattern, 'i');
+    const result = regex.test(text);
+    regex.lastIndex = 0;
+    return result;
+  } catch (e) {
+    return false;
+  }
+}
+
 const COUNTRY_FLAGS = {
   'United States': '🇺🇸', 'USA': '🇺🇸', 'Germany': '🇩🇪', 'France': '🇫🇷',
   'United Kingdom': '🇬🇧', 'UK': '🇬🇧', 'Japan': '🇯🇵', 'China': '🇨🇳',
@@ -60,12 +83,7 @@ function matchesPattern(pattern, hostname, patternType = 'exact') {
       return hostname.endsWith(pattern);
       
     case 'regex':
-      try {
-        const regex = new RegExp(pattern, 'i');
-        return regex.test(hostname);
-      } catch (e) {
-        return false;
-      }
+      return safeRegexTest(pattern, hostname);
       
     case 'exact':
     default:

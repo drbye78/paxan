@@ -10,7 +10,8 @@ import {
   getProxyStats,
   getProxyReputation,
   getFavorites,
-  setCurrentFilteredProxies
+  setCurrentFilteredProxies,
+  countryFlags
 } from './state.js';
 import { 
   proxyList, 
@@ -444,23 +445,170 @@ export function attachProxyItemEvents(el, proxy) {
 // VIRTUAL SCROLLER
 // ============================================================================
 
-/**
- * Initialize virtual scroller
- */
-export function initVirtualScroller() {
-  // Virtual scroller implementation would go here
-  // For now, fall back to regular rendering
-  console.log('Virtual scroller not implemented - using regular rendering');
+class VirtualScroller {
+  constructor(container, options = {}) {
+    this.container = container;
+    this.items = [];
+    this.itemHeight = options.itemHeight || 80;
+    this.bufferSize = options.bufferSize || 5;
+    this.renderItem = options.renderItem || (() => '');
+    this.onItemClick = options.onItemClick || (() => {});
+    
+    this.scrollTop = 0;
+    this.containerHeight = 0;
+    this.visibleStartIndex = 0;
+    this.visibleEndIndex = 0;
+    this.totalHeight = 0;
+    
+    this.isScrolling = false;
+    this.scrollTimeout = null;
+    
+    this.init();
+  }
+  
+  init() {
+    if (!this.container) return;
+    
+    this.container.addEventListener('scroll', this.handleScroll.bind(this));
+    window.addEventListener('resize', this.handleResize.bind(this));
+    
+    this.updateDimensions();
+  }
+  
+  updateDimensions() {
+    this.containerHeight = this.container.clientHeight;
+    this.render();
+  }
+  
+  handleResize() {
+    this.updateDimensions();
+  }
+  
+  handleScroll() {
+    if (this.isScrolling) return;
+    
+    this.isScrolling = true;
+    this.scrollTop = this.container.scrollTop;
+    
+    if (this.scrollTimeout) {
+      clearTimeout(this.scrollTimeout);
+    }
+    
+    this.scrollTimeout = setTimeout(() => {
+      this.render();
+      this.isScrolling = false;
+    }, 16);
+    
+    this.render();
+  }
+  
+  setItems(items) {
+    this.items = items;
+    this.totalHeight = this.items.length * this.itemHeight;
+    this.render();
+  }
+  
+  getVisibleRange() {
+    const startIndex = Math.max(0, Math.floor(this.scrollTop / this.itemHeight) - this.bufferSize);
+    const visibleCount = Math.ceil(this.containerHeight / this.itemHeight);
+    const endIndex = Math.min(this.items.length - 1, startIndex + visibleCount + this.bufferSize * 2);
+    
+    return { startIndex, endIndex, visibleCount };
+  }
+  
+  render() {
+    if (!this.items.length) {
+      this.container.innerHTML = '';
+      this.container.style.height = '0px';
+      return;
+    }
+    
+    const { startIndex, endIndex } = this.getVisibleRange();
+    
+    this.visibleStartIndex = startIndex;
+    this.visibleEndIndex = endIndex;
+    
+    const spacerHeight = startIndex * this.itemHeight;
+    const visibleItems = this.items.slice(startIndex, endIndex + 1);
+    
+    let html = `<div style="height: ${spacerHeight}px;"></div>`;
+    
+    visibleItems.forEach((item, i) => {
+      const actualIndex = startIndex + i;
+      html += this.renderItem(item, actualIndex);
+    });
+    
+    const remainingHeight = Math.max(0, (this.items.length - 1 - endIndex) * this.itemHeight);
+    html += `<div style="height: ${remainingHeight}px;"></div>`;
+    
+    this.container.innerHTML = html;
+    
+    this.attachEventListeners();
+  }
+  
+  attachEventListeners() {
+    const items = this.container.querySelectorAll('.proxy-item');
+    items.forEach((item, i) => {
+      item.addEventListener('click', (e) => {
+        const actualIndex = this.visibleStartIndex + i;
+        if (this.items[actualIndex]) {
+          this.onItemClick(this.items[actualIndex], e);
+        }
+      });
+    });
+  }
+  
+  scrollToIndex(index) {
+    const scrollPosition = index * this.itemHeight;
+    this.container.scrollTop = scrollPosition;
+  }
+  
+  destroy() {
+    if (this.scrollTimeout) {
+      clearTimeout(this.scrollTimeout);
+    }
+    this.container?.removeEventListener('scroll', this.handleScroll);
+    window?.removeEventListener('resize', this.handleResize);
+  }
 }
 
-/**
- * Render proxy item for virtual scroller
- * @param {Object} proxy - Proxy object
- * @param {number} index - Item index
- * @returns {string} - HTML string
- */
-export function renderProxyItemHTML(proxy, index) {
-  return createProxyItemHTML(proxy, index);
+let virtualScrollerInstance = null;
+
+export function initVirtualScroller() {
+  const container = document.getElementById('proxyListContainer');
+  if (!container) return null;
+  
+  if (virtualScrollerInstance) {
+    virtualScrollerInstance.destroy();
+  }
+  
+  virtualScrollerInstance = new VirtualScroller(container, {
+    itemHeight: 80,
+    bufferSize: 5,
+    renderItem: (proxy, index) => createProxyItemHTML(proxy, index),
+    onItemClick: (proxy, e) => {
+      if (e.ctrlKey || e.metaKey) {
+        window.open(`http://${proxy.ip}:${proxy.port}`, '_blank');
+      } else {
+        connectToProxy(proxy, e);
+      }
+    }
+  });
+  
+  return virtualScrollerInstance;
+}
+
+export function updateVirtualScroller(proxies) {
+  if (virtualScrollerInstance) {
+    virtualScrollerInstance.setItems(proxies);
+  }
+}
+
+export function destroyVirtualScroller() {
+  if (virtualScrollerInstance) {
+    virtualScrollerInstance.destroy();
+    virtualScrollerInstance = null;
+  }
 }
 
 // ============================================================================
@@ -524,13 +672,6 @@ async function removeFromFavorites(ipPort) {
  * @returns {string} - Flag emoji
  */
 function getFlag(country) {
-  const { countryFlags } = require('./state.js');
   if (!country) return '🌍';
   return countryFlags[country] || countryFlags[country.split(' ')[0]] || '🌍';
-}
-
-// Helper for require - will be replaced with proper import
-function require(module) {
-  console.warn(`Dynamic import not implemented: ${module}`);
-  return {};
 }

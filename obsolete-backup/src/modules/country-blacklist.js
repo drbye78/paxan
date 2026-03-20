@@ -4,8 +4,9 @@
 import { getState, setState, getCountryBlacklist, getProxies, updateCountryBlacklist, addToCountryBlacklist, removeFromCountryBlacklist } from './state.js';
 import { blacklistContainer, blacklistChips } from './dom.js';
 import { showToast } from './toast.js';
-import { saveSettings } from './settings.js';
+import { saveSettings } from './storage.js';
 import { filterProxies } from './proxy-list.js';
+import { escapeHtml } from './utils.js';
 
 // ============================================================================
 // BLACKLIST MANAGEMENT
@@ -146,10 +147,4 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
-}
-
-// Helper for require
-function require(module) {
-  console.warn(`Dynamic import not implemented: ${module}`);
-  return {};
 }

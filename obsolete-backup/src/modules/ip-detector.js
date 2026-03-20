@@ -1,10 +1,12 @@
 // ProxyMania VPN - IP Detector Module
 // Check real IP and proxy IP, DNS leak testing
 
-import { getState, setState, getIpInfo, getCurrentProxy, getSettings } from './state.js';
+import { getState, setState, getIpInfo, getCurrentProxy, getSettings, getSecurityStatus, setSecurityStatus } from './state.js';
 import { ipCheckBtn, ipRealValue, ipProxyValue, ipDetectorSection, ipDetectorContent } from './dom.js';
 import { showToast, showSuccess, showWarning, showError } from './toast.js';
-import { updateSecurityStatus } from './security.js';
+import { toggleDnsLeakProtection } from './security.js';
+import { disconnectProxy } from './connection.js';
+import { updateSecurityUI } from './ui-core.js';
 
 // ============================================================================
 // IP DETECTION
@@ -161,7 +163,6 @@ async function analyzeIpResults(realIp, proxyIp) {
   // Check if IPs match (proxy not working)
   if (realIp && proxyIp && realIp === proxyIp && proxyIp !== 'Not connected') {
     showWarning('⚠️ Warning: Proxy IP matches real IP!', () => {
-      const { disconnectProxy } = require('./connection.js');
       disconnectProxy();
     });
     return;
@@ -175,7 +176,6 @@ async function analyzeIpResults(realIp, proxyIp) {
   
   if (proxyIp === 'Proxy blocked') {
     showError('Proxy is blocked or not working', () => {
-      const { disconnectProxy } = require('./connection.js');
       disconnectProxy();
     });
     return;
@@ -186,7 +186,7 @@ async function analyzeIpResults(realIp, proxyIp) {
   const { dnsLeakProtection } = getSettings();
   
   if (dnsLeakProtection && currentProxy) {
-    await runDnsLeakTest(proxyIp);
+    await runDnsLeakTest();
   } else {
     showSuccess('✓ Proxy is working correctly');
   }
@@ -197,21 +197,18 @@ async function analyzeIpResults(realIp, proxyIp) {
  * @param {string} proxyIp - Current proxy IP
  * @returns {Promise<void>}
  */
-async function runDnsLeakTest(proxyIp) {
+async function runDnsLeakTest() {
   try {
     const dnsResult = await chrome.runtime.sendMessage({
-      action: 'testDnsLeak',
-      proxyIp
+      action: 'testDnsLeak'
     });
     
     if (dnsResult && dnsResult.success) {
       if (dnsResult.leaking) {
         showWarning('⚠️ DNS Leak Detected! Your real IP may be visible', () => {
-          const { toggleDnsLeakProtection } = require('./security.js');
           toggleDnsLeakProtection();
         });
         
-        // Update security indicator
         updateSecurityStatus({ status: 'warning' });
       } else {
         showSuccess('✅ DNS protection active - No leaks detected');
@@ -336,8 +333,7 @@ export function isPrivateIp(ip) {
  * Update security status from IP check
  * @param {Object} status - Security status update
  */
-function updateSecurityStatus(status) {
-  const { setSecurityStatus } = require('./state.js');
+export function updateSecurityStatus(status) {
   const currentStatus = getSecurityStatus();
   
   setSecurityStatus({
@@ -345,18 +341,5 @@ function updateSecurityStatus(status) {
     ...status
   });
   
-  const { updateSecurityUI } = require('./ui-core.js');
   updateSecurityUI();
-}
-
-// Helper for getSecurityStatus
-function getSecurityStatus() {
-  const { getSecurityStatus } = require('./state.js');
-  return getSecurityStatus();
-}
-
-// Helper for require
-function require(module) {
-  console.warn(`Dynamic import not implemented: ${module}`);
-  return {};
 }

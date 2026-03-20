@@ -55,8 +55,20 @@ class TamperDetector {
   async verifyContent(proxy, url) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
+    let originalConfig = null;
     
     try {
+      // Save the original proxy configuration before testing
+      try {
+        originalConfig = await new Promise((resolve) => {
+          chrome.proxy.settings.get({ scope: 'regular' }, (config) => {
+            resolve(config);
+          });
+        });
+      } catch (e) {
+        console.warn('Could not save original proxy config:', e);
+      }
+      
       const proxyConfig = {
         mode: 'fixed_servers',
         rules: {
@@ -78,7 +90,13 @@ class TamperDetector {
       });
       
       clearTimeout(timeoutId);
-      await chrome.proxy.settings.clear({ scope: 'regular' });
+      
+      // Restore the original proxy configuration instead of clearing
+      if (originalConfig && originalConfig.value) {
+        await chrome.proxy.settings.set({ value: originalConfig.value, scope: 'regular' });
+      } else {
+        await chrome.proxy.settings.clear({ scope: 'regular' });
+      }
       
       const content = await response.text();
       const headers = {};
@@ -100,7 +118,12 @@ class TamperDetector {
     } catch (error) {
       clearTimeout(timeoutId);
       try {
-        await chrome.proxy.settings.clear({ scope: 'regular' });
+        // Restore original config on error too
+        if (originalConfig && originalConfig.value) {
+          await chrome.proxy.settings.set({ value: originalConfig.value, scope: 'regular' });
+        } else {
+          await chrome.proxy.settings.clear({ scope: 'regular' });
+        }
       } catch (e) {}
       
       return {

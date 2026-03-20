@@ -1,5 +1,4 @@
 // Visualization Module - Connection Quality & Performance Charts
-// Phase 2: Quality & Polish
 
 class VisualizationManager {
   constructor() {
@@ -631,8 +630,10 @@ class VisualizationManager {
 }
 
 // Export for use in popup.js
-if (typeof module !== 'undefined') {
-  module.exports = VisualizationManager;
+export { VisualizationManager };
+
+export function createVisualizationManager() {
+  return new VisualizationManager();
 }
 
 // Note: This module requires explicit initialization after DOMContentLoaded

@@ -106,7 +106,20 @@
     window.RTCPeerConnection.prototype.createOffer = function() {
       return originalCreateOffer.apply(this, arguments).then(offer => {
         if (offer.sdp) {
-          offer.sdp = offer.sdp.replace(/a=candidate:[^\r\n]+/g, '');
+          // Only remove host and server reflexive candidates, keep relay candidates
+          // Host candidates (typ host) reveal local IP
+          // Server reflexive (typ srflx) reveal public IP via STUN
+          // Relay candidates (typ relay) via TURN are safe to keep
+          offer.sdp = offer.sdp.replace(/a=candidate:[^\r\n]+/g, (match) => {
+            // Only remove host and server reflexive candidates, keep relay candidates
+            // Host candidates (typ host) reveal local IP
+            // Server reflexive (typ srflx) reveal public IP via STUN
+            // Relay candidates (typ relay) via TURN are safe to keep
+            if (match.includes(' typ host') || match.includes(' typ srflx')) {
+              return '';
+            }
+            return match;
+          });
         }
         return offer;
       });

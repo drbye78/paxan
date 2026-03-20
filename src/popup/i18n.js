@@ -292,6 +292,8 @@ function updateLabels() {
   }
 }
 
+// Export for both browser (global functions) and Node.js (module.exports)
+// Functions are already defined globally for browser usage
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { translations, setLanguage, t, applyTranslations, updateDynamicText, updateLabels, currentLang };
 }

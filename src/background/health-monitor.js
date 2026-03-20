@@ -134,8 +134,21 @@ async function measureConnectionHealth(proxy) {
   const startTime = Date.now();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 3000);
+  let originalConfig = null;
+  let proxyWasSet = false;
   
   try {
+    // Save the original proxy configuration before testing
+    try {
+      originalConfig = await new Promise((resolve) => {
+        chrome.proxy.settings.get({ scope: 'regular' }, (config) => {
+          resolve(config);
+        });
+      });
+    } catch (e) {
+      console.warn('Could not save original proxy config:', e);
+    }
+    
     const testConfig = {
       mode: 'fixed_servers',
       rules: {
@@ -149,6 +162,7 @@ async function measureConnectionHealth(proxy) {
     };
     
     await chrome.proxy.settings.set({ value: testConfig, scope: 'regular' });
+    proxyWasSet = true;
     
     const response = await fetch('https://httpbin.org/ip', {
       method: 'GET',
@@ -157,7 +171,15 @@ async function measureConnectionHealth(proxy) {
     });
     
     clearTimeout(timeoutId);
-    await chrome.proxy.settings.clear({ scope: 'regular' });
+    
+    // Restore the original proxy configuration instead of clearing
+    if (originalConfig && originalConfig.value) {
+      await chrome.proxy.settings.set({ value: originalConfig.value, scope: 'regular' });
+    } else {
+      // If no original config, clear only if we set it
+      await chrome.proxy.settings.clear({ scope: 'regular' });
+    }
+    proxyWasSet = false;
     
     return {
       success: response.ok,
@@ -166,9 +188,18 @@ async function measureConnectionHealth(proxy) {
     };
   } catch (error) {
     clearTimeout(timeoutId);
-    try {
-      await chrome.proxy.settings.clear({ scope: 'regular' });
-    } catch (e) {}
+    if (proxyWasSet) {
+      try {
+        // Restore original config on error too
+        if (originalConfig && originalConfig.value) {
+          await chrome.proxy.settings.set({ value: originalConfig.value, scope: 'regular' });
+        } else {
+          await chrome.proxy.settings.clear({ scope: 'regular' });
+        }
+      } catch (e) {
+        console.error('Failed to restore proxy after health check error:', e);
+      }
+    }
     
     return {
       success: false,

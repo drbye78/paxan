@@ -10,17 +10,6 @@ const outDir = __dirname;
 const isWatch = process.argv.includes('--watch');
 const target = process.argv.find(arg => arg.startsWith('--target='))?.split('=')[1];
 
-const backgroundModules = [
-  'src/background/proxy-fetcher.js',
-  'src/background/proxy-manager.js', 
-  'src/background/health-monitor.js',
-  'src/background/index.js'
-];
-
-const popupModules = [
-  'src/popup/state.js'
-];
-
 async function build() {
   if (!existsSync(srcDir)) {
     mkdirSync(srcDir, { recursive: true });
@@ -38,19 +27,18 @@ async function build() {
   // Background now uses ES modules directly in manifest.json
   // No build needed - uses src/background/index.js directly
   
+  // Popup now uses modular architecture - bundle popup modules
   if (!target || target === 'popup') {
-    for (const module of popupModules) {
-      const outFile = module.replace('src/', '').replace('.js', '.bundle.js');
-      await esbuild.build({
-        ...buildOptions,
-        entryPoints: [join(__dirname, module)],
-        outfile: join(outDir, outFile),
-        define: {
-          'process.env.NODE_ENV': isWatch ? '"development"' : '"production"'
-        }
-      });
-      console.log(`✓ Built ${outFile}`);
-    }
+    // Bundle popup modules into popup.js
+    await esbuild.build({
+      ...buildOptions,
+      entryPoints: [join(__dirname, 'src/popup-modules/main.js')],
+      outfile: join(outDir, 'popup.js'),
+      define: {
+        'process.env.NODE_ENV': isWatch ? '"development"' : '"production"'
+      }
+    });
+    console.log('✓ Built popup.js');
   }
 
   if (isWatch) {

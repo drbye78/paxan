@@ -3,6 +3,53 @@
 
 import { showToast, showSuccess, showError } from './toast.js';
 import { clearAllData as clearStorage } from './storage.js';
+import { loadProxies } from './proxy-list.js';
+
+const ALLOWED_SETTINGS_KEYS = [
+  'theme', 'language', 'autoFailover', 'testBeforeConnect', 'autoConnect',
+  'notifications', 'refreshInterval', 'proxySource', 'countryBlacklist',
+  'autoRotation', 'siteRules', 'dnsLeakProtection', 'webRtcProtection'
+];
+
+const ALLOWED_SETTINGS_VALUES = {
+  theme: ['dark', 'light'],
+  language: ['en', 'ru', 'es', 'de', 'fr'],
+  autoFailover: [true, false],
+  testBeforeConnect: [true, false],
+  autoConnect: [true, false],
+  notifications: [true, false],
+  proxySource: ['proxymania', 'proxyscrape'],
+  dnsLeakProtection: [true, false],
+  webRtcProtection: [true, false]
+};
+
+function validateSettings(settings) {
+  if (!settings || typeof settings !== 'object') {
+    throw new Error('Invalid settings format');
+  }
+  
+  for (const [key, value] of Object.entries(settings)) {
+    if (!ALLOWED_SETTINGS_KEYS.includes(key)) {
+      throw new Error(`Unknown setting: ${key}`);
+    }
+    
+    if (key in ALLOWED_SETTINGS_VALUES) {
+      if (!ALLOWED_SETTINGS_VALUES[key].includes(value)) {
+        throw new Error(`Invalid value for ${key}: ${value}`);
+      }
+    }
+    
+    if (key === 'refreshInterval' && (typeof value !== 'number' || value < 60000)) {
+      throw new Error('refreshInterval must be >= 60000');
+    }
+    
+    if (key === 'countryBlacklist' && !Array.isArray(value)) {
+      throw new Error('countryBlacklist must be an array');
+    }
+  }
+  
+  return true;
+}
 
 // ============================================================================
 // IMPORT
@@ -42,8 +89,6 @@ export function importProxies() {
       
       showSuccess(`Imported ${proxies.length} proxies`);
       
-      // Reload proxies
-      const { loadProxies } = require('./proxy-list.js');
       loadProxies(true);
       
     } catch (error) {
@@ -220,6 +265,8 @@ export function importSettings() {
       const text = await file.text();
       const settings = JSON.parse(text);
       
+      validateSettings(settings);
+      
       await chrome.storage.local.set({ settings });
       
       showSuccess('Settings imported');
@@ -235,10 +282,4 @@ export function importSettings() {
   });
   
   input.click();
-}
-
-// Helper for require
-function require(module) {
-  console.warn(`Dynamic import not implemented: ${module}`);
-  return {};
 }

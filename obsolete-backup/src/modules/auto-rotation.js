@@ -1,7 +1,7 @@
 // ProxyMania VPN - Auto-Rotation Module
 // Automatic proxy switching at intervals
 
-import { getState, setState, getAutoRotation, setAutoRotation } from './state.js';
+import { getState, setState, getAutoRotation, setAutoRotation, getProxies, getCurrentProxy } from './state.js';
 import { showToast } from './toast.js';
 import { saveAutoRotationSettings } from './storage.js';
 import { getBestProxy, connectToProxy } from './connection.js';
@@ -123,26 +123,6 @@ async function rotateProxy() {
 // UTILITIES
 // ============================================================================
 
-/**
- * Get current proxy
- * @returns {Object|null} - Current proxy
- */
-function getCurrentProxy() {
-  const { getCurrentProxy } = require('./state.js');
-  return getCurrentProxy();
-}
-
-/**
- * Get proxies
- * @returns {Array} - Proxies array
- */
-function getProxies() {
-  const { getProxies } = require('./state.js');
-  return getProxies();
-}
-
-// Helper for require
-function require(module) {
-  console.warn(`Dynamic import not implemented: ${module}`);
-  return {};
+export function getAutoRotationState() {
+  return getAutoRotation();
 }

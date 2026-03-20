@@ -36,7 +36,29 @@ A professional-grade proxy manager that works as both a **Chrome extension** and
 
 ---
 
+## 🎯 Architecture
+
+### Current Structure (v3.0.0)
+The extension now uses a **monolithic architecture** for better maintainability:
+
+- **`popup.js`** (3,425 lines) - Main popup logic, state management, UI rendering
+- **`src/background/`** - Service worker modules (proxy management, health monitoring)
+- **`src/core/`** - Core business logic (reputation engine)
+- **`src/security/`** - Security features (tamper detection)
+- **`src/popup/`** - Popup utilities (i18n, virtual scrolling)
+- **`src/modules/webrtc-blocker.js`** - WebRTC IP leak protection (content script)
+
+### Cleanup History
+- **Obsolete files removed**: 36 files moved to `obsolete-backup/`
+- **Unused modules**: Modular architecture files removed (kept for test support only in `src/test-support/`)
+- **Test support**: `src/test-support/` contains files used only by test suite
+
 ## 🎯 Features
+
+### New in v3.0.0
+- ✅ **Cleaner codebase** - Removed unused modular architecture files
+- ✅ **Simplified build process** - No unnecessary bundling
+- ✅ **Better maintainability** - Single monolithic implementation
 
 ### New in v2.3.0
 - 🌐 **Multiple Proxy Sources** - Choose between ProxyMania or ProxyScrape

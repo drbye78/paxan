@@ -180,14 +180,13 @@ function filterMaliciousProxies(proxies) {
 }
 
 // Rate limiting for proxy fetch
-const fetchTimestamps = [];
+let fetchTimestamps = [];
 function rateLimitProxyFetch() {
   const now = Date.now();
   const windowMs = 60000; // 1 minute
   const maxRequests = 10;
   
-  // Remove old timestamps
-  fetchTimestamps.filter(t => now - t < windowMs);
+  fetchTimestamps = fetchTimestamps.filter(t => now - t < windowMs);
   
   if (fetchTimestamps.length >= maxRequests) {
     return false;
@@ -198,13 +197,13 @@ function rateLimitProxyFetch() {
 }
 
 // Rate limiting for connections
-const connectionTimestamps = [];
+let connectionTimestamps = [];
 function rateLimitConnection() {
   const now = Date.now();
   const windowMs = 10000; // 10 seconds
   const maxConnections = 5;
   
-  connectionTimestamps.filter(t => now - t < windowMs);
+  connectionTimestamps = connectionTimestamps.filter(t => now - t < windowMs);
   
   if (connectionTimestamps.length >= maxConnections) {
     return false;
@@ -214,39 +213,107 @@ function rateLimitConnection() {
   return true;
 }
 
-// Encrypt/decrypt sensitive proxy data (simple XOR for demo)
-function encryptProxyData(data) {
-  if (!data) return null;
+// Encrypt/decrypt sensitive proxy data using Web Crypto API
+// Uses AES-GCM with PBKDF2 key derivation
+
+const ENCRYPTION_ALGORITHM = 'AES-GCM';
+const KEY_LENGTH = 256;
+const IV_LENGTH = 12;
+const SALT_LENGTH = 16;
+const ITERATIONS = 100000;
+
+async function deriveKey(password, salt) {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits', 'deriveKey']
+  );
   
-  const key = 'ProxyManiaKey123';
-  let encrypted = '';
-  const str = JSON.stringify(data);
-  
-  for (let i = 0; i < str.length; i++) {
-    const keyChar = key.charCodeAt(i % key.length);
-    const strChar = str.charCodeAt(i);
-    encrypted += String.fromCharCode(strChar ^ keyChar);
-  }
-  
-  return btoa(encrypted);
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: salt,
+      iterations: ITERATIONS,
+      hash: 'SHA-256'
+    },
+    keyMaterial,
+    { name: ENCRYPTION_ALGORITHM, length: KEY_LENGTH },
+    false,
+    ['encrypt', 'decrypt']
+  );
 }
 
-function decryptProxyData(encrypted) {
-  if (!encrypted) return null;
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+export async function encryptProxyData(data, password = 'ProxyManiaSecureKey') {
+  if (!data) return null;
   
   try {
-    const key = 'ProxyManiaKey123';
-    const decoded = atob(encrypted);
-    let decrypted = '';
+    const encoder = new TextEncoder();
+    const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+    const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
     
-    for (let i = 0; i < decoded.length; i++) {
-      const keyChar = key.charCodeAt(i % key.length);
-      const strChar = decoded.charCodeAt(i);
-      decrypted += String.fromCharCode(strChar ^ keyChar);
-    }
+    const key = await deriveKey(password, salt);
     
-    return JSON.parse(decrypted);
-  } catch {
+    const encrypted = await crypto.subtle.encrypt(
+      { name: ENCRYPTION_ALGORITHM, iv: iv },
+      key,
+      encoder.encode(JSON.stringify(data))
+    );
+    
+    const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+    combined.set(salt, 0);
+    combined.set(iv, salt.length);
+    combined.set(new Uint8Array(encrypted), salt.length + iv.length);
+    
+    return arrayBufferToBase64(combined);
+  } catch (error) {
+    console.error('Encryption error:', error);
+    return null;
+  }
+}
+
+export async function decryptProxyData(encryptedData, password = 'ProxyManiaSecureKey') {
+  if (!encryptedData) return null;
+  
+  try {
+    const combined = new Uint8Array(base64ToArrayBuffer(encryptedData));
+    
+    const salt = combined.slice(0, SALT_LENGTH);
+    const iv = combined.slice(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
+    const data = combined.slice(SALT_LENGTH + IV_LENGTH);
+    
+    const key = await deriveKey(password, salt);
+    
+    const decrypted = await crypto.subtle.decrypt(
+      { name: ENCRYPTION_ALGORITHM, iv: iv },
+      key,
+      data
+    );
+    
+    const decoder = new TextDecoder();
+    return JSON.parse(decoder.decode(decrypted));
+  } catch (error) {
+    console.error('Decryption error:', error);
     return null;
   }
 }

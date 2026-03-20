@@ -620,21 +620,4 @@ function debounce(fn, delay) {
     timeoutId = setTimeout(() => fn.apply(this, args), delay);
   };
 }
-
-// Helper for setState
-function setState(state) {
-  const { setState } = require('./state.js');
-  setState(state);
-}
-
-// Helper for getSettings
-function getSettings() {
-  const { getSettings } = require('./state.js');
-  return getSettings();
-}
-
-// Helper for require
-function require(module) {
-  console.warn(`Dynamic import not implemented: ${module}`);
-  return {};
 }
