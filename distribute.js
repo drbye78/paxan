@@ -52,7 +52,20 @@ const EXCLUDE_PATTERNS = [
   '.gitignore',
   '.gitattributes',
   'package-lock.json',
-  '.DS_Store'
+  '.DS_Store',
+  // Android-related files (not needed for Chrome extension)
+  'app',
+  'build.gradle.kts',
+  'gradle.properties',
+  'gradlew',
+  'gradlew.bat',
+  'settings.gradle.kts',
+  'local.properties',
+  '.gradle',
+  'gradle',
+  // Backup/obsolete files (not needed for distribution)
+  'popup',
+  'obsolete-backup'
 ];
 
 function shouldExclude(filePath, baseDir) {
