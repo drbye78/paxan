@@ -1,4 +1,4 @@
-# ProxyMania - Smart Proxy Router
+# PeasyProxy - Smart Proxy Router
 
 [![Version](https://img.shields.io/badge/version-3.0.0-blue?style=flat-square)](https://github.com)
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-green?style=flat-square)](https://chrome.google.com/webstore)
@@ -113,7 +113,7 @@ The extension now uses a **monolithic architecture** for better maintainability:
 
 4. **Pin Extension** (Optional)
    - Click puzzle icon in toolbar
-   - Pin "ProxyMania VPN" for easy access
+   - Pin "PeasyProxy" for easy access
 
 #### Production Build
 
@@ -131,8 +131,8 @@ npm run distribute:crx
 ```
 
 Packages are created in the `dist/` folder:
-- `dist/proxy-vpn-extension.zip` - Upload to Chrome Web Store
-- `dist/proxy-vpn-extension.crx` - Direct installation
+- `dist/peasyproxy.zip` - Upload to Chrome Web Store
+- `dist/peasyproxy.crx` - Direct installation
 
 ---
 
@@ -345,8 +345,8 @@ proxy-vpn-extension/
         └── proxyValidator.js
 
 ├── dist/                   # Distribution packages (generated)
-│   ├── proxy-vpn-extension.zip
-│   └── proxy-vpn-extension.crx
+│   ├── peasyproxy.zip
+│   └── peasyproxy.crx
 ├── distribute.js          # Distribution build script
 ├── release.js             # GitHub release publisher
 └── package.json           # Project config & scripts

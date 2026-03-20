@@ -137,7 +137,7 @@ async function createZipPackage() {
   mkdirSync(DIST_DIR, { recursive: true });
   
   const files = collectFiles(EXTENSION_DIR, EXTENSION_DIR);
-  const zipPath = join(DIST_DIR, 'proxy-vpn-extension.zip');
+  const zipPath = join(DIST_DIR, 'peasyproxy.zip');
   
   const centralDirectory = [];
   let offset = 0;
@@ -302,7 +302,7 @@ function copyFilesToBuildDir() {
 function createCrxPackage() {
   console.log('📦 Creating CRX package for sideloading...');
 
-  const crxPath = join(DIST_DIR, 'proxy-vpn-extension.crx');
+  const crxPath = join(DIST_DIR, 'peasyproxy.crx');
 
   // Check if PEM file exists
   if (!PEM_FILE) {
