@@ -25,10 +25,10 @@ class ProxyFetcher @Inject constructor(
         }
 
         try {
-            val proxyManiaProxies = fetchProxyMania()
+            val peasyProxyProxies = fetchPeasyProxy()
             val proxyScrapeProxies = fetchProxyScrape()
 
-            val allProxies = (proxyManiaProxies + proxyScrapeProxies).distinctBy { "${it.host}:${it.port}" }
+            val allProxies = (peasyProxyProxies + proxyScrapeProxies).distinctBy { "${it.host}:${it.port}" }
             
             lastFetchTime = System.currentTimeMillis()
             cachedProxies = allProxies
@@ -43,7 +43,7 @@ class ProxyFetcher @Inject constructor(
         }
     }
 
-    private suspend fun fetchProxyMania(): List<Proxy> = withContext(Dispatchers.IO) {
+    private suspend fun fetchPeasyProxy(): List<Proxy> = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder()
                 .url("https://proxymania.su/proxylist/")
@@ -53,13 +53,13 @@ class ProxyFetcher @Inject constructor(
             val response = okHttpClient.newCall(request).execute()
             val html = response.body?.string() ?: return@withContext emptyList()
 
-            parseProxyManiaHtml(html)
+            parsePeasyProxyHtml(html)
         } catch (e: Exception) {
             emptyList()
         }
     }
 
-    private fun parseProxyManiaHtml(html: String): List<Proxy> {
+    private fun parsePeasyProxyHtml(html: String): List<Proxy> {
         val proxies = mutableListOf<Proxy>()
         
         try {

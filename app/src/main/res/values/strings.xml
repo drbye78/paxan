@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- App -->
-    <string name="app_name">ProxyMania</string>
+    <string name="app_name">PeasyProxy</string>
     <string name="app_description">Smart Proxy Router</string>
 
     <!-- Navigation -->
@@ -12,7 +12,7 @@
 
     <!-- Connection -->
     <string name="vpn_notification_channel">VPN Service</string>
-    <string name="vpn_notification_title">ProxyMania VPN</string>
+    <string name="vpn_notification_title">PeasyProxy</string>
     <string name="vpn_connected">Connected</string>
     <string name="vpn_disconnected">Disconnected</string>
     <string name="vpn_connecting">Connecting...</string>
@@ -123,7 +123,7 @@
     <string name="build">Build</string>
 
     <!-- Widget -->
-    <string name="widget_description">ProxyMania VPN widget</string>
+    <string name="widget_description">PeasyProxy widget</string>
     <string name="widget_tap_to_connect">Tap to connect</string>
     <string name="widget_connected">Connected</string>
 

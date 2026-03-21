@@ -1,4 +1,4 @@
-// ProxyMania VPN - Tab Manager Module
+// PeasyProxy - Tab Manager Module
 // Implements per-tab proxy settings and domain-based rules
 
 const { THRESHOLDS } = require('../popup/constants.js');

@@ -1,7 +1,7 @@
 {
   "name": "proxymania-extension",
   "version": "3.0.18",
-  "description": "ProxyMania - Smart Proxy Router Chrome Extension",
+  "description": "PeasyProxy - Smart Proxy Router Chrome Extension",
   "type": "module",
   "scripts": {
     "build": "node build.js",

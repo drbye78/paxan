@@ -1,4 +1,4 @@
-// ProxyMania VPN - Popup State Management
+// PeasyProxy - Popup State Management
 // Manages all application state for the popup UI
 
 // ============================================================================

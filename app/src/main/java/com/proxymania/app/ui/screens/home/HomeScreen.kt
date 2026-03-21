@@ -43,7 +43,7 @@ fun HomeScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("ProxyMania") },
+                title = { Text("PeasyProxy") },
                 actions = {
                     IconButton(onClick = { viewModel.refreshProxies() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")

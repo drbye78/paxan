@@ -1,4 +1,4 @@
-// ProxyMania VPN - Proxy Chain Module
+// PeasyProxy - Proxy Chain Module
 // Implements proxy chaining for enhanced privacy
 
 const { THRESHOLDS } = require('../popup/constants.js');

@@ -12,7 +12,7 @@ import com.proxymania.app.data.local.entity.ProxyEntity
 import com.proxymania.app.data.local.entity.StatisticsEntity
 
 /**
- * Main Room database for ProxyMania.
+ * Main Room database for PeasyProxy.
  * 
  * Features:
  * - Proxy storage with encryption support
@@ -33,7 +33,7 @@ import com.proxymania.app.data.local.entity.StatisticsEntity
     version = 2,
     exportSchema = false
 )
-abstract class ProxyManiaDatabase : RoomDatabase() {
+abstract class PeasyProxyDatabase : RoomDatabase() {
     abstract fun proxyDao(): ProxyDao
     abstract fun connectionLogDao(): ConnectionLogDao
     abstract fun statisticsDao(): StatisticsDao

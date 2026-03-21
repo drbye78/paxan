@@ -1,4 +1,4 @@
-// ProxyMania VPN - Onboarding Module
+// PeasyProxy - Onboarding Module
 // Implements interactive tutorial and feature discovery
 
 const { THRESHOLDS } = require('../popup/constants.js');
@@ -18,13 +18,13 @@ let onboardingState = {
 const ONBOARDING_STEPS = [
   {
     id: 'welcome',
-    title: 'Welcome to ProxyMania!',
+    title: 'Welcome to PeasyProxy!',
     description: 'Your smart proxy router for enhanced privacy and security.',
     content: `
       <div class="onboarding-welcome">
         <div class="welcome-icon">🛡️</div>
-        <h2>Welcome to ProxyMania VPN</h2>
-        <p>ProxyMania helps you route your browser traffic through rotating proxies for enhanced privacy and security.</p>
+        <h2>Welcome to PeasyProxy</h2>
+        <p>PeasyProxy helps you route your browser traffic through rotating proxies for enhanced privacy and security.</p>
         <ul class="feature-list">
           <li>🔒 Enhanced privacy through proxy rotation</li>
           <li>🌍 Access content from different regions</li>
@@ -104,7 +104,7 @@ const ONBOARDING_STEPS = [
   {
     id: 'settings-overview',
     title: 'Customize Your Experience',
-    description: 'Configure ProxyMania to suit your needs.',
+    description: 'Configure PeasyProxy to suit your needs.',
     content: `
       <div class="onboarding-step">
         <div class="step-icon">⚙️</div>
@@ -132,7 +132,7 @@ const ONBOARDING_STEPS = [
       <div class="onboarding-step">
         <div class="step-icon">🛡️</div>
         <h3>Security Features</h3>
-        <p>ProxyMania includes several security features:</p>
+        <p>PeasyProxy includes several security features:</p>
         <ul class="feature-list">
           <li><strong>DNS Leak Protection:</strong> Prevents DNS queries from leaking</li>
           <li><strong>WebRTC Protection:</strong> Blocks WebRTC IP leaks</li>
@@ -154,7 +154,7 @@ const ONBOARDING_STEPS = [
       <div class="onboarding-step">
         <div class="step-icon">🔧</div>
         <h3>Advanced Features</h3>
-        <p>ProxyMania offers advanced features for power users:</p>
+        <p>PeasyProxy offers advanced features for power users:</p>
         <ul class="feature-list">
           <li><strong>Per-Site Rules:</strong> Auto-switch proxies per website</li>
           <li><strong>Auto-Rotation:</strong> Automatically rotate proxies</li>
@@ -171,12 +171,12 @@ const ONBOARDING_STEPS = [
   {
     id: 'complete',
     title: 'You\'re All Set!',
-    description: 'Start using ProxyMania to enhance your privacy.',
+    description: 'Start using PeasyProxy to enhance your privacy.',
     content: `
       <div class="onboarding-complete">
         <div class="complete-icon">🎉</div>
         <h2>Congratulations!</h2>
-        <p>You've completed the ProxyMania tutorial. You're ready to start using the extension!</p>
+        <p>You've completed the PeasyProxy tutorial. You're ready to start using the extension!</p>
         <div class="next-steps">
           <h4>Next Steps:</h4>
           <ul>

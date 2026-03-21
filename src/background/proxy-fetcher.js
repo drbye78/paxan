@@ -56,7 +56,7 @@ async function fetchProxyMania() {
     if (!proxies || proxies.length === 0) break;
     
     allProxies.push(...proxies);
-    console.log(`ProxyMania: Fetched page ${page}, total proxies: ${allProxies.length}`);
+    console.log(`PeasyProxy: Fetched page ${page}, total proxies: ${allProxies.length}`);
   }
   
   return allProxies;

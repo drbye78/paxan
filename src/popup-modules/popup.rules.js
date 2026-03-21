@@ -1,4 +1,4 @@
-// ProxyMania VPN - URL Rules UI Module
+// PeasyProxy - URL Rules UI Module
 // Implements whitelist/blacklist UI with add/remove URLs, import/export, and pattern testing
 
 const { THRESHOLDS } = require('../popup/constants.js');

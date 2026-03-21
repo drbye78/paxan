@@ -24,7 +24,7 @@ data class ProxyScrapeProxy(
     val uptime: Float?
 )
 
-data class ProxyManiaResponse(
+data class PeasyProxyResponse(
     val html: String?
 )
 

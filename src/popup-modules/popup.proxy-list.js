@@ -1,4 +1,4 @@
-// ProxyMania VPN - Popup Proxy List Management
+// PeasyProxy - Popup Proxy List Management
 // Handles proxy filtering, sorting, scoring, and rendering
 
 import {

@@ -1,4 +1,4 @@
-// ProxyMania VPN - Popup Connection Management
+// PeasyProxy - Popup Connection Management
 // Handles proxy connection, disconnection, and monitoring logic
 
 import {

@@ -61,7 +61,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun ProxyManiaTheme(
+fun PeasyProxyTheme(
     darkMode: DarkMode = DarkMode.SYSTEM,
     content: @Composable () -> Unit
 ) {

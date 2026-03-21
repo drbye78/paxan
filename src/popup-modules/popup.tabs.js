@@ -1,4 +1,4 @@
-// ProxyMania VPN - Tab Proxy UI Module
+// PeasyProxy - Tab Proxy UI Module
 // Implements tab list with proxy indicators, quick proxy switch, and domain rules UI
 
 const { THRESHOLDS } = require('../popup/constants.js');

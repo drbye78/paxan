@@ -61,7 +61,7 @@
 | Failover | Auto-switch on connection loss |
 
 ### Proxy Sources
-- **ProxyMania** - Free proxy list
+- **PeasyProxy** - Free proxy list
 - **ProxyScrape** - Premium proxy API
 
 ### Reputation System
@@ -236,7 +236,7 @@ class ProxyRepository @Inject constructor(
 ### Common Issues
 
 #### "VPN permission denied"
-- Go to Settings → Apps → ProxyMania → Permissions
+- Go to Settings → Apps → PeasyProxy → Permissions
 - Enable VPN permission
 
 #### "No proxies available"
@@ -255,7 +255,7 @@ class ProxyRepository @Inject constructor(
 - Verify kill switch is enabled in settings
 
 ### Logs
-- App logs: Run `adb logcat -s ProxyMania:*`
+- App logs: Run `adb logcat -s PeasyProxy:*`
 - Crash reports: Firebase Crashlytics (when configured)
 
 ---

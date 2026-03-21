@@ -1,4 +1,4 @@
-// ProxyMania VPN - Constants
+// PeasyProxy - Constants
 // Scoring weights and configuration constants
 
 // Scoring weights for proxy ranking (must sum to 1.0)

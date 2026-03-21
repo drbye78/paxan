@@ -62,7 +62,7 @@ class HttpTunnelHandler @Inject constructor(
         return buildString {
             append("CONNECT $host:$port HTTP/1.1\r\n")
             append("Host: $host:$port\r\n")
-            append("User-Agent: ProxyMania/1.0\r\n")
+            append("User-Agent: PeasyProxy/1.0\r\n")
             append("Proxy-Connection: Keep-Alive\r\n")
             
             if (!proxy.username.isNullOrEmpty() && !proxy.password.isNullOrEmpty()) {

@@ -29,7 +29,7 @@ import com.proxymania.app.ui.screens.settings.AdvancedSettingsScreen
 import com.proxymania.app.ui.screens.settings.NotificationSettingsScreen
 import com.proxymania.app.ui.screens.settings.LanguageSettingsScreen
 import com.proxymania.app.ui.screens.statistics.StatisticsScreen
-import com.proxymania.app.ui.theme.ProxyManiaTheme
+import com.proxymania.app.ui.theme.PeasyProxyTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
                 initialValue = com.proxymania.app.domain.model.AppSettings()
             )
 
-            ProxyManiaTheme(darkMode = settings.darkMode) {
+            PeasyProxyTheme(darkMode = settings.darkMode) {
                 MainScreen()
             }
         }

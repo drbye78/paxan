@@ -3,7 +3,7 @@ package com.proxymania.app.di
 import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.proxymania.app.data.local.ProxyManiaDatabase
+import com.proxymania.app.data.local.PeasyProxyDatabase
 import com.proxymania.app.data.local.dao.ConnectionLogDao
 import com.proxymania.app.data.local.dao.ProxyDao
 import com.proxymania.app.data.local.dao.StatisticsDao
@@ -23,13 +23,13 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(
         @ApplicationContext context: Context
-    ): ProxyManiaDatabase {
+    ): PeasyProxyDatabase {
         return Room.databaseBuilder(
             context,
-            ProxyManiaDatabase::class.java,
-            ProxyManiaDatabase.DATABASE_NAME
+            PeasyProxyDatabase::class.java,
+            PeasyProxyDatabase.DATABASE_NAME
         )
-            .addMigrations(*ProxyManiaDatabase.ALL_MIGRATIONS)
+            .addMigrations(*PeasyProxyDatabase.ALL_MIGRATIONS)
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
             .build()
     }
@@ -42,19 +42,19 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideProxyDao(database: ProxyManiaDatabase): ProxyDao {
+    fun provideProxyDao(database: PeasyProxyDatabase): ProxyDao {
         return database.proxyDao()
     }
 
     @Provides
     @Singleton
-    fun provideConnectionLogDao(database: ProxyManiaDatabase): ConnectionLogDao {
+    fun provideConnectionLogDao(database: PeasyProxyDatabase): ConnectionLogDao {
         return database.connectionLogDao()
     }
 
     @Provides
     @Singleton
-    fun provideStatisticsDao(database: ProxyManiaDatabase): StatisticsDao {
+    fun provideStatisticsDao(database: PeasyProxyDatabase): StatisticsDao {
         return database.statisticsDao()
     }
 }

@@ -21,7 +21,7 @@ async function build() {
     sourcemap: isWatch,
     target: ['chrome120'],
     format: 'iife',
-    globalName: 'ProxyMania',
+    globalName: 'PeasyProxy',
   };
 
   // Background now uses ES modules directly in manifest.json

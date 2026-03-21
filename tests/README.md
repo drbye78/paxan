@@ -130,7 +130,7 @@ describe('Background Script', () => {
   });
 
   describe('fetchProxies', () => {
-    test('should fetch from ProxyMania by default', async () => {
+    test('should fetch from PeasyProxy by default', async () => {
       const result = await fetchProxies();
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
@@ -149,7 +149,7 @@ describe('Background Script', () => {
     });
   });
 
-  describe('parseProxyMania', () => {
+  describe('parsePeasyProxy', () => {
     test('should parse HTML table correctly', () => {
       const html = `
         <table>
@@ -693,4 +693,4 @@ npm run test:watch
 - Performance baselines are documented
 - Security test cases are reviewed regularly
 
-This comprehensive test suite ensures the ProxyMania VPN extension maintains high quality, security, and performance standards throughout its development lifecycle.
+This comprehensive test suite ensures the PeasyProxy extension maintains high quality, security, and performance standards throughout its development lifecycle.

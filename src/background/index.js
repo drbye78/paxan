@@ -301,7 +301,7 @@ async function getProxyStats() {
 
 chrome.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === 'install') {
-    console.log('ProxyMania VPN installed');
+    console.log('PeasyProxy installed');
     
     await chrome.storage.local.set({
       settings: {
@@ -335,7 +335,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       }
     });
   } else if (details.reason === 'update') {
-    console.log('ProxyMania VPN updated from', details.previousVersion);
+    console.log('PeasyProxy updated from', details.previousVersion);
     
     const oldVersion = details.previousVersion || '2.0.0';
     if (compareVersions(oldVersion, '2.2.0') < 0) {

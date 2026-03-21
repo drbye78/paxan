@@ -1,4 +1,4 @@
-// ProxyMania VPN - Popup Main Entry Point
+// PeasyProxy - Popup Main Entry Point
 // Coordinates all popup modules and initializes the application
 
 import {
@@ -49,7 +49,7 @@ import {
 // ============================================================================
 
 async function init() {
-  console.log('🚀 Initializing ProxyMania VPN...');
+  console.log('🚀 Initializing PeasyProxy...');
   
   try {
     // 1. Initialize DOM references
@@ -111,7 +111,7 @@ async function init() {
       startConnectionTimer();
     }
     
-    console.log('✅ ProxyMania VPN initialized successfully!');
+    console.log('✅ PeasyProxy initialized successfully!');
     
   } catch (error) {
     console.error('❌ Initialization error:', error);

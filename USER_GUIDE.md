@@ -32,7 +32,7 @@ Welcome to the PeasyProxy Smart Proxy Router user guide. This document provides 
 ┌─────────────────────────────────────┐
 │  ⚠️ Security Notice           [X]  │  <- Security Banner
 ├─────────────────────────────────────┤
-│  🛡️ ProxyMania          ⚙️    ⋮    │  <- Header
+│  🛡️ PeasyProxy          ⚙️    ⋮    │  <- Header
 ├─────────────────────────────────────┤
 │  ● Disconnected           [Connect] │  <- Connection Card
 │  ── Details ▼                     │  <- Collapsible
@@ -103,7 +103,7 @@ Welcome to the PeasyProxy Smart Proxy Router user guide. This document provides 
 3. List shows only proxies from that country
 4. Select "" to show all countries
 
-**Available Countries** (varies based on ProxyMania's list):
+**Available Countries** (varies based on PeasyProxy's list):
 - USA, Germany, France, UK
 - China, Japan, South Korea
 - Brazil, Argentina
@@ -122,7 +122,7 @@ Welcome to the PeasyProxy Smart Proxy Router user guide. This document provides 
 1. Go to **Settings** (⚙️ button)
 2. Find **Connection** section
 3. Select **Proxy Source**:
-   - **ProxyMania** - Default source, good variety
+   - **PeasyProxy** - Default source, good variety
    - **ProxyScrape** - Alternative source with different proxies
 
 ### Country Blacklist
@@ -188,7 +188,7 @@ Free proxies can go offline unexpectedly. If browsing fails:
 
 ### Cache Behavior
 
-- **First load**: Fetches fresh data from ProxyMania
+- **First load**: Fetches fresh data from PeasyProxy
 - **Subsequent loads**: Shows cached data immediately
 - **Auto-refresh**: Updates cache in background
 - **Benefit**: Faster popup opening
@@ -200,7 +200,7 @@ Free proxies can go offline unexpectedly. If browsing fails:
 ### General Questions
 
 **Q: Is this extension free?**
-A: Yes, completely free. It uses publicly available proxies from ProxyMania and ProxyScrape.
+A: Yes, completely free. It uses publicly available proxies from PeasyProxy and ProxyScrape.
 
 **Q: Do I need to create an account?**
 A: No account required. Install and use immediately.
@@ -212,7 +212,7 @@ A: Possibly. Free proxies are often slower than direct connections. Choose low-l
 A: Free proxies rarely work with streaming services. This extension is designed for basic web browsing.
 
 **Q: How do I change proxy source?**
-A: Go to Settings → Connection → Proxy Source. Choose ProxyMania or ProxyScrape.
+A: Go to Settings → Connection → Proxy Source. Choose PeasyProxy or ProxyScrape.
 
 ### Technical Questions
 

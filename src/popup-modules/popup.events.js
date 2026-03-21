@@ -1,4 +1,4 @@
-// ProxyMania VPN - Popup Event Handlers
+// PeasyProxy - Popup Event Handlers
 // Manages all DOM event listeners and user interactions
 
 import {

@@ -1,4 +1,4 @@
-// ProxyMania VPN - DNS Leak Testing Module
+// PeasyProxy - DNS Leak Testing Module
 // Implements DNS leak detection and protection
 
 const { THRESHOLDS } = require('../popup/constants.js');

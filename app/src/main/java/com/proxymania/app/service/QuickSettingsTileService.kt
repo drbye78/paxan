@@ -86,11 +86,11 @@ class QuickSettingsTileService : TileService() {
 
             if (state.isConnected) {
                 tile.state = Tile.STATE_ACTIVE
-                tile.label = "ProxyMania VPN"
+                tile.label = "PeasyProxy"
                 tile.subtitle = state.currentProxy?.displayName ?: "Connected"
             } else {
                 tile.state = Tile.STATE_INACTIVE
-                tile.label = "ProxyMania VPN"
+                tile.label = "PeasyProxy"
                 tile.subtitle = "Tap to connect"
             }
 

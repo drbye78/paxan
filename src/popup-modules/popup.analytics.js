@@ -1,4 +1,4 @@
-// ProxyMania VPN - Analytics Dashboard Module
+// PeasyProxy - Analytics Dashboard Module
 // Implements real-time graphs, historical charts, and statistics
 
 const { THRESHOLDS } = require('../popup/constants.js');

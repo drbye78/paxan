@@ -143,7 +143,7 @@ class VpnService : VpnService() {
 
     private fun setupVpnInterface(config: ConnectionConfig) {
         val builder = Builder()
-            .setSession("ProxyMania VPN")
+            .setSession("PeasyProxy")
             .setMtu(VPN_MTU)
             .addAddress(VPN_ADDRESS, 32)
             .addRoute(VPN_ROUTE, 0)

@@ -264,7 +264,7 @@ function base64ToArrayBuffer(base64) {
   return bytes.buffer;
 }
 
-export async function encryptProxyData(data, password = 'ProxyManiaSecureKey') {
+export async function encryptProxyData(data, password = 'PeasyProxySecureKey') {
   if (!data) return null;
   
   try {
@@ -292,7 +292,7 @@ export async function encryptProxyData(data, password = 'ProxyManiaSecureKey') {
   }
 }
 
-export async function decryptProxyData(encryptedData, password = 'ProxyManiaSecureKey') {
+export async function decryptProxyData(encryptedData, password = 'PeasyProxySecureKey') {
   if (!encryptedData) return null;
   
   try {

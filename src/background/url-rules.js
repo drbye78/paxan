@@ -1,4 +1,4 @@
-// ProxyMania VPN - URL Rules Module
+// PeasyProxy - URL Rules Module
 // Implements proxy whitelist/blacklist by URL patterns
 
 const { THRESHOLDS } = require('../popup/constants.js');

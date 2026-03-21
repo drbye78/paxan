@@ -1,4 +1,4 @@
-// ProxyMania VPN - Popup UI Rendering
+// PeasyProxy - Popup UI Rendering
 // Handles all UI rendering and updates
 
 import {

@@ -1,4 +1,4 @@
-// ProxyMania VPN - Proxy Validation Module
+// PeasyProxy - Proxy Validation Module
 // Implements advanced proxy validation and anonymity detection
 
 const { THRESHOLDS } = require('../popup/constants.js');

@@ -30,7 +30,7 @@ object NetworkModule {
             .addInterceptor { chain ->
                 val original = chain.request()
                 val request = original.newBuilder()
-                    .header("User-Agent", "ProxyMania/1.0 Android")
+                    .header("User-Agent", "PeasyProxy/1.0 Android")
                     .header("Accept", "*/*")
                     .method(original.method, original.body)
                     .build()

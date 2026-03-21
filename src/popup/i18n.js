@@ -74,7 +74,7 @@ const translations = {
     "poor": "Плохо",
     "connect": "Подключить",
     "disconnect": "Отключить",
-    "proxy_manager_title": "ProxyMania"
+    "proxy_manager_title": "PeasyProxy"
   },
   en: {
     "security_warning": "⚠️ Security Notice: Free proxies can intercept traffic. Do not use for banking or sensitive logins. Use HTTPS sites only.",
@@ -151,7 +151,7 @@ const translations = {
     "poor": "Poor",
     "connect": "Connect",
     "disconnect": "Disconnect",
-    "proxy_manager_title": "ProxyMania"
+    "proxy_manager_title": "PeasyProxy"
   }
 };
 

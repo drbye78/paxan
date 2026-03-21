@@ -1,4 +1,4 @@
-// ProxyMania VPN - Quality Monitor Module
+// PeasyProxy - Quality Monitor Module
 // Implements connection quality metrics and monitoring
 
 const { THRESHOLDS, QUALITY_THRESHOLDS } = require('../popup/constants.js');

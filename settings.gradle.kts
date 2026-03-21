@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ProxyMania"
+rootProject.name = "PeasyProxy"
 include(":app")

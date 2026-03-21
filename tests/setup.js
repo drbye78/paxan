@@ -1,4 +1,4 @@
-// Jest setup file for ProxyMania VPN tests
+// Jest setup file for PeasyProxy tests
 
 // Mock console methods to reduce noise in tests
 global.console = {

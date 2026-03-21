@@ -1,4 +1,4 @@
-// ProxyMania VPN - Search & Filter Module
+// PeasyProxy - Search & Filter Module
 // Implements advanced search, saved presets, and filter shortcuts
 
 const { THRESHOLDS } = require('../popup/constants.js');

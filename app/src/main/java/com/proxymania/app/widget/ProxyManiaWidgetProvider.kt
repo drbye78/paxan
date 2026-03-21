@@ -10,7 +10,7 @@ import android.widget.RemoteViews
 import com.proxymania.app.R
 import com.proxymania.app.ui.MainActivity
 
-class ProxyManiaWidgetProvider : AppWidgetProvider() {
+class PeasyProxyWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(
         context: Context,
@@ -89,7 +89,7 @@ class ProxyManiaWidgetProvider : AppWidgetProvider() {
         ) {
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(
-                ComponentName(context, ProxyManiaWidgetProvider::class.java)
+                ComponentName(context, PeasyProxyWidgetProvider::class.java)
             )
 
             for (appWidgetId in appWidgetIds) {

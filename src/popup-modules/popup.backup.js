@@ -1,4 +1,4 @@
-// ProxyMania VPN - Backup & Restore Module
+// PeasyProxy - Backup & Restore Module
 // Handles backup export, import, and cloud sync
 
 const BACKUP_VERSION = '1.0.0';

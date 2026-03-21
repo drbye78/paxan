@@ -54,7 +54,7 @@ chrome.runtime.sendMessage({
 
 ### fetchProxies
 
-Fetches the latest proxy list from configured source (ProxyMania or ProxyScrape).
+Fetches the latest proxy list from configured source (PeasyProxy or ProxyScrape).
 
 **Direction:** popup.js → background.js (ES Module)
 
@@ -84,7 +84,7 @@ Fetches the latest proxy list from configured source (ProxyMania or ProxyScrape)
 }
 ```
 
-**Note:** The source is determined by `settings.proxySource` ('proxymania' or 'proxyscrape'). ProxyMania fetches multiple pages (up to 5), ProxyScrape uses CSV API.
+**Note:** The source is determined by `settings.proxySource` ('proxymania' or 'proxyscrape'). PeasyProxy fetches multiple pages (up to 5), ProxyScrape uses CSV API.
 
 **Response (Error):**
 ```javascript
@@ -725,7 +725,7 @@ async function setProxy(proxy) {
 
 | Source | URL | Format | Proxy Count |
 |--------|-----|--------|-------------|
-| ProxyMania | `proxymania.su/free-proxy` | HTML (multiple pages) | 100-300 |
+| PeasyProxy | `proxymania.su/free-proxy` | HTML (multiple pages) | 100-300 |
 | ProxyScrape | `api.proxyscrape.com` | CSV | 100-500 |
 
 ### fetchProxies (with source selection)
@@ -747,7 +747,7 @@ async function fetchProxies() {
 }
 ```
 
-### ProxyMania Fetcher
+### PeasyProxy Fetcher
 
 Fetches multiple pages (up to 5):
 

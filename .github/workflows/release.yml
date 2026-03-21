@@ -109,7 +109,7 @@ jobs:
         with:
           name: Release ${{ github.ref_name }}
           body: |
-            ## ProxyMania VPN ${{ github.ref_name }}
+            ## PeasyProxy ${{ github.ref_name }}
 
             ### 📦 Installation
 

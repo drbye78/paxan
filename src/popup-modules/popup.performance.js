@@ -1,4 +1,4 @@
-// ProxyMania VPN - Performance Optimization Module
+// PeasyProxy - Performance Optimization Module
 // Handles lazy loading, caching, debouncing, and performance improvements
 
 const { THRESHOLDS } = require('../popup/constants.js');
@@ -96,7 +96,7 @@ class MemoryCache {
 
 // IndexedDB cache for large data
 class IndexedDBCache {
-  constructor(dbName = 'ProxyManiaCache', storeName = 'proxies') {
+  constructor(dbName = 'PeasyProxyCache', storeName = 'proxies') {
     this.dbName = dbName;
     this.storeName = storeName;
     this.db = null;

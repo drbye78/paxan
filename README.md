@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/your-org/proxy-vpn-extension?style=flat-square)](https://github.com/your-org/proxy-vpn-extension/releases)
 
-A professional-grade proxy manager that works as both a **Chrome extension** and **Android app**. Routes your traffic through rotating proxy servers from [ProxyMania](https://proxymania.su/free-proxy) or [ProxyScrape](https://proxyscrape.com/). Features intelligent proxy selection, real-time monitoring, reputation scoring, and tampering detection.
+A professional-grade proxy manager that works as both a **Chrome extension** and **Android app**. Routes your traffic through rotating proxy servers from [PeasyProxy](https://proxymania.su/free-proxy) or [ProxyScrape](https://proxyscrape.com/). Features intelligent proxy selection, real-time monitoring, reputation scoring, and tampering detection.
 
 **⚠️ Important:** This is NOT a VPN. Free proxies can intercept traffic. Do not use for banking or sensitive logins.
 
@@ -61,7 +61,7 @@ The extension now uses a **monolithic architecture** for better maintainability:
 - ✅ **Better maintainability** - Single monolithic implementation
 
 ### New in v2.3.0
-- 🌐 **Multiple Proxy Sources** - Choose between ProxyMania or ProxyScrape
+- 🌐 **Multiple Proxy Sources** - Choose between PeasyProxy or ProxyScrape
 - 💾 **Smart Caching** - 5-minute cache for faster loading
 - 🚫 **Country Blacklist** - Exclude unwanted countries from proxy list
 - 🎯 **Enhanced Best Proxy** - Improved algorithm using historical connection data
@@ -536,7 +536,7 @@ PeasyProxy now includes **reputation scoring** to help identify safer proxies:
 ### Debug Mode
 
 1. Open `chrome://extensions/`
-2. Find ProxyMania VPN
+2. Find PeasyProxy
 3. Click "Inspect views: background page"
 4. Check Console for errors
 
@@ -599,7 +599,7 @@ See [CHANGELOG.md](CHANGELOG.md) for details.
 ## 🔗 Resources
 
 ### Chrome Extension
-- [ProxyMania](https://proxymania.su/free-proxy) - Proxy source
+- [PeasyProxy](https://proxymania.su/free-proxy) - Proxy source
 - [Chrome Extensions Docs](https://developer.chrome.com/docs/extensions/)
 - [Manifest V3 Guide](https://developer.chrome.com/docs/extensions/mv3/intro/)
 - [Chrome Proxy API](https://developer.chrome.com/docs/extensions/reference/proxy/)
@@ -623,7 +623,7 @@ MIT License - See [LICENSE](LICENSE) file.
 ## 🙏 Acknowledgments
 
 ### Chrome Extension
-- Proxy list: [ProxyMania](https://proxymania.su/)
+- Proxy list: [PeasyProxy](https://proxymania.su/)
 - Framework: Vanilla JavaScript (no dependencies)
 
 ### Android App

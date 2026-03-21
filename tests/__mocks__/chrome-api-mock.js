@@ -1,4 +1,4 @@
-// Chrome API Mock for ProxyMania VPN tests
+// Chrome API Mock for PeasyProxy tests
 
 const mockChrome = {
   runtime: {

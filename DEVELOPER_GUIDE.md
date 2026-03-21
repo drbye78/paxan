@@ -396,7 +396,7 @@ interface Proxy {
 
 2. **Reload Extension**
    - Go to `chrome://extensions/`
-   - Find ProxyMania VPN
+   - Find PeasyProxy
    - Click the refresh icon
 
 3. **Test Functionality**
@@ -600,7 +600,7 @@ This triggers the `.github/workflows/release.yml` workflow which:
 
 **Background Console:**
 1. Go to `chrome://extensions/`
-2. Find ProxyMania VPN
+2. Find PeasyProxy
 3. Click "Inspect views: background page"
 4. Use DevTools Console
 
@@ -635,7 +635,7 @@ function log(...args) {
 
 | Issue | Debug Approach | Solution |
 |-------|---------------|----------|
-| Proxies don't load | Check background console | Verify ProxyMania URL |
+| Proxies don't load | Check background console | Verify PeasyProxy URL |
 | Connect fails | Check proxy.settings API | Verify proxy format |
 | UI doesn't update | Check popup console | Verify DOM element IDs |
 | Cache not working | Check storage | Verify storage permissions |
