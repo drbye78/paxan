@@ -92,7 +92,7 @@ function validateProxySource(url) {
   
   // Only allow trusted proxy sources
   const allowedDomains = [
-    'proxymania.su',
+    'peasyproxy.su',
     'api.proxyscrape.com',
     'raw.githubusercontent.com'
   ];

@@ -1,8 +1,8 @@
-# Rebranding Plan: ProxyMania → PeasyProxy
+# Rebranding Plan: PeasyProxy → PeasyProxy
 
 ## Overview
 
-This document outlines the plan to rename the project from "ProxyMania VPN" / "ProxyMania" to "PeasyProxy" across both the Chrome extension and Android app.
+This document outlines the plan to rename the project from "PeasyProxy VPN" / "PeasyProxy" to "PeasyProxy" across both the Chrome extension and Android app.
 
 ---
 
@@ -12,9 +12,9 @@ This document outlines the plan to rename the project from "ProxyMania VPN" / "P
 
 The following should remain unchanged as they are external URLs or technical identifiers:
 
-- `proxymania.su` - External proxy source URL
+- `peasyproxy.su` - External proxy source URL
 - `https://proxymania.su/*` - Host permissions in manifest.json
-- `proxymania.su/free-proxy` - API endpoint URLs
+- `peasyproxy.su/free-proxy` - API endpoint URLs
 - Package names in `package.json` (npm package names)
 - GitHub repository URLs
 - External API endpoints
@@ -37,7 +37,7 @@ The following should be updated to "PeasyProxy":
 ### 1. Manifest & Configuration Files
 
 #### `manifest.json`
-- Change `name` from `"__MSG_extension_name__"` (resolves to "ProxyMania - Smart Proxy Router")
+- Change `name` from `"__MSG_extension_name__"` (resolves to "PeasyProxy - Smart Proxy Router")
 - Update `description` to reflect new branding
 
 #### `package.json`
@@ -47,7 +47,7 @@ The following should be updated to "PeasyProxy":
 #### `_locales/en/messages.json`
 - Update `extension_name` message
 - Update `extension_description` message
-- Update any other user-facing strings containing "ProxyMania"
+- Update any other user-facing strings containing "PeasyProxy"
 
 #### `_locales/ru/messages.json`
 - Update Russian translations similarly
@@ -56,11 +56,11 @@ The following should be updated to "PeasyProxy":
 
 #### `popup.html`
 - Update `<title>` tag
-- Update logo text "ProxyMania"
+- Update logo text "PeasyProxy"
 - Update any user-facing text
 
 #### `popup.js` (bundled from popup-modules)
-- Update toast messages containing "ProxyMania"
+- Update toast messages containing "PeasyProxy"
 - Update console.log messages
 - Update any user-facing strings
 
@@ -74,7 +74,7 @@ The following should be updated to "PeasyProxy":
 - Update any user-facing error messages
 
 #### `styles.css`
-- Update any CSS comments referencing "ProxyMania"
+- Update any CSS comments referencing "PeasyProxy"
 - Update logo styling if text-based
 
 ### 3. Documentation Files
@@ -127,7 +127,7 @@ The following should be updated to "PeasyProxy":
 
 ### 2. Source Code
 
-#### `app/src/main/java/com/proxymania/app/ProxyManiaApp.kt`
+#### `app/src/main/java/com/peasyproxy/app/PeasyProxyApp.kt`
 - Rename file to `PeasyProxyApp.kt`
 - Rename class to `PeasyProxyApp`
 - Update package if needed
@@ -141,10 +141,10 @@ The following should be updated to "PeasyProxy":
 - `res/values-ru/strings.xml` - Update Russian translations
 
 #### Layout Files
-- Update any hardcoded "ProxyMania" text
+- Update any hardcoded "PeasyProxy" text
 
 #### Kotlin/Java Files
-- Update class names containing "ProxyMania"
+- Update class names containing "PeasyProxy"
 - Update string references
 - Update comments
 
@@ -189,7 +189,7 @@ The following should be updated to "PeasyProxy":
 5. **Chrome Extension Code**
    - [ ] Update console.log messages
    - [ ] Update code comments
-   - [ ] Update variable names (if any contain "proxymania")
+   - [ ] Update variable names (if any contain "peasyproxy")
 
 6. **Android Code**
    - [ ] Rename Kotlin files if needed
@@ -204,12 +204,12 @@ The following should be updated to "PeasyProxy":
 
 ```regex
 # Branding (case-insensitive)
-ProxyMania
-proxymania (when used as branding, not URL)
-PROXYMANIA
+PeasyProxy
+peasyproxy (when used as branding, not URL)
+PEASYPROXY
 
 # In user-facing strings only
-ProxyMania VPN
+PeasyProxy VPN
 Smart Proxy Router (if rebranding tagline)
 ```
 
@@ -217,14 +217,14 @@ Smart Proxy Router (if rebranding tagline)
 
 ```regex
 # External URLs
-proxymania\.su
-https://proxymania\.su
+peasyproxy\.su
+https://peasyproxy\.su
 
 # npm package names
-proxymania-extension
+peasyproxy-extension
 
 # GitHub URLs
-github\.com.*proxymania
+github\.com.*peasyproxy
 ```
 
 ---
@@ -237,7 +237,7 @@ After renaming, verify:
 - [ ] New name appears in Chrome extensions list
 - [ ] Popup displays new branding
 - [ ] All user-facing text shows new name
-- [ ] No broken links to external proxymania.su
+- [ ] No broken links to external peasyproxy.su
 - [ ] Android app builds successfully
 - [ ] Android app displays new name
 - [ ] Documentation is consistent
@@ -260,7 +260,7 @@ If issues arise:
 
 - The rebranding is primarily cosmetic
 - Core functionality should remain unchanged
-- External URLs (proxymania.su) must continue working
+- External URLs (peasyproxy.su) must continue working
 - Consider user communication about rebranding
 - Update any marketing materials or website references
 

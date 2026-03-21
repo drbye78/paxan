@@ -39,7 +39,7 @@
 │  │ webrtc-     │                        ▼                      │
 │  │ blocker.js   │      ┌─────────────────────────────────────┐  │
 │  └──────────────┘      │   External Sources:                 │  │
-│                        │   - PeasyProxy (proxymania.su)      │  │
+│                        │   - ProxyMania (proxymania.su)      │  │
 │                        │   - ProxyScrape (api.proxyscrape.com)│  │
 │                        │   - httpbin.org (Testing)            │  │
 │                        └─────────────────────────────────────┘  │

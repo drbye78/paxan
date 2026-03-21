@@ -84,7 +84,7 @@ Fetches the latest proxy list from configured source (PeasyProxy or ProxyScrape)
 }
 ```
 
-**Note:** The source is determined by `settings.proxySource` ('proxymania' or 'proxyscrape'). PeasyProxy fetches multiple pages (up to 5), ProxyScrape uses CSV API.
+**Note:** The source is determined by `settings.proxySource` ('peasyproxy' or 'proxyscrape'). PeasyProxy fetches multiple pages (up to 5), ProxyScrape uses CSV API.
 
 **Response (Error):**
 ```javascript
@@ -364,7 +364,7 @@ interface StorageData {
     autoConnect: boolean;
     notifications: boolean;
     refreshInterval: number;      // milliseconds
-    proxySource: 'proxymania' | 'proxyscrape';
+    proxySource: 'peasyproxy' | 'proxyscrape';
     countryBlacklist: string[];   // excluded countries
   };
   
@@ -413,7 +413,7 @@ User preferences and configuration.
 - `autoConnect`: boolean
 - `notifications`: boolean
 - `refreshInterval`: number (milliseconds)
-- `proxySource`: 'proxymania' | 'proxyscrape'
+- `proxySource`: 'peasyproxy' | 'proxyscrape'
 - `countryBlacklist`: string[]
 
 **Example:**
@@ -725,7 +725,7 @@ async function setProxy(proxy) {
 
 | Source | URL | Format | Proxy Count |
 |--------|-----|--------|-------------|
-| PeasyProxy | `proxymania.su/free-proxy` | HTML (multiple pages) | 100-300 |
+| PeasyProxy | `peasyproxy.su/free-proxy` | HTML (multiple pages) | 100-300 |
 | ProxyScrape | `api.proxyscrape.com` | CSV | 100-500 |
 
 ### fetchProxies (with source selection)
@@ -735,14 +735,14 @@ The main fetch function checks settings and routes to the appropriate source:
 ```javascript
 async function fetchProxies() {
   const result = await chrome.storage.local.get(['settings']);
-  const proxySource = result.settings?.proxySource || 'proxymania';
+  const proxySource = result.settings?.proxySource || 'peasyproxy';
   
   switch (proxySource) {
     case 'proxyscrape':
       return await fetchProxyScrape();
-    case 'proxymania':
+    case 'peasyproxy':
     default:
-      return await fetchProxyMania();
+      return await fetchPeasyProxy();
   }
 }
 ```
@@ -752,7 +752,7 @@ async function fetchProxies() {
 Fetches multiple pages (up to 5):
 
 ```javascript
-async function fetchProxyMania() {
+async function fetchPeasyProxy() {
   const allProxies = [];
   for (let page = 1; page <= 5; page++) {
     const url = page === 1 

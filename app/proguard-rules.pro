@@ -1,8 +1,8 @@
 # Add project specific ProGuard rules here.
 
 # Keep data classes
--keepclassmembers class com.proxymania.app.domain.model.** { *; }
--keepclassmembers class com.proxymania.app.data.local.entity.** { *; }
+-keepclassmembers class com.peasyproxy.app.domain.model.** { *; }
+-keepclassmembers class com.peasyproxy.app.data.local.entity.** { *; }
 
 # Gson
 -keepattributes Signature

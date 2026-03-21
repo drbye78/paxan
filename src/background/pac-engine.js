@@ -1,4 +1,4 @@
-// ProxyMania VPN - PAC Script Engine
+// PeasyProxy - PAC Script Engine
 // Implements PAC (Proxy Auto-Config) script parsing and execution
 
 const { THRESHOLDS } = require('../popup/constants.js');

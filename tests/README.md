@@ -30,7 +30,7 @@ tests/
 │   └── fetch-mock.js            # Network request mock
 ├── __fixtures__/                 # Test data fixtures
 │   ├── proxy-data.json          # Sample proxy data
-│   ├── proxymania-html.html     # HTML fixtures
+│   ├── peasyproxy-html.html     # HTML fixtures
 │   └── proxyscrape-csv.csv      # CSV fixtures
 ├── unit/                        # Unit tests
 │   ├── background.test.js       # Background script tests
@@ -157,7 +157,7 @@ describe('Background Script', () => {
           <tr><td>192.168.1.2:8080</td><td>USA</td><td>SOCKS5</td></tr>
         </table>
       `;
-      const result = parseProxyMania(html);
+      const result = parsePeasyProxy(html);
       expect(result).toHaveLength(2);
       expect(result[0]).toMatchObject({
         ip: '192.168.1.1',

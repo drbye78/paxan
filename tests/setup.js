@@ -75,7 +75,7 @@ global.testUtils = {
       autoConnect: false,
       notifications: true,
       refreshInterval: 300000,
-      proxySource: 'proxymania',
+      proxySource: 'peasyproxy',
       countryBlacklist: []
     },
     activeProxy: null,

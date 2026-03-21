@@ -28,7 +28,7 @@ let settings = {
   autoConnect: true,
   notifications: true,
   refreshInterval: 300000,
-  proxySource: 'proxymania',
+  proxySource: 'peasyproxy',
   countryBlacklist: []
 };
 

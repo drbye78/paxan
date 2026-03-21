@@ -26,7 +26,7 @@ async function exportBackup() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `proxymania-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `peasyproxy-backup-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
     
@@ -166,7 +166,7 @@ async function syncToCloud() {
     
     // Use chrome.storage.sync for cross-device sync
     await chrome.storage.sync.set({
-      proxymania_sync: {
+      peasyproxy_sync: {
         timestamp: Date.now(),
         settings: data.settings,
         favorites: data.favorites,
@@ -183,13 +183,13 @@ async function syncToCloud() {
 
 async function syncFromCloud() {
   try {
-    const data = await chrome.storage.sync.get(['proxymania_sync']);
+    const data = await chrome.storage.sync.get(['peasyproxy_sync']);
     
-    if (!data.proxymania_sync) {
+    if (!data.peasyproxy_sync) {
       return { success: false, error: 'No cloud data found' };
     }
     
-    const cloudData = data.proxymania_sync;
+    const cloudData = data.peasyproxy_sync;
     
     // Check if cloud data is newer
     const localData = await chrome.storage.local.get(['settings']);

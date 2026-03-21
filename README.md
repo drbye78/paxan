@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/your-org/proxy-vpn-extension?style=flat-square)](https://github.com/your-org/proxy-vpn-extension/releases)
 
-A professional-grade proxy manager that works as both a **Chrome extension** and **Android app**. Routes your traffic through rotating proxy servers from [PeasyProxy](https://proxymania.su/free-proxy) or [ProxyScrape](https://proxyscrape.com/). Features intelligent proxy selection, real-time monitoring, reputation scoring, and tampering detection.
+A professional-grade proxy manager that works as both a **Chrome extension** and **Android app**. Routes your traffic through rotating proxy servers from [ProxyMania](https://proxymania.su/free-proxy) or [ProxyScrape](https://proxyscrape.com/). Features intelligent proxy selection, real-time monitoring, reputation scoring, and tampering detection.
 
 **⚠️ Important:** This is NOT a VPN. Free proxies can intercept traffic. Do not use for banking or sensitive logins.
 

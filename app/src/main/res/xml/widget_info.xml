@@ -10,4 +10,4 @@
     android:widgetCategory="home_screen"
     android:previewImage="@mipmap/ic_launcher"
     android:description="@string/widget_description"
-    android:configure="com.proxymania.app.widget.WidgetConfigActivity" />
+    android:configure="com.peasyproxy.app.widget.WidgetConfigActivity" />

@@ -6,7 +6,7 @@ const {
   getCountryName,
   createProxyObject,
   parseCSVLine,
-  parseProxyMania,
+  parsePeasyProxy,
   parseProxyScrapeCSV
 } = require('../test-shim');
 
@@ -138,7 +138,7 @@ describe('Proxy Fetcher', () => {
     });
   });
 
-  describe('parseProxyMania', () => {
+  describe('parsePeasyProxy', () => {
     test('should parse HTML table rows', () => {
       const html = `
         <table>
@@ -161,7 +161,7 @@ describe('Proxy Fetcher', () => {
         </table>
       `;
       
-      const proxies = parseProxyMania(html);
+      const proxies = parsePeasyProxy(html);
       expect(proxies).toHaveLength(2);
       expect(proxies[0].ipPort).toBe('192.168.1.1:8080');
       expect(proxies[0].country).toBe('Germany');
@@ -170,7 +170,7 @@ describe('Proxy Fetcher', () => {
     });
 
     test('should handle empty HTML', () => {
-      const proxies = parseProxyMania('');
+      const proxies = parsePeasyProxy('');
       expect(proxies).toHaveLength(0);
     });
 
@@ -192,7 +192,7 @@ describe('Proxy Fetcher', () => {
         </table>
       `;
       
-      const proxies = parseProxyMania(html);
+      const proxies = parsePeasyProxy(html);
       expect(proxies).toHaveLength(1);
     });
   });

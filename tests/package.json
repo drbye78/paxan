@@ -1,7 +1,7 @@
 {
-  "name": "proxymania-vpn-tests",
+  "name": "peasyproxy-tests",
   "version": "2.3.0",
-  "description": "Comprehensive test suite for ProxyMania VPN Chrome extension",
+  "description": "Comprehensive test suite for PeasyProxy Chrome extension",
   "private": true,
   "scripts": {
     "test": "jest",
@@ -76,7 +76,7 @@
   "jest-junit": {
     "outputDirectory": "./test-results",
     "outputName": "junit.xml",
-    "suiteName": "ProxyMania VPN Tests",
+    "suiteName": "PeasyProxy Tests",
     "classNameTemplate": "{classname}",
     "titleTemplate": "{title}",
     "ancestorSeparator": " › ",

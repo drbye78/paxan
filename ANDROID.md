@@ -35,7 +35,7 @@
 
 ### Installation Steps
 1. Enable "Install from unknown sources" in device settings
-2. Download `proxymania-android-debug.apk` from `dist/` folder
+2. Download `peasyproxy-android-debug.apk` from `dist/` folder
 3. Open APK file and tap "Install"
 4. Grant VPN permission when prompted
 
@@ -276,8 +276,8 @@ class ProxyRepository @Inject constructor(
 
 ### Build and Copy to Dist
 ```bash
-./gradlew copyToDist          # Debug APK -> dist/proxymania-android-debug.apk
-./gradlew copyReleaseToDist  # Release APK -> dist/proxymania-android-release-unsigned.apk
+./gradlew copyToDist          # Debug APK -> dist/peasyproxy-android-debug.apk
+./gradlew copyReleaseToDist  # Release APK -> dist/peasyproxy-android-release-unsigned.apk
 ```
 
 ### Tests
@@ -306,4 +306,4 @@ class ProxyRepository @Inject constructor(
 ## Support
 
 - GitHub Issues: Report bugs/features
-- Email: support@proxymania.app
+- Email: support@peasyproxy.app

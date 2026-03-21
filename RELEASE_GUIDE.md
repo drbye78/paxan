@@ -125,7 +125,7 @@ npm run distribute:crx
 |------|-------------|
 | `proxy-vpn-extension.zip` | Chrome Extension (Web Store) |
 | `proxy-vpn-extension.crx` | Chrome Extension (Sideload) |
-| `proxymania-android-release-unsigned.apk` | Android App |
+| `peasyproxy-android-release-unsigned.apk` | Android App |
 
 ### Distribution Channels
 

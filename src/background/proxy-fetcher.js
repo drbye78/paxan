@@ -15,16 +15,16 @@ const BYPASS_LIST = [
 async function fetchProxies() {
   try {
     const result = await chrome.storage.local.get(['settings']);
-    const proxySource = result.settings?.proxySource || 'proxymania';
+    const proxySource = result.settings?.proxySource || 'peasyproxy';
     
     let proxies;
     switch (proxySource) {
       case 'proxyscrape':
         proxies = await fetchProxyScrape();
         break;
-      case 'proxymania':
+      case 'peasyproxy':
       default:
-        proxies = await fetchProxyMania();
+        proxies = await fetchPeasyProxy();
         break;
     }
     
@@ -32,14 +32,14 @@ async function fetchProxies() {
   } catch (error) {
     console.error('Error fetching proxies:', error);
     try {
-      return await fetchProxyMania();
+      return await fetchPeasyProxy();
     } catch (fallbackError) {
       throw error;
     }
   }
 }
 
-async function fetchProxyMania() {
+async function fetchPeasyProxy() {
   const allProxies = [];
   
   for (let page = 1; page <= MAX_PAGES; page++) {
@@ -51,7 +51,7 @@ async function fetchProxyMania() {
     if (!response.ok) break;
     
     const html = await response.text();
-    const proxies = parseProxyMania(html);
+    const proxies = parsePeasyProxy(html);
     
     if (!proxies || proxies.length === 0) break;
     
@@ -146,7 +146,7 @@ function parseCSVLine(line) {
   return result;
 }
 
-function parseProxyMania(html) {
+function parsePeasyProxy(html) {
   const proxyItems = [];
   const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
   let rowMatch;
@@ -342,9 +342,9 @@ async function quickLatencyTest(proxy) {
 
 export {
   fetchProxies,
-  fetchProxyMania,
+  fetchPeasyProxy,
   fetchProxyScrape,
-  parseProxyMania,
+  parsePeasyProxy,
   parseProxyScrapeCSV,
   parseCSVLine,
   getCountryName,
@@ -359,9 +359,9 @@ export {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     fetchProxies,
-    fetchProxyMania,
+    fetchPeasyProxy,
     fetchProxyScrape,
-    parseProxyMania,
+    parsePeasyProxy,
     parseProxyScrapeCSV,
     parseCSVLine,
     getCountryName,

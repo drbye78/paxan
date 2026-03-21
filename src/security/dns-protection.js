@@ -1,4 +1,4 @@
-// ProxyMania VPN - DNS Protection Module
+// PeasyProxy - DNS Protection Module
 // Implements DNS leak prevention and protection
 
 const { THRESHOLDS } = require('../popup/constants.js');

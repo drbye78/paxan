@@ -36,7 +36,7 @@ jobs:
         run: |
           if [ -n "$CRX_PEM_FILE_CONTENT" ]; then
             echo "Setting up PEM file from secret..."
-            echo "$CRX_PEM_FILE_CONTENT" > proxy-vpn-extension.pem
+            echo "$CRX_PEM_FILE_CONTENT" > peasyproxy-extension.pem
             echo "PEM file created successfully"
           else
             echo "⚠️ No CRX_PEM_FILE secret found. CRX signing will be skipped."
@@ -50,8 +50,8 @@ jobs:
         with:
           name: chrome-artifacts
           path: |
-            dist/proxy-vpn-extension.zip
-            dist/proxy-vpn-extension.crx
+            dist/peasyproxy-extension.zip
+            dist/peasyproxy-extension.crx
 
   # Android APK Build
   build-android:
@@ -79,13 +79,13 @@ jobs:
       - name: Copy APK to dist
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/release/app-release-unsigned.apk dist/proxymania-android-release-unsigned.apk
+          cp app/build/outputs/apk/release/app-release-unsigned.apk dist/peasyproxy-android-release-unsigned.apk
 
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android-artifacts
-          path: dist/proxymania-android-release-unsigned.apk
+          path: dist/peasyproxy-android-release-unsigned.apk
 
   # Create Release with all artifacts
   create-release:
@@ -114,14 +114,14 @@ jobs:
             ### 📦 Installation
 
             #### Chrome Extension
-            1. Download `proxy-vpn-extension.zip`
+            1. Download `peasyproxy-extension.zip`
             2. Extract to a folder
             3. Open `chrome://extensions/`
             4. Enable "Developer mode"
             5. Click "Load unpacked" and select the extracted folder
 
             #### Android App
-            1. Download `proxymania-android-release-unsigned.apk`
+            1. Download `peasyproxy-android-release-unsigned.apk`
             2. Enable "Install from unknown sources" in settings
             3. Open the APK file and install
 
@@ -133,13 +133,13 @@ jobs:
 
             | File | Description |
             |------|-------------|
-            | `proxy-vpn-extension.zip` | Chrome Extension (Web Store) |
-            | `proxy-vpn-extension.crx` | Chrome Extension (Sideload) |
-            | `proxymania-android-release-unsigned.apk` | Android App |
+            | `peasyproxy-extension.zip` | Chrome Extension (Web Store) |
+            | `peasyproxy-extension.crx` | Chrome Extension (Sideload) |
+            | `peasyproxy-android-release-unsigned.apk` | Android App |
           files: |
-            artifacts/chrome-artifacts/proxy-vpn-extension.zip
-            artifacts/chrome-artifacts/proxy-vpn-extension.crx
-            artifacts/android-artifacts/proxymania-android-release-unsigned.apk
+            artifacts/chrome-artifacts/peasyproxy-extension.zip
+            artifacts/chrome-artifacts/peasyproxy-extension.crx
+            artifacts/android-artifacts/peasyproxy-android-release-unsigned.apk
           draft: false
           prerelease: false
           make_latest: true

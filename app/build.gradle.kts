@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.proxymania.app"
+    namespace = "com.peasyproxy.app"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.proxymania.app"
+        applicationId = "com.peasyproxy.app"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
@@ -147,7 +147,7 @@ tasks.register<Copy>("copyToDist") {
     
     from(apkFile)
     into(distDir)
-    rename { "proxymania-android-debug.apk" }
+    rename { "peasyproxy-android-debug.apk" }
     
     doFirst {
         if (!distDir.exists()) {
@@ -164,7 +164,7 @@ tasks.register<Copy>("copyReleaseToDist") {
     
     from(apkFile)
     into(distDir)
-    rename { "proxymania-android-release-unsigned.apk" }
+    rename { "peasyproxy-android-release-unsigned.apk" }
     
     doFirst {
         if (!distDir.exists()) {

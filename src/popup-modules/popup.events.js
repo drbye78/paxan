@@ -526,7 +526,7 @@ function setupSettingsListeners() {
   }
   
   if (proxySourceSelect) {
-    proxySourceSelect.value = settings.proxySource || 'proxymania';
+    proxySourceSelect.value = settings.proxySource || 'peasyproxy';
   }
   
   const autoFailoverToggle = document.getElementById('autoFailoverToggle');
