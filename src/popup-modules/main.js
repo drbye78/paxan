@@ -11,7 +11,25 @@ import {
   getConnectionQuality,
   getIpInfo,
   getOnboardingState,
-  setOnboardingState
+  setOnboardingState,
+  getProxies,
+  setProxies,
+  getProxyStats,
+  getDailyStats,
+  getFavorites,
+  getRecentlyUsed,
+  getSiteRules,
+  setSiteRules,
+  getAutoRotation,
+  setAutoRotation,
+  getSecurityStatus,
+  setSecurityStatus,
+  getHealthStatus,
+  setHealthStatus,
+  getIpInfo as getIpInfoState,
+  setIpInfo,
+  getCurrentTab,
+  setCurrentTab
 } from './popup.state.js';
 
 import {
@@ -31,7 +49,18 @@ import {
   updateFab,
   updateSecurityUI,
   updateHealthUI,
-  updateConnectionQuality
+  updateConnectionQuality,
+  getFlag,
+  showToast,
+  hideEmptyState,
+  showEmptyState,
+  renderSiteRules,
+  renderBlacklistChips,
+  removeFromBlacklist,
+  addToBlacklist,
+  updateStatsDisplay,
+  showPanel,
+  hidePanel
 } from './popup.ui.js';
 
 import {
@@ -135,4 +164,47 @@ if (document.readyState === 'loading') {
 // ============================================================================
 
 // Note: init is called automatically on DOMContentLoaded, so no need to export it globally
+
+// ============================================================================
+// GLOBAL WINDOW EXPORTS
+// ============================================================================
+
+// Expose state functions globally for popup.html to call
+window.getProxies = getProxies;
+window.setProxies = setProxies;
+window.getProxyStats = getProxyStats;
+window.getDailyStats = getDailyStats;
+window.getFavorites = getFavorites;
+window.getRecentlyUsed = getRecentlyUsed;
+window.getSiteRules = getSiteRules;
+window.setSiteRules = setSiteRules;
+window.getAutoRotation = getAutoRotation;
+window.setAutoRotation = setAutoRotation;
+window.getSecurityStatus = getSecurityStatus;
+window.setSecurityStatus = setSecurityStatus;
+window.getHealthStatus = getHealthStatus;
+window.setHealthStatus = setHealthStatus;
+window.getIpInfo = getIpInfoState;
+window.setIpInfo = setIpInfo;
+window.getCurrentTab = getCurrentTab;
+window.setCurrentTab = setCurrentTab;
+window.getCurrentProxy = getCurrentProxy;
+window.setCurrentProxy = setCurrentProxy;
+window.getSettings = getSettings;
+window.setSettings = setSettings;
+window.loadAllState = loadAllState;
+window.getFlag = getFlag;
+window.showToast = showToast;
+window.hideEmptyState = hideEmptyState;
+window.showEmptyState = showEmptyState;
+window.renderSiteRules = renderSiteRules;
+window.renderBlacklistChips = renderBlacklistChips;
+window.removeFromBlacklist = removeFromBlacklist;
+window.addToBlacklist = addToBlacklist;
+window.updateStatsDisplay = updateStatsDisplay;
+window.showPanel = showPanel;
+window.hidePanel = hidePanel;
+window.updateUI = updateUI;
+window.updateSecurityUI = updateSecurityUI;
+window.updateHealthUI = updateHealthUI;
 

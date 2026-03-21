@@ -1,6 +1,6 @@
 # PeasyProxy - Smart Proxy Router
 
-[![Version](https://img.shields.io/badge/version-3.0.0-blue?style=flat-square)](https://github.com)
+[![Version](https://img.shields.io/badge/version-3.0.18-blue?style=flat-square)](https://github.com)
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-green?style=flat-square)](https://chrome.google.com/webstore)
 [![Android App](https://img.shields.io/badge/Android-App-green?style=flat-square)](https://play.google.com/store)
 [![Manifest V3](https://img.shields.io/badge/manifest-v3-green?style=flat-square)](https://developer.chrome.com/docs/extensions/mv3/intro/)
