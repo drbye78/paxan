@@ -1,7 +1,7 @@
-# Implementation Plan - ProxyMania VPN Chrome Extension
+# Implementation Plan - PeasyProxy Chrome Extension
 
 ## Overview
-This document outlines the implementation plan for new features and improvements to the ProxyMania VPN Chrome extension.
+This document outlines the implementation plan for new features and improvements to the PeasyProxy Chrome extension.
 
 ---
 

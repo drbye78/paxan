@@ -39,7 +39,7 @@
 │  │ webrtc-     │                        ▼                      │
 │  │ blocker.js   │      ┌─────────────────────────────────────┐  │
 │  └──────────────┘      │   External Sources:                 │  │
-│                        │   - ProxyMania (proxymania.su)      │  │
+│                        │   - PeasyProxy (proxymania.su)      │  │
 │                        │   - ProxyScrape (api.proxyscrape.com)│  │
 │                        │   - httpbin.org (Testing)            │  │
 │                        └─────────────────────────────────────┘  │
@@ -73,7 +73,7 @@ src/
 
 ## Data Flow
 
-1. **Proxy Fetch**: Background fetches from ProxyMania/ProxyScrape
+1. **Proxy Fetch**: Background fetches from PeasyProxy/ProxyScrape
 2. **Storage**: Proxies cached in chrome.storage
 3. **Display**: Popup renders proxy list with virtual scrolling
 4. **Trust Scoring**: Reputation engine calculates trust scores
@@ -101,7 +101,7 @@ The reputation engine calculates a score (0-100) based on:
 
 ## Key Features
 
-- **Proxy Sources**: ProxyMania, ProxyScrape
+- **Proxy Sources**: PeasyProxy, ProxyScrape
 - **Trust Scoring**: Speed + Reliability + Trust + Freshness
 - **Tamper Detection**: MITM attack detection
 - **i18n**: Russian, English

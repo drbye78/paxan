@@ -673,7 +673,7 @@ interface MessageResponse {
 
 | Error | Cause | Solution |
 |-------|-------|----------|
-| `Failed to fetch proxies` | Network error or ProxyMania down | Retry later |
+| `Failed to fetch proxies` | Network error or proxy source down | Retry later |
 | `Failed to set proxy` | Permission issue | Check extension permissions |
 | `Failed to clear proxy` | Chrome API error | Reload extension |
 | `Network error` | No internet connection | Check connectivity |

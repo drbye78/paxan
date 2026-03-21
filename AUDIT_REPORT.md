@@ -1,4 +1,4 @@
-# ProxyMania VPN - Codebase Audit Report
+# PeasyProxy - Codebase Audit Report
 
 **Date:** March 21, 2026  
 **Scope:** Full codebase audit comparing documentation vs. implementation

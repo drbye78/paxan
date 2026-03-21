@@ -471,7 +471,7 @@ This extension uses **free public proxies**, which introduces security risks. Un
 
 #### Trust Scores
 
-ProxyMania now includes **reputation scoring** to help identify safer proxies:
+PeasyProxy now includes **reputation scoring** to help identify safer proxies:
 
 - 🟢 **Trusted** - 90%+ uptime, 100+ tests, no tampering detected
 - 🟡 **Unverified** - New proxy or limited test data

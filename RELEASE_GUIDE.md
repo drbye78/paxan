@@ -1,6 +1,6 @@
 # Release Guide
 
-Complete guide for building and publishing ProxyMania VPN releases (Chrome Extension + Android App).
+Complete guide for building and publishing PeasyProxy releases (Chrome Extension + Android App).
 
 ---
 
@@ -284,7 +284,7 @@ node --version
 ## Release Notes Template
 
 ```markdown
-## ProxyMania VPN Extension vX.X.X
+## PeasyProxy Extension vX.X.X
 
 ### 📦 Installation
 

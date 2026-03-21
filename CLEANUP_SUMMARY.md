@@ -1,7 +1,7 @@
 # Chrome Extension Cleanup Summary
 
 ## Overview
-This document summarizes the cleanup of obsolete and unused files from the ProxyMania Chrome Extension codebase.
+This document summarizes the cleanup of obsolete and unused files from the PeasyProxy Chrome Extension codebase.
 
 ## What Was Done
 

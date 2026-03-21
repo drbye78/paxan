@@ -1,6 +1,6 @@
-# ProxyMania VPN - Comprehensive Test Suite
+# PeasyProxy - Comprehensive Test Suite
 
-This document outlines the complete testing strategy for the ProxyMania VPN Chrome extension, covering unit tests, integration tests, end-to-end tests, and performance tests.
+This document outlines the complete testing strategy for the PeasyProxy Chrome extension, covering unit tests, integration tests, end-to-end tests, and performance tests.
 
 ## Test Suite Overview
 

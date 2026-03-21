@@ -73,7 +73,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture documentation.
                                            ▼
                           ┌─────────────────────────────┐
                           │   External Sources:         │
-                          │   - ProxyMania (proxymania.su)
+                          │   - PeasyProxy (proxymania.su)
                           │   - ProxyScrape (proxyscrape.com)
                           └─────────────────────────────┘
 ```
