@@ -80,12 +80,12 @@ create_crx() {
         # Check for existing CRX
         if [ -f "$EXISTING_CRX" ]; then
             echo -e "${YELLOW}⚠ crx3 not installed. Using existing CRX (may be outdated).${NC}"
-            echo -e "   To rebuild CRX, install crx3: npm install -g crx3"
+            echo -e "   To rebuild CRX, install crx3: pnpm add -g crx3"
             cp "$EXISTING_CRX" "$CRX_FILE"
             echo -e "${GREEN}✓ CRX copied: $CRX_FILE${NC}"
         else
             echo -e "${YELLOW}⚠ crx3 not available and no existing CRX found.${NC}"
-            echo -e "   Install crx3 with: npm install -g crx3"
+            echo -e "   Install crx3 with: pnpm add -g crx3"
         fi
     fi
 }

@@ -3,7 +3,10 @@ package com.peasyproxy.app.data.remote
 import com.peasyproxy.app.domain.model.Proxy
 import com.peasyproxy.app.domain.model.ProxyProtocol
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
@@ -18,27 +21,30 @@ class ProxyFetcher @Inject constructor(
     private var lastFetchTime: Long = 0
     private var cachedProxies: List<Proxy> = emptyList()
     private val cacheValidityMs = 5 * 60 * 1000L // 5 minutes
+    private val cacheMutex = Mutex()
 
     suspend fun fetchAllProxies(forceRefresh: Boolean = false): Result<List<Proxy>> = withContext(Dispatchers.IO) {
-        if (!forceRefresh && System.currentTimeMillis() - lastFetchTime < cacheValidityMs && cachedProxies.isNotEmpty()) {
-            return@withContext Result.success(cachedProxies)
-        }
+        cacheMutex.withLock {
+            if (!forceRefresh && System.currentTimeMillis() - lastFetchTime < cacheValidityMs && cachedProxies.isNotEmpty()) {
+                return@withContext Result.success(cachedProxies)
+            }
 
-        try {
-            val peasyProxyProxies = fetchPeasyProxy()
-            val proxyScrapeProxies = fetchProxyScrape()
+            try {
+                val peasyProxyProxies = fetchPeasyProxy()
+                val proxyScrapeProxies = fetchProxyScrape()
 
-            val allProxies = (peasyProxyProxies + proxyScrapeProxies).distinctBy { "${it.host}:${it.port}" }
-            
-            lastFetchTime = System.currentTimeMillis()
-            cachedProxies = allProxies
+                val allProxies = (peasyProxyProxies + proxyScrapeProxies).distinctBy { "${it.host}:${it.port}" }
+                
+                lastFetchTime = System.currentTimeMillis()
+                cachedProxies = allProxies
 
-            Result.success(allProxies)
-        } catch (e: Exception) {
-            if (cachedProxies.isNotEmpty()) {
-                Result.success(cachedProxies)
-            } else {
-                Result.failure(e)
+                Result.success(allProxies)
+            } catch (e: Exception) {
+                if (cachedProxies.isNotEmpty()) {
+                    Result.success(cachedProxies)
+                } else {
+                    Result.failure(e)
+                }
             }
         }
     }
@@ -109,13 +115,14 @@ class ProxyFetcher @Inject constructor(
     ): List<Proxy> = withContext(Dispatchers.IO) {
         try {
             val urlBuilder = StringBuilder("https://api.proxyscrape.com/v2/account/get?")
-            username?.let { urlBuilder.append("user=$it&") }
-            password?.let { urlBuilder.append("pass=$it&") }
             urlBuilder.append("list=$proxyType&timeout=$timeout")
 
-            val request = Request.Builder()
+            val requestBuilder = Request.Builder()
                 .url(urlBuilder.toString())
-                .build()
+            if (username != null && password != null) {
+                requestBuilder.addHeader("Authorization", Credentials.basic(username, password))
+            }
+            val request = requestBuilder.build()
 
             val response = okHttpClient.newCall(request).execute()
             val text = response.body?.string() ?: return@withContext emptyList()

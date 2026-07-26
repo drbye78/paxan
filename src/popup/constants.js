@@ -2,13 +2,15 @@
 // Scoring weights and configuration constants
 
 // Scoring weights for proxy ranking (must sum to 1.0)
+// 35% speed + 35% reliability + 15% freshness + 5% favorite bonus + 5% historical bonus + 5% attempts bonus = 100%
 const SCORING_WEIGHTS = {
-  SPEED: 0.35,           // Latency-based score
-  RELIABILITY: 0.35,     // Success rate score
-  FRESHNESS: 0.15,       // Last check recency
-  FAVORITE_BONUS: 0.05,  // Bonus for favorited proxies
-  HISTORICAL_BONUS: 0.05, // Bonus for historical data
-  ATTEMPTS_BONUS: 0.05   // Bonus for proxies with enough test data
+  SPEED: 0.35,           // Base speed weight (35%)
+  RELIABILITY: 0.35,     // Base reliability weight (35%)
+  FRESHNESS: 0.15,       // Base freshness weight (15%)
+  FAVORITE_BONUS: 0.05,  // Bonus for favorited proxies (5%)
+  HISTORICAL_BONUS: 0.05, // Bonus for historical good performance (5%)
+  ATTEMPTS_BONUS: 0.05   // Bonus for proven track record (5%)
+  // Total: 35 + 35 + 15 + 5 + 5 + 5 = 100%
 };
 
 // Thresholds
@@ -35,12 +37,13 @@ const TRUST_THRESHOLDS = {
   RISKY: 0         // Score < 40 = Risky
 };
 
-// Reputation score weights
+// Reputation score weights (for trust classification)
+// Based on: 40% speed + 40% reliability + 20% trust/freshness factors
 const REPUTATION_WEIGHTS = {
-  SPEED: 0.30,
-  RELIABILITY: 0.35,
-  TRUST: 0.25,
-  FRESHNESS: 0.10
+  SPEED: 0.40,        // Speed contribution to trust score (40%)
+  RELIABILITY: 0.40,  // Reliability contribution to trust score (40%)
+  TRUST: 0.10,        // HTTPS/tamper detection factors (10%)
+  FRESHNESS: 0.10     // Last tested recency (10%)
 };
 
 // Connection quality thresholds
@@ -52,17 +55,6 @@ const QUALITY_THRESHOLDS = {
   FAIR_LATENCY: 500,
   FAIR_PACKET_LOSS: 10
 };
-
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    SCORING_WEIGHTS,
-    THRESHOLDS,
-    TRUST_THRESHOLDS,
-    REPUTATION_WEIGHTS,
-    QUALITY_THRESHOLDS
-  };
-}
 
 // ES Module exports
 export {

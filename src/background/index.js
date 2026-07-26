@@ -1,49 +1,42 @@
+// PeasyProxy - Background Service Worker (MV3)
+// Central message router and lifecycle handler.
+//
 import * as proxyFetcher from './proxy-fetcher.js';
 import * as proxyManager from './proxy-manager.js';
 import * as healthMonitor from './health-monitor.js';
+import { handleQualityAlarm } from './quality-monitor.js';
+import { handleDnsAlarm, testDnsLeak, captureRealIp, getStoredRealIp } from './dns-leak-test.js';
+import * as proxyChain from './proxy-chain.js';
 import { ReputationEngine } from '../core/reputation-engine.js';
 import { TamperDetector } from '../security/tamper-detection.js';
+import { proxyConfig } from './proxy-config-manager.js';
+import { compareVersions, isRegexSafe, safeRegexTest } from '../shared/utils.js';
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const CURRENT_VERSION = '3.0.18';
+const MESSAGE_TIMEOUT_MS = 30000; // timeout for pending message handlers
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
 
 let reputationEngine = null;
 let tamperDetector = null;
+let realIp = null;
+let cachedSiteRules = null;
+let cachedSiteRulesTimestamp = 0;
 
-function compareVersions(a, b) {
-  const parseVersion = (v) => v.split('.').map(n => parseInt(n, 10) || 0);
-  const aParts = parseVersion(a);
-  const bParts = parseVersion(b);
-  for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-    const aPart = aParts[i] || 0;
-    const bPart = bParts[i] || 0;
-    if (aPart > bPart) return 1;
-    if (aPart < bPart) return -1;
-  }
-  return 0;
-}
+const failoverManager = new proxyManager.ProxyFailoverManager();
 
-const MAX_REGEX_LENGTH = 200;
-const MAX_REGEX_COMPLEXITY = 10;
-
-function isRegexSafe(pattern) {
-  if (!pattern || pattern.length > MAX_REGEX_LENGTH) return false;
-  const complexityIndicators = (pattern.match(/[()*+?[\]{}|]/g) || []).length;
-  if (complexityIndicators > MAX_REGEX_COMPLEXITY) return false;
-  if (pattern.includes('(?=') || pattern.includes('(?!') || pattern.includes('(?<=') || pattern.includes('(?<!')) return false;
-  return true;
-}
-
-function safeRegexTest(pattern, text) {
-  if (!isRegexSafe(pattern)) return false;
-  try {
-    const regex = new RegExp(pattern, 'i');
-    const result = regex.test(text);
-    regex.lastIndex = 0;
-    return result;
-  } catch (e) {
-    return false;
-  }
-}
+// ---------------------------------------------------------------------------
+// Lazy initialisation helpers
+// ---------------------------------------------------------------------------
 
 async function initReputationEngine() {
+  await restoreState();
   if (!reputationEngine) {
     reputationEngine = new ReputationEngine();
     await reputationEngine.init();
@@ -59,16 +52,16 @@ async function initTamperDetector() {
   return tamperDetector;
 }
 
-const failoverManager = new proxyManager.ProxyFailoverManager();
-
-let realIp = null;
+// ---------------------------------------------------------------------------
+// Real IP
+// ---------------------------------------------------------------------------
 
 async function getRealIp() {
   if (realIp) return realIp;
   try {
-    const response = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
-    const data = await response.json();
-    realIp = data.ip;
+    // Use the robust implementation from dns-leak-test.js (uses proxyConfig.fetchDirect)
+    const ip = await captureRealIp();
+    if (ip) realIp = ip;
     return realIp;
   } catch (error) {
     console.error('Failed to get real IP:', error);
@@ -77,211 +70,337 @@ async function getRealIp() {
 }
 
 async function storeRealIp() {
-  if (!realIp) {
-    await getRealIp();
+  if (!realIp) await getRealIp();
+  if (realIp) {
+    await chrome.storage.session.set({ sessionRealIp: realIp });
   }
-  await chrome.storage.local.set({ realIp: realIp });
 }
 
-async function getStoredRealIp() {
-  const result = await chrome.storage.local.get(['realIp']);
-  return result.realIp || null;
-}
+// ---------------------------------------------------------------------------
+// State persistence
+// ---------------------------------------------------------------------------
 
-async function testDnsLeak() {
-  const testDomains = [
-    'dns.google',
-    'cloudflare-dns.com',
-    '1.1.1.1'
-  ];
-  
+async function restoreState() {
   try {
-    const userRealIp = await getStoredRealIp();
-    if (!userRealIp) {
-      return { success: false, error: 'Could not determine real IP - please refresh before connecting to proxy' };
+    const { sessionRealIp, failoverState } = await chrome.storage.session.get(['sessionRealIp', 'failoverState']);
+    if (sessionRealIp) realIp = sessionRealIp;
+    if (failoverState) {
+      failoverManager.currentIndex = failoverState.currentIndex || 0;
+      failoverManager.retryCount = failoverState.retryCount || 0;
+      failoverManager.lastFailoverTime = failoverState.lastFailoverTime || null;
     }
-    
-    const response = await fetch('https://dns.google/resolve?name=dns.google&type=A', {
-      method: 'GET',
-      cache: 'no-store'
-    });
-    
-    const data = await response.json();
-    const resolvedIp = data.answer?.[0]?.data;
-    
-    if (!resolvedIp) {
-      return { success: false, error: 'Could not resolve DNS' };
-    }
-    
-    const isLeaking = resolvedIp === userRealIp;
-    
-    return {
-      success: true,
-      resolvedIp: resolvedIp,
-      realIp: userRealIp,
-      leaking: isLeaking,
-      message: isLeaking 
-        ? '⚠️ DNS may be leaking - your real IP could be visible' 
-        : '✅ DNS routing appears secure'
-    };
-  } catch (error) {
-    return { success: false, error: error.message };
+    await healthMonitor.restoreMonitoringState();
+  } catch {
+    // ignore
   }
 }
+
+function invalidateSiteRulesCache() {
+  cachedSiteRules = null;
+  cachedSiteRulesTimestamp = 0;
+}
+
+async function getCachedSiteRules() {
+  const now = Date.now();
+  if (cachedSiteRules && (now - cachedSiteRulesTimestamp) < 30000) return cachedSiteRules;
+  const { siteRules } = await chrome.storage.local.get(['siteRules']);
+  cachedSiteRules = siteRules || [];
+  cachedSiteRulesTimestamp = now;
+  return cachedSiteRules;
+}
+
+// ---------------------------------------------------------------------------
+// Storage helpers
+// ---------------------------------------------------------------------------
+
+async function getProxyStats() {
+  try {
+    const { proxyStats = {} } = await chrome.storage.local.get(['proxyStats']);
+    return proxyStats;
+  } catch { return {}; }
+}
+
+async function storeErrorLog(error, proxy, timestamp) {
+  try {
+    const { errorLogs = [] } = await chrome.storage.local.get(['errorLogs']);
+    errorLogs.push({
+      error: error?.message || error,
+      proxy: proxy?.ipPort || proxy,
+      timestamp: timestamp || Date.now()
+    });
+    if (errorLogs.length > 50) errorLogs.splice(0, errorLogs.length - 50);
+    await chrome.storage.local.set({ errorLogs });
+  } catch { /* ignore */ }
+}
+
+// ---------------------------------------------------------------------------
+// Alarms
+// ---------------------------------------------------------------------------
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  healthMonitor.handleAlarm(alarm);
+  if (alarm.name === 'proxyMonitoring' || alarm.name === 'healthMonitoring') {
+    healthMonitor.handleAlarm(alarm);
+  } else if (alarm.name === 'qualityMonitoring') {
+    handleQualityAlarm();
+  } else if (alarm.name === 'dnsMonitoring') {
+    handleDnsAlarm();
+  }
 });
 
+// ---------------------------------------------------------------------------
+// Message routing (with timeout)
+// ---------------------------------------------------------------------------
+
+const pendingMessages = new Map();
+let messageCounter = 0;
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  handleMessage(request).then(sendResponse);
-  return true;
+  const id = messageCounter++;
+  pendingMessages.set(id, sendResponse);
+
+  // Timeout: if the handler hangs, clean up after MESSAGE_TIMEOUT_MS
+  const timer = setTimeout(() => {
+    const sr = pendingMessages.get(id);
+    if (sr) {
+      sr({ success: false, error: 'Request timed out' });
+      pendingMessages.delete(id);
+    }
+  }, MESSAGE_TIMEOUT_MS);
+
+  handleMessage(request).then(response => {
+    clearTimeout(timer);
+    const sr = pendingMessages.get(id);
+    if (sr) {
+      sr(response);
+      pendingMessages.delete(id);
+    }
+  }).catch(error => {
+    clearTimeout(timer);
+    const sr = pendingMessages.get(id);
+    if (sr) {
+      sr({ success: false, error: error.message });
+      pendingMessages.delete(id);
+    }
+  });
+  return true; // keep channel open for async response
 });
 
 async function handleMessage(request) {
   try {
     switch (request.action) {
+      // ---- Proxy lifecycle ----
       case 'setProxy':
         await storeRealIp();
-        await proxyManager.setProxy(request.proxy);
+        await proxyConfig.setUserProxy(request.proxy);
         return { success: true };
-        
+
       case 'clearProxy':
-        await proxyManager.clearProxy();
+        await proxyConfig.clearUserProxy();
         return { success: true };
-        
-      case 'getProxy':
-        const config = await proxyManager.getProxy();
+
+      case 'getProxy': {
+        const config = await proxyConfig.getCurrentConfig();
         return { config };
-        
-      case 'fetchProxies':
+      }
+
+      // ---- Proxy fetching ----
+      case 'fetchProxies': {
         const proxies = await proxyFetcher.fetchProxies();
         return { proxies };
-        
+      }
+
       case 'testProxy':
         return await proxyFetcher.testProxyConnectivity(request.proxy, request.keepProxy);
-        
+
+      case 'testProxyThroughProxy':
+        return await proxyFetcher.testThroughProxy(request.proxy, request.url);
+
       case 'quickTest':
         return await proxyFetcher.quickLatencyTest(request.proxy);
-        
+
       case 'updateProxyStats':
         await healthMonitor.updateProxyStats(request.proxy, request.success, request.latency);
         return { success: true };
-        
-      case 'getProxyStats':
+
+      case 'getProxyStats': {
         const stats = await getProxyStats();
         return { stats };
-        
+      }
+
+      // ---- Monitoring ----
       case 'startMonitoring':
         await healthMonitor.startProxyMonitoring(request.proxy);
         return { success: true };
-        
+
       case 'stopMonitoring':
         healthMonitor.stopProxyMonitoring();
         return { success: true };
-        
-      case 'setFailoverProxies':
-        failoverManager.setProxies(request.proxies, request.currentProxy);
-        return { success: true };
-        
-      case 'getNextFailoverProxy':
-        const proxy = failoverManager.getNextProxy();
-        return { proxy };
-        
-      case 'resetFailover':
-        failoverManager.reset();
-        return { success: true };
-        
-      case 'toggleDnsLeakProtection':
-      case 'toggleWebRtcProtection':
-        return { success: true, enabled: request.enabled };
-        
-      case 'testDnsLeak':
-        return await testDnsLeak();
-        
-      case 'getSecurityStatus':
-        return {
-          status: 'secure',
-          dnsLeakProtection: true,
-          webRtcProtection: true,
-          lastCheck: null
-        };
-        
-      case 'resetSecurityAlerts':
-        return { success: true };
-        
-      case 'handleProxyError':
-        console.error('Proxy error:', request.error);
-        return { success: true };
-        
-      case 'clearErrorLogs':
-        return { success: true };
-        
-      case 'getStoredErrors':
-        return { errors: [] };
-        
-      case 'startOnboarding':
-      case 'completeOnboarding':
-        return { success: true };
-        
-      case 'getOnboardingState':
-        const onboarding = await chrome.storage.local.get(['onboarding']);
-        return onboarding.onboarding || { completed: false, currentStepIndex: 0, version: '2.1.0' };
-        
+
       case 'startHealthMonitoring':
-        if (request.proxy) {
-          await healthMonitor.startHealthMonitoring(request.proxy);
-        }
+        if (request.proxy) await healthMonitor.startHealthMonitoring(request.proxy);
         return { success: true };
-        
+
       case 'stopHealthMonitoring':
         healthMonitor.stopHealthMonitoring();
         return { success: true };
-        
-      case 'getHealthStatus':
+
+      case 'getHealthStatus': {
+        const healthData = await chrome.storage.local.get(['healthData']);
+        const hd = healthData.healthData || { connectionQuality: 'excellent', lastCheck: null, qualityHistory: [], latencyHistory: [], avgLatency: 0 };
         return {
-          active: proxyManager.isMonitoringActive(),
-          quality: 'excellent',
-          avgLatency: 0,
-          lastCheck: null
+          active: healthMonitor.isMonitoringActive(),
+          quality: hd.connectionQuality || 'excellent',
+          avgLatency: hd.avgLatency || 0,
+          lastCheck: hd.lastCheck || null
         };
-        
-      case 'getProxyReputation':
+      }
+
+      // ---- Failover ----
+      case 'setFailoverProxies':
+        await failoverManager.setProxies(request.proxies, request.currentProxy);
+        return { success: true };
+
+      case 'getNextFailoverProxy': {
+        const proxy = await failoverManager.getNextProxy();
+        return { proxy };
+      }
+
+      case 'resetFailover':
+        await failoverManager.reset();
+        return { success: true };
+
+      // ---- Security & DNS ----
+      case 'toggleDnsLeakProtection':
+      case 'toggleWebRtcProtection': {
+        const secData = await chrome.storage.local.get(['security']);
+        const security = secData.security || { dnsLeakProtection: true, webRtcProtection: true, status: 'secure' };
+        if (request.action === 'toggleDnsLeakProtection') {
+          security.dnsLeakProtection = request.enabled;
+        } else {
+          security.webRtcProtection = request.enabled;
+        }
+        await chrome.storage.local.set({ security });
+        return { success: true, enabled: request.enabled };
+      }
+
+      case 'testDnsLeak':
+        return await testDnsLeak();
+
+      case 'getSecurityStatus': {
+        const secStatus = await chrome.storage.local.get(['security']);
+        return secStatus.security || { status: 'secure', dnsLeakProtection: true, webRtcProtection: true, lastCheck: null };
+      }
+
+      // ---- Reputation ----
+      case 'getProxyReputation': {
         const rep = await initReputationEngine();
         return await rep.getReputation(request.proxyIpPort);
-        
-      case 'recordProxyTest':
+      }
+
+      case 'recordProxyTest': {
         const engine = await initReputationEngine();
         await engine.recordTest(request.proxy, request.success, request.latency);
         return { success: true };
-        
-      case 'getReputationScore':
+      }
+
+      case 'getReputationScore': {
         const repEngine = await initReputationEngine();
         return { score: repEngine.calculateScore(request.proxy) };
-        
-      case 'getReputationStats':
+      }
+
+      case 'getReputationStats': {
         const statsEngine = await initReputationEngine();
         return await statsEngine.getStats();
-        
-      case 'getAllReputation':
+      }
+
+      case 'getAllReputation': {
         const allRepEngine = await initReputationEngine();
         return allRepEngine.reputation;
-        
-      case 'testProxyTampering':
+      }
+
+      // ---- Tamper detection ----
+      case 'testProxyTampering': {
         const detector = await initTamperDetector();
         return await detector.testProxy(request.proxy);
-        
-      case 'getSuspiciousProxies':
+      }
+
+      case 'getSuspiciousProxies': {
         const suspEngine = await initReputationEngine();
         return { proxies: suspEngine.getSuspiciousProxies() };
-        
-      case 'markProxyTampered':
+      }
+
+      case 'markProxyTampered': {
         const tamperEngine = await initReputationEngine();
         await tamperEngine.markTampered(request.proxyIpPort, request.tampered);
         return { success: true };
-        
+      }
+
+      // ---- Error logs ----
+      case 'handleProxyError':
+        await storeErrorLog(request.error, request.proxy, request.timestamp);
+        return { success: true };
+
+      case 'clearErrorLogs':
+        await chrome.storage.local.set({ errorLogs: [] });
+        return { success: true };
+
+      case 'getStoredErrors': {
+        const { errorLogs = [] } = await chrome.storage.local.get(['errorLogs']);
+        return { errors: errorLogs };
+      }
+
+      // ---- Onboarding ----
+      case 'startOnboarding':
+        await chrome.storage.local.set({ onboarding: { completed: false, currentStepIndex: 0, version: CURRENT_VERSION } });
+        return { success: true };
+
+      case 'completeOnboarding': {
+        const onb = await chrome.storage.local.get(['onboarding']);
+        const onbData = onb.onboarding || { completed: false, currentStepIndex: 0, version: CURRENT_VERSION };
+        onbData.completed = true;
+        await chrome.storage.local.set({ onboarding: onbData });
+        return { success: true };
+      }
+
+      case 'getOnboardingState': {
+        const onboarding = await chrome.storage.local.get(['onboarding']);
+        return onboarding.onboarding || { completed: false, currentStepIndex: 0, version: CURRENT_VERSION };
+      }
+
+      // ---- Site rules ----
+      case 'setSiteRules':
+        await chrome.storage.local.set({ siteRules: request.siteRules || [] });
+        invalidateSiteRulesCache();
+        return { success: true };
+
+      // ---- Proxy chains ----
+      case 'createChain':
+        return await proxyChain.createChain(request.name, request.proxyIds, request.options);
+
+      case 'getChain':
+        return await proxyChain.getChain(request.chainId);
+
+      case 'listChains':
+        return await proxyChain.listChains();
+
+      case 'updateChain':
+        return await proxyChain.updateChain(request.chainId, request.updates);
+
+      case 'deleteChain':
+        return await proxyChain.deleteChain(request.chainId);
+
+      case 'testChain':
+        return await proxyChain.testChain(request.chainId);
+
+      case 'monitorChain':
+        return await proxyChain.monitorChain(request.chainId);
+
+      case 'getChainStats':
+        return await proxyChain.getChainStats(request.chainId);
+
+      // ----
       default:
-        return { success: false, error: 'Unknown action' };
+        return { success: false, error: 'Unknown action: ' + request.action };
     }
   } catch (error) {
     console.error('Message handler error:', error);
@@ -289,20 +408,13 @@ async function handleMessage(request) {
   }
 }
 
-async function getProxyStats() {
-  try {
-    const { proxyStats = {} } = await chrome.storage.local.get(['proxyStats']);
-    return proxyStats;
-  } catch (error) {
-    console.error('Error getting proxy stats:', error);
-    return {};
-  }
-}
+// ---------------------------------------------------------------------------
+// Lifecycle: install / update
+// ---------------------------------------------------------------------------
 
 chrome.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === 'install') {
     console.log('PeasyProxy installed');
-    
     await chrome.storage.local.set({
       settings: {
         theme: 'dark',
@@ -314,12 +426,12 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       security: {
         dnsLeakProtection: true,
         webRtcProtection: true,
-        securityStatus: 'secure'
+        status: 'secure'
       },
       onboarding: {
         completed: false,
         currentStepIndex: 0,
-        version: '2.2.0'
+        version: CURRENT_VERSION
       },
       healthData: {
         connectionQuality: 'excellent',
@@ -336,25 +448,22 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     });
   } else if (details.reason === 'update') {
     console.log('PeasyProxy updated from', details.previousVersion);
-    
+
     const oldVersion = details.previousVersion || '2.0.0';
     if (compareVersions(oldVersion, '2.2.0') < 0) {
       try {
         const data = await chrome.storage.local.get(null);
         const updates = {};
-        
         if (!data.siteRules) updates.siteRules = [];
         if (!data.autoRotation) updates.autoRotation = { enabled: false, interval: 600000 };
         if (!data.connectionQuality) {
           updates.connectionQuality = { enabled: true, lastUpdate: null, latency: 0, packetLoss: 0, quality: 'excellent' };
         }
         if (!data.ipInfo) updates.ipInfo = { realIp: null, proxyIp: null, isLoading: false, lastCheck: null };
-        
         if (data.onboarding) {
           data.onboarding.version = '2.2.0';
           updates.onboarding = data.onboarding;
         }
-        
         if (Object.keys(updates).length > 0) {
           await chrome.storage.local.set(updates);
           console.log('Migrated to v2.2.0:', Object.keys(updates));
@@ -363,11 +472,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         console.error('Migration error:', error);
       }
     }
-    
+
     try {
       const result = await chrome.storage.local.get(['activeProxy']);
       if (result.activeProxy) {
-        await proxyManager.setProxy(result.activeProxy);
+        await proxyConfig.setUserProxy(result.activeProxy);
         await healthMonitor.startProxyMonitoring(result.activeProxy);
       }
     } catch (error) {
@@ -376,11 +485,18 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Lifecycle: startup
+// ---------------------------------------------------------------------------
+
 chrome.runtime.onStartup.addListener(async () => {
   try {
+    await restoreState();
+    // Capture real IP before restoring proxy
+    await captureRealIp();
     const { activeProxy } = await chrome.storage.local.get(['activeProxy']);
     if (activeProxy) {
-      await proxyManager.setProxy(activeProxy);
+      await proxyConfig.setUserProxy(activeProxy);
       await healthMonitor.startProxyMonitoring(activeProxy);
       console.log('Restored proxy connection after startup:', activeProxy.ipPort);
     }
@@ -389,22 +505,29 @@ chrome.runtime.onStartup.addListener(async () => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Tab navigation: site-rule auto-switching
+// ---------------------------------------------------------------------------
+
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (!changeInfo.url || !tab.active) return;
-  
+
   try {
-    const { siteRules, activeProxy } = await chrome.storage.local.get(['siteRules', 'activeProxy']);
-    if (!siteRules || !activeProxy || siteRules.length === 0) return;
-    
-    const url = changeInfo.url;
+    const { activeProxy } = await chrome.storage.local.get(['activeProxy']);
+    if (!activeProxy) return;
+
+    const siteRules = await getCachedSiteRules();
+    if (siteRules.length === 0) return;
+
     let hostname;
     try {
-      hostname = new URL(url).hostname;
-    } catch (e) {
-      return;
-    }
-    
-    const sortedRules = [...siteRules].filter(r => r.enabled !== false).sort((a, b) => a.priority - b.priority);
+      hostname = new URL(changeInfo.url).hostname;
+    } catch { return; }
+
+    const sortedRules = [...siteRules]
+      .filter(r => r.enabled !== false)
+      .sort((a, b) => a.priority - b.priority);
+
     const matchingRule = sortedRules.find(rule => {
       const patternType = rule.patternType || 'exact';
       if (patternType === 'exact') {
@@ -423,42 +546,31 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       }
       return false;
     });
-    
+
     if (!matchingRule) return;
-    
-    const currentProxyInRule = matchingRule.proxyIps.includes(activeProxy.ipPort);
-    if (currentProxyInRule) return;
-    
+    if (matchingRule.proxyIps.includes(activeProxy.ipPort)) return;
+
     const { proxies } = await chrome.storage.local.get(['proxies']);
     if (!proxies) return;
-    
-    const newProxy = proxies.find(p => 
-      matchingRule.proxyIps.includes(p.ipPort) && 
-      p.speedMs < 300
+
+    const newProxy = proxies.find(p =>
+      matchingRule.proxyIps.includes(p.ipPort) && p.speedMs < 300
     );
-    
     if (!newProxy) return;
-    
+
     console.log(`Auto-switching to ${newProxy.country} proxy for ${hostname}`);
-    
-    await proxyManager.setProxy(newProxy);
+
+    await proxyConfig.setUserProxy(newProxy);
     await chrome.storage.local.set({ activeProxy: newProxy });
-    
+
     chrome.runtime.sendMessage({
       action: 'siteRuleApplied',
       rule: matchingRule,
       proxy: newProxy,
       url: hostname
     }).catch(() => {});
-    
+
   } catch (error) {
     console.error('Site rule check error:', error);
   }
 });
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    handleMessage,
-    failoverManager
-  };
-}

@@ -1,20 +1,53 @@
+// Only proxy-config-manager.js may call chrome.proxy.settings directly.
 const MONITORING_ALARM_NAME = 'proxyMonitoring';
 const HEALTH_ALARM_NAME = 'healthMonitoring';
 const SECURITY_ALARM_NAME = 'securityMonitoring';
+const MONITORING_STATE_KEY = 'monitoringState';
 
-import { testProxyConnectivity } from './proxy-fetcher.js';
-import { 
-  getCurrentMonitoringProxy, 
-  isMonitoringActive,
-  setCurrentMonitoringProxy,
-  setMonitoringActive 
-} from './proxy-manager.js';
+import { proxyConfig } from './proxy-config-manager.js';
+import { buildProxyConfig } from '../shared/utils.js';
+
+let currentMonitoringProxy = null;
+let monitoringActive = false;
+
+// ---------------------------------------------------------------------------
+// Service-worker restart resilience
+// ---------------------------------------------------------------------------
+
+async function restoreMonitoringState() {
+  try {
+    const { [MONITORING_STATE_KEY]: state } = await chrome.storage.session.get([MONITORING_STATE_KEY]);
+    if (state?.active && state?.proxyIpPort) {
+      const { proxies = [] } = await chrome.storage.local.get(['proxies']);
+      currentMonitoringProxy = proxies.find(p => p.ipPort === state.proxyIpPort) || null;
+      monitoringActive = !!currentMonitoringProxy;
+      if (monitoringActive) {
+        console.log('Restored monitoring for:', currentMonitoringProxy.ipPort);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to restore monitoring state:', error);
+  }
+}
+
+function isMonitoringActive() {
+  return monitoringActive;
+}
+
+// ---------------------------------------------------------------------------
+// Proxy monitoring
+// ---------------------------------------------------------------------------
 
 async function startProxyMonitoring(proxy) {
   stopProxyMonitoring();
   
-  setCurrentMonitoringProxy(proxy);
-  setMonitoringActive(true);
+  currentMonitoringProxy = proxy;
+  monitoringActive = true;
+  
+  // Persist monitoring state for SW restart resilience
+  chrome.storage.session.set({
+    [MONITORING_STATE_KEY]: { proxyIpPort: proxy.ipPort, active: true }
+  }).catch(() => {});
   
   try {
     await chrome.alarms.create(MONITORING_ALARM_NAME, {
@@ -33,9 +66,14 @@ function stopProxyMonitoring() {
       chrome.alarms.clear(MONITORING_ALARM_NAME);
     }
   });
-  setCurrentMonitoringProxy(null);
-  setMonitoringActive(false);
+  currentMonitoringProxy = null;
+  monitoringActive = false;
+  chrome.storage.session.remove([MONITORING_STATE_KEY]).catch(() => {});
 }
+
+// ---------------------------------------------------------------------------
+// Health monitoring
+// ---------------------------------------------------------------------------
 
 async function startHealthMonitoring(proxy) {
   stopHealthMonitoring();
@@ -59,15 +97,37 @@ function stopHealthMonitoring() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Alarm handlers
+// ---------------------------------------------------------------------------
+
 async function performProxyMonitoring() {
-  const proxy = getCurrentMonitoringProxy();
+  const proxy = currentMonitoringProxy;
   if (!proxy) return;
   
   try {
-    const result = await testProxyConnectivity(proxy);
+    const startTime = Date.now();
+    const testConfig = buildProxyConfig(proxy);
+    const result = await proxyConfig.withTestConfig(testConfig, async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      try {
+        const response = await fetch('https://httpbin.org/ip', {
+          method: 'GET',
+          signal: controller.signal,
+          cache: 'no-store'
+        });
+        clearTimeout(timeoutId);
+        return { success: response.ok, latency: Date.now() - startTime };
+      } catch {
+        clearTimeout(timeoutId);
+        return { success: false, latency: null };
+      }
+    }, { timeoutMs: 8000, settleMs: 50 });
+    
     await updateProxyStats(proxy, result.success, result.latency);
     
-    if (!result.success || (result.latency && result.latency > 500)) {
+    if (!result.success || result.latency > 500) {
       chrome.runtime.sendMessage({
         action: 'proxyDegraded',
         proxy: {
@@ -85,7 +145,7 @@ async function performProxyMonitoring() {
 }
 
 async function performHealthCheck() {
-  const proxy = getCurrentMonitoringProxy();
+  const proxy = currentMonitoringProxy;
   if (!proxy) return;
   
   try {
@@ -106,22 +166,25 @@ async function performHealthCheck() {
 
 async function performSecurityCheck() {
   try {
-    const result = await chrome.storage.local.get(['activeProxy']);
-    if (!result.activeProxy) {
-      return;
-    }
+    const { security } = await chrome.storage.local.get(['security']);
+    const dnsLeakProtection = security?.dnsLeakProtection !== false;
+    const webRtcProtection = security?.webRtcProtection !== false;
     
     chrome.runtime.sendMessage({
       action: 'securityStatusUpdate',
-      status: 'secure',
-      dnsLeakProtection: true,
-      webRtcProtection: true,
+      status: (dnsLeakProtection && webRtcProtection) ? 'secure' : 'warning',
+      dnsLeakProtection,
+      webRtcProtection,
       lastCheck: Date.now()
     }).catch(() => {});
   } catch (error) {
     console.error('Security check error:', error);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Connection health measurement
+// ---------------------------------------------------------------------------
 
 function calculateConnectionQuality(healthResult) {
   if (!healthResult.latency || healthResult.packetLoss > 50) return 'poor';
@@ -134,138 +197,97 @@ async function measureConnectionHealth(proxy) {
   const startTime = Date.now();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 3000);
-  let originalConfig = null;
-  let proxyWasSet = false;
-  
   try {
-    // Save the original proxy configuration before testing
-    try {
-      originalConfig = await new Promise((resolve) => {
-        chrome.proxy.settings.get({ scope: 'regular' }, (config) => {
-          resolve(config);
-        });
+    const testConfig = buildProxyConfig(proxy);
+    const result = await proxyConfig.withTestConfig(testConfig, async () => {
+      const response = await fetch('https://httpbin.org/ip', {
+        method: 'GET',
+        signal: controller.signal,
+        cache: 'no-store'
       });
-    } catch (e) {
-      console.warn('Could not save original proxy config:', e);
-    }
-    
-    const testConfig = {
-      mode: 'fixed_servers',
-      rules: {
-        singleProxy: {
-          scheme: proxy.type === 'SOCKS5' ? 'socks5' : 'http',
-          host: proxy.ip,
-          port: proxy.port
-        },
-        bypassList: ['localhost', '127.0.0.1', '::1']
-      }
-    };
-    
-    await chrome.proxy.settings.set({ value: testConfig, scope: 'regular' });
-    proxyWasSet = true;
-    
-    const response = await fetch('https://httpbin.org/ip', {
-      method: 'GET',
-      signal: controller.signal,
-      cache: 'no-store'
-    });
-    
-    clearTimeout(timeoutId);
-    
-    // Restore the original proxy configuration instead of clearing
-    if (originalConfig && originalConfig.value) {
-      await chrome.proxy.settings.set({ value: originalConfig.value, scope: 'regular' });
-    } else {
-      // If no original config, clear only if we set it
-      await chrome.proxy.settings.clear({ scope: 'regular' });
-    }
-    proxyWasSet = false;
-    
-    return {
-      success: response.ok,
-      latency: Date.now() - startTime,
-      packetLoss: 0
-    };
+      return { success: response.ok, latency: Date.now() - startTime, packetLoss: 0 };
+    }, { timeoutMs: 5000, settleMs: 50 });
+    return result;
   } catch (error) {
+    return { success: false, latency: null, packetLoss: 100 };
+  } finally {
     clearTimeout(timeoutId);
-    if (proxyWasSet) {
-      try {
-        // Restore original config on error too
-        if (originalConfig && originalConfig.value) {
-          await chrome.proxy.settings.set({ value: originalConfig.value, scope: 'regular' });
-        } else {
-          await chrome.proxy.settings.clear({ scope: 'regular' });
-        }
-      } catch (e) {
-        console.error('Failed to restore proxy after health check error:', e);
-      }
-    }
-    
-    return {
-      success: false,
-      latency: null,
-      packetLoss: 100
-    };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Proxy stats (promise-based serial queue replaces spinlock)
+// ---------------------------------------------------------------------------
+
+let statsQueue = Promise.resolve();
 
 async function updateProxyStats(proxy, success, latency) {
-  try {
-    const { proxyStats = {} } = await chrome.storage.local.get(['proxyStats']);
-    const key = proxy.ipPort;
-    
-    if (!proxyStats[key]) {
-      proxyStats[key] = {
-        attempts: 0,
-        successes: 0,
-        failures: 0,
-        latencies: [],
-        lastFailure: null,
-        lastSuccess: null
-      };
-    }
-    
-    proxyStats[key].attempts++;
-    
-    if (success) {
-      proxyStats[key].successes++;
-      proxyStats[key].lastSuccess = Date.now();
+  return statsQueue = statsQueue.then(async () => {
+    try {
+      const { proxyStats = {} } = await chrome.storage.local.get(['proxyStats']);
+      const key = proxy.ipPort;
       
-      if (latency) {
-        proxyStats[key].latencies.push(latency);
-        if (proxyStats[key].latencies.length > 20) {
-          proxyStats[key].latencies.shift();
-        }
+      if (!proxyStats[key]) {
+        proxyStats[key] = {
+          attempts: 0,
+          successes: 0,
+          failures: 0,
+          latencies: [],
+          lastFailure: null,
+          lastSuccess: null
+        };
       }
-    } else {
-      proxyStats[key].failures++;
-      proxyStats[key].lastFailure = Date.now();
+      
+      proxyStats[key].attempts++;
+      
+      if (success) {
+        proxyStats[key].successes++;
+        proxyStats[key].lastSuccess = Date.now();
+        
+        if (latency) {
+          proxyStats[key].latencies.push(latency);
+          if (proxyStats[key].latencies.length > 20) {
+            proxyStats[key].latencies.shift();
+          }
+        }
+      } else {
+        proxyStats[key].failures++;
+        proxyStats[key].lastFailure = Date.now();
+      }
+      
+      proxyStats[key].successRate = Math.round(
+        (proxyStats[key].successes / proxyStats[key].attempts) * 100
+      );
+      
+      const latencies = proxyStats[key].latencies;
+      proxyStats[key].avgLatency = latencies.length > 0
+        ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
+        : null;
+      
+      await chrome.storage.local.set({ proxyStats });
+    } catch (error) {
+      console.error('Error updating proxy stats:', error);
     }
-    
-    proxyStats[key].successRate = Math.round(
-      (proxyStats[key].successes / proxyStats[key].attempts) * 100
-    );
-    
-    const latencies = proxyStats[key].latencies;
-    proxyStats[key].avgLatency = latencies.length > 0
-      ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
-      : null;
-    
-    await chrome.storage.local.set({ proxyStats });
-  } catch (error) {
-    console.error('Error updating proxy stats:', error);
-  }
+  }).catch(() => {});
 }
 
+// ---------------------------------------------------------------------------
+// Alarm router
+// ---------------------------------------------------------------------------
+
 function handleAlarm(alarm) {
-  if (alarm.name === MONITORING_ALARM_NAME && getCurrentMonitoringProxy()) {
+  if (alarm.name === MONITORING_ALARM_NAME && currentMonitoringProxy) {
     performProxyMonitoring();
-  } else if (alarm.name === HEALTH_ALARM_NAME && getCurrentMonitoringProxy()) {
+  } else if (alarm.name === HEALTH_ALARM_NAME && currentMonitoringProxy) {
     performHealthCheck();
   } else if (alarm.name === SECURITY_ALARM_NAME) {
     performSecurityCheck();
   }
 }
+
+// ---------------------------------------------------------------------------
+// Exports
+// ---------------------------------------------------------------------------
 
 export {
   MONITORING_ALARM_NAME,
@@ -281,24 +303,7 @@ export {
   measureConnectionHealth,
   calculateConnectionQuality,
   updateProxyStats,
-  handleAlarm
+  handleAlarm,
+  restoreMonitoringState,
+  isMonitoringActive
 };
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    MONITORING_ALARM_NAME,
-    HEALTH_ALARM_NAME,
-    SECURITY_ALARM_NAME,
-    startProxyMonitoring,
-    stopProxyMonitoring,
-    startHealthMonitoring,
-    stopHealthMonitoring,
-    performProxyMonitoring,
-    performHealthCheck,
-    performSecurityCheck,
-    measureConnectionHealth,
-    calculateConnectionQuality,
-    updateProxyStats,
-    handleAlarm
-  };
-}

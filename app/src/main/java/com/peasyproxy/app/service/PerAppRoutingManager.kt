@@ -31,6 +31,36 @@ class PerAppRoutingManager @Inject constructor(
                 return true
             }
 
+            when (config.mode) {
+                AppRoutingConfig.Mode.INCLUDE -> {
+                    val packages = getVerifiedPackages(config.includedApps)
+                    if (packages.isEmpty()) {
+                        Timber.w("Per-app routing INCLUDE mode selected but no verified packages found")
+                        return true
+                    }
+                    packages.forEach { pkg ->
+                        try {
+                            builder.addAllowedApplication(pkg)
+                            Timber.d("Per-app routing: allowed $pkg")
+                        } catch (e: Exception) {
+                            Timber.w(e, "Failed to add allowed application: $pkg")
+                        }
+                    }
+                }
+                AppRoutingConfig.Mode.EXCLUDE -> {
+                    val packages = getVerifiedPackages(config.excludedApps)
+                    packages.forEach { pkg ->
+                        try {
+                            builder.addDisallowedApplication(pkg)
+                            Timber.d("Per-app routing: disallowed $pkg")
+                        } catch (e: Exception) {
+                            Timber.w(e, "Failed to add disallowed application: $pkg")
+                        }
+                    }
+                }
+                AppRoutingConfig.Mode.DISABLED -> { /* no routing */ }
+            }
+
             Timber.d("Per-app routing config applied, mode: ${config.mode}")
             true
         } catch (e: Exception) {

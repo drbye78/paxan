@@ -79,7 +79,8 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
-            if (selectedProxy != null && connectionInfo.state != ConnectionState.CONNECTED) {
+            val proxy = selectedProxy
+            if (proxy != null && connectionInfo.state != ConnectionState.CONNECTED) {
                 Text(
                     text = "Selected Proxy",
                     style = MaterialTheme.typography.titleMedium,
@@ -89,7 +90,7 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 ProxyItem(
-                    proxy = selectedProxy!!,
+                    proxy = proxy,
                     onClick = { onNavigateToProxyList() },
                     onFavoriteClick = { },
                     isSelected = true

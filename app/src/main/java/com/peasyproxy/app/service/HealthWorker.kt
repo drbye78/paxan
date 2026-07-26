@@ -1,6 +1,7 @@
 package com.peasyproxy.app.service
 
 import android.content.Context
+import androidx.hilt.work.HiltWorker
 import androidx.work.*
 import com.peasyproxy.app.data.remote.ProxyTester
 import com.peasyproxy.app.data.repository.ProxyRepository
@@ -8,12 +9,15 @@ import com.peasyproxy.app.data.repository.SettingsRepository
 import com.peasyproxy.app.data.repository.StatisticsRepository
 import com.peasyproxy.app.domain.model.Proxy
 import com.peasyproxy.app.domain.model.ProxyTestResult
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
-class HealthWorker(
-    context: Context,
-    workerParams: WorkerParameters,
+@HiltWorker
+class HealthWorker @AssistedInject constructor(
+    @Assisted context: Context,
+    @Assisted workerParams: WorkerParameters,
     private val proxyRepository: ProxyRepository,
     private val settingsRepository: SettingsRepository,
     private val statisticsRepository: StatisticsRepository,

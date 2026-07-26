@@ -8,16 +8,13 @@
     "build:background": "node build.js --target=background",
     "build:popup": "node build.js --target=popup",
     "watch": "node build.js --watch",
-    "test": "cd tests && npm test",
-    "lint": "cd tests && npm run lint",
+    "test": "cd tests && pnpm test",
+    "lint": "cd tests && pnpm lint",
     "distribute": "node distribute.js both",
     "distribute:zip": "node distribute.js zip",
-    "distribute:crx": "node distribute.js crx",
-    "release": "node release.js",
-    "release:draft": "node release.js --draft",
-    "release:prerelease": "node release.js --prerelease"
+    "distribute:crx": "node distribute.js crx"
   },
   "devDependencies": {
-    "esbuild": "^0.20.0"
+    "esbuild": "^0.20.2"
   }
 }

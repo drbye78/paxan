@@ -1,5 +1,6 @@
 package com.peasyproxy.app.di
 
+import com.peasyproxy.app.BuildConfig
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
@@ -18,21 +19,23 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
-        val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BASIC
-        }
-
         return OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
-            .addInterceptor(loggingInterceptor)
+            .callTimeout(60, TimeUnit.SECONDS)
+            .also { builder ->
+                if (BuildConfig.DEBUG) {
+                    builder.addInterceptor(HttpLoggingInterceptor().apply {
+                        level = HttpLoggingInterceptor.Level.BASIC
+                    })
+                }
+            }
             .addInterceptor { chain ->
                 val original = chain.request()
                 val request = original.newBuilder()
                     .header("User-Agent", "PeasyProxy/1.0 Android")
                     .header("Accept", "*/*")
-                    .method(original.method, original.body)
                     .build()
                 chain.proceed(request)
             }

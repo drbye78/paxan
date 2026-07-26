@@ -1,7 +1,12 @@
 // PeasyProxy - Quality Monitor Module
 // Implements connection quality metrics and monitoring
 
-const { THRESHOLDS, QUALITY_THRESHOLDS } = require('../popup/constants.js');
+import { THRESHOLDS, QUALITY_THRESHOLDS } from '../popup/constants.js';
+import { proxyConfig } from './proxy-config-manager.js';
+import { buildProxyConfig } from '../shared/utils.js';
+
+const QUALITY_MONITOR_ALARM = 'qualityMonitoring';
+const QUALITY_METRICS_STORAGE_KEY = 'qualityMonitorMetrics';
 
 // ============================================================================
 // QUALITY METRICS
@@ -63,7 +68,8 @@ class QualityMonitor {
     // Check for excellent quality
     if (
       latency <= QUALITY_THRESHOLDS.EXCELLENT_LATENCY &&
-      packetLoss <= QUALITY_THRESHOLDS.EXCELLENT_PACKET_LOSS
+      packetLoss <= QUALITY_THRESHOLDS.EXCELLENT_PACKET_LOSS &&
+      jitter <= 20
     ) {
       return QUALITY_LEVELS.EXCELLENT;
     }
@@ -71,7 +77,8 @@ class QualityMonitor {
     // Check for good quality
     if (
       latency <= QUALITY_THRESHOLDS.GOOD_LATENCY &&
-      packetLoss <= QUALITY_THRESHOLDS.GOOD_PACKET_LOSS
+      packetLoss <= QUALITY_THRESHOLDS.GOOD_PACKET_LOSS &&
+      jitter <= 50
     ) {
       return QUALITY_LEVELS.GOOD;
     }
@@ -79,7 +86,8 @@ class QualityMonitor {
     // Check for fair quality
     if (
       latency <= QUALITY_THRESHOLDS.FAIR_LATENCY &&
-      packetLoss <= QUALITY_THRESHOLDS.FAIR_PACKET_LOSS
+      packetLoss <= QUALITY_THRESHOLDS.FAIR_PACKET_LOSS &&
+      jitter <= 100
     ) {
       return QUALITY_LEVELS.FAIR;
     }
@@ -147,58 +155,56 @@ const qualityMonitor = new QualityMonitor();
 // QUALITY MEASUREMENTS
 // ============================================================================
 
-// Measure latency
+// Measure latency using proxyConfig.withTestConfig
 async function measureLatency(proxy) {
-  const startTime = Date.now();
-  
+  const startTime = performance.now();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3000);
   try {
-    const testConfig = {
-      mode: 'fixed_servers',
-      rules: {
-        singleProxy: {
-          scheme: proxy.type === 'SOCKS5' ? 'socks5' : 'http',
-          host: proxy.ip,
-          port: proxy.port
-        },
-        bypassList: ['localhost', '127.0.0.1']
+    const testConfig = buildProxyConfig(proxy);
+    return await proxyConfig.withTestConfig(testConfig, async () => {
+      const response = await fetch('https://httpbin.org/ip', {
+        signal: controller.signal, cache: 'no-store'
+      });
+      clearTimeout(timeoutId);
+      if (response.ok) {
+        const latency = Math.round(performance.now() - startTime);
+        return { success: true, latency };
       }
-    };
-
-    await chrome.proxy.settings.set({ value: testConfig, scope: 'regular' });
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-    const response = await fetch('https://httpbin.org/ip', {
-      method: 'HEAD',
-      signal: controller.signal,
-      cache: 'no-store'
-    });
-
-    clearTimeout(timeoutId);
-
-    await chrome.proxy.settings.clear({ scope: 'regular' });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    return {
-      success: true,
-      latency: Date.now() - startTime
-    };
+      return { success: false, latency: null };
+    }, { timeoutMs: 5000, settleMs: 50 });
   } catch (error) {
-    await chrome.proxy.settings.clear({ scope: 'regular' });
-    return {
-      success: false,
-      latency: null,
-      error: error.message
-    };
+    clearTimeout(timeoutId);
+    return { success: false, latency: null };
   }
 }
 
-// Measure jitter (latency variation)
-function calculateJitter(latencies) {
+// Measure jitter (latency variation) — now takes a proxy object and runs multiple measurements
+async function calculateJitter(proxy) {
+  const testConfig = buildProxyConfig(proxy);
+  const latencies = [];
+
+  await proxyConfig.withTestConfig(testConfig, async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    try {
+      for (let i = 0; i < 5; i++) {
+        const start = performance.now();
+        try {
+          const response = await fetch('https://httpbin.org/ip', {
+            signal: controller.signal, cache: 'no-store'
+          });
+          if (response.ok) {
+            latencies.push(Math.round(performance.now() - start));
+          }
+        } catch { /* sample failed, skip */ }
+        if (i < 4) await new Promise(r => setTimeout(r, 200));
+      }
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }, { timeoutMs: 20000, settleMs: 50 });
+
   if (latencies.length < 2) return 0;
 
   const differences = [];
@@ -211,82 +217,58 @@ function calculateJitter(latencies) {
   );
 }
 
-// Estimate packet loss
+// Estimate packet loss — sets proxy once then runs multiple checks
 async function estimatePacketLoss(proxy, samples = 5) {
-  let successes = 0;
   let failures = 0;
+  const testConfig = buildProxyConfig(proxy);
 
-  for (let i = 0; i < samples; i++) {
-    const result = await measureLatency(proxy);
-    if (result.success) {
-      successes++;
-    } else {
-      failures++;
-    }
-    
-    // Small delay between tests
-    await new Promise(resolve => setTimeout(resolve, 200));
-  }
-
-  return {
-    successes,
-    failures,
-    packetLoss: Math.round((failures / samples) * 100)
-  };
-}
-
-// Estimate bandwidth
-async function estimateBandwidth(proxy) {
-  try {
-    const testConfig = {
-      mode: 'fixed_servers',
-      rules: {
-        singleProxy: {
-          scheme: proxy.type === 'SOCKS5' ? 'socks5' : 'http',
-          host: proxy.ip,
-          port: proxy.port
-        },
-        bypassList: ['localhost', '127.0.0.1']
-      }
-    };
-
-    await chrome.proxy.settings.set({ value: testConfig, scope: 'regular' });
-
-    const startTime = Date.now();
+  await proxyConfig.withTestConfig(testConfig, async () => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-    // Download a small test file
-    const response = await fetch('https://httpbin.org/bytes/102400', {
-      signal: controller.signal,
-      cache: 'no-store'
-    });
-
-    clearTimeout(timeoutId);
-
-    await chrome.proxy.settings.clear({ scope: 'regular' });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+    try {
+      for (let i = 0; i < samples; i++) {
+        try {
+          const response = await fetch('https://httpbin.org/ip', {
+            signal: controller.signal, cache: 'no-store'
+          });
+          if (!response.ok) failures++;
+        } catch {
+          failures++;
+        }
+        if (i < samples - 1) await new Promise(r => setTimeout(r, 200));
+      }
+    } finally {
+      clearTimeout(timeoutId);
     }
+  }, { timeoutMs: 15000, settleMs: 50 });
 
-    const data = await response.arrayBuffer();
-    const duration = (Date.now() - startTime) / 1000; // seconds
-    const bytes = data.byteLength;
-    const bitsPerSecond = (bytes * 8) / duration;
-    const megabitsPerSecond = bitsPerSecond / 1000000;
+  return Math.round((failures / samples) * 100);
+}
 
-    return {
-      success: true,
-      bandwidth: Math.round(megabitsPerSecond * 10) / 10
-    };
+// Estimate bandwidth — uses proxyConfig.withTestConfig
+async function estimateBandwidth(proxy) {
+  const startTime = performance.now();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  try {
+    const testConfig = buildProxyConfig(proxy);
+    return await proxyConfig.withTestConfig(testConfig, async () => {
+      const response = await fetch('https://httpbin.org/bytes/102400', {
+        signal: controller.signal, cache: 'no-store'
+      });
+      clearTimeout(timeoutId);
+      const elapsed = (performance.now() - startTime) / 1000;
+      if (response.ok) {
+        const data = await response.arrayBuffer();
+        const sizeMB = data.byteLength / (1024 * 1024);
+        const bandwidth = elapsed > 0 ? Math.round(sizeMB / elapsed) : 0;
+        return { success: true, bandwidth };
+      }
+      return { success: false, bandwidth: 0 };
+    }, { timeoutMs: 7000, settleMs: 50 });
   } catch (error) {
-    await chrome.proxy.settings.clear({ scope: 'regular' });
-    return {
-      success: false,
-      bandwidth: null,
-      error: error.message
-    };
+    clearTimeout(timeoutId);
+    return { success: false, bandwidth: 0 };
   }
 }
 
@@ -298,9 +280,13 @@ function calculateStability(metricsHistory) {
   if (latencies.length < 2) return 100;
 
   const avg = latencies.reduce((a, b) => a + b, 0) / latencies.length;
+
+  // Guard against NaN when avg is 0 or latencies are all zero
+  if (avg === 0 || latencies.length === 0) return 100;
+
   const variance = latencies.reduce((sum, l) => sum + Math.pow(l - avg, 2), 0) / latencies.length;
   const stdDev = Math.sqrt(variance);
-  
+
   // Stability is inverse of coefficient of variation
   const coefficientOfVariation = stdDev / avg;
   const stability = Math.max(0, Math.round(100 - (coefficientOfVariation * 100)));
@@ -313,22 +299,33 @@ function calculateStability(metricsHistory) {
 // ============================================================================
 
 // Start quality monitoring
-async function startQualityMonitoring(proxy, intervalMs = 30000) {
+async function startQualityMonitoring(proxy, intervalMinutes = 0.5) {
   try {
-    // Initial measurement
+    // Store proxy reference for alarm handler
+    await chrome.storage.local.set({ qualityMonitorProxy: proxy });
+
+    // Create alarm for periodic monitoring
+    await chrome.alarms.create(QUALITY_MONITOR_ALARM, {
+      delayInMinutes: intervalMinutes,
+      periodInMinutes: intervalMinutes
+    });
+
+    // Do initial measurement
     const latencyResult = await measureLatency(proxy);
-    const packetLossResult = await estimatePacketLoss(proxy, 3);
-    
+    const packetLoss = await estimatePacketLoss(proxy, 3);
+
     const metrics = {
       latency: latencyResult.latency || 0,
       jitter: 0,
-      packetLoss: packetLossResult.packetLoss,
+      packetLoss,
       bandwidth: 0,
       stability: 100
     };
 
-    // Update monitor
     qualityMonitor.updateMetrics(metrics);
+
+    // Also persist to storage for SW restart resilience
+    await chrome.storage.local.set({ [QUALITY_METRICS_STORAGE_KEY]: qualityMonitor.getMetrics() });
 
     return {
       success: true,
@@ -345,11 +342,54 @@ async function startQualityMonitoring(proxy, intervalMs = 30000) {
 
 // Stop quality monitoring
 function stopQualityMonitoring() {
+  chrome.alarms.clear(QUALITY_MONITOR_ALARM);
   qualityMonitor.reset();
   return { success: true };
 }
 
-// Get quality status
+// Handle quality monitoring alarm — reads/writes directly to chrome.storage.local
+// to survive service worker restarts
+async function handleQualityAlarm() {
+  const { qualityMonitorProxy } = await chrome.storage.local.get(['qualityMonitorProxy']);
+  if (!qualityMonitorProxy) return;
+
+  try {
+    const latencyResult = await measureLatency(qualityMonitorProxy);
+    const packetLoss = await estimatePacketLoss(qualityMonitorProxy);
+    const jitterResult = await calculateJitter(qualityMonitorProxy);
+
+    // Bandwidth is expensive — only measure periodically (every ~10th call)
+    let bandwidth = qualityMonitor.metrics.bandwidth;
+    try {
+      const stored = await chrome.storage.local.get([QUALITY_METRICS_STORAGE_KEY]);
+      if (stored[QUALITY_METRICS_STORAGE_KEY]?.bandwidth) {
+        bandwidth = stored[QUALITY_METRICS_STORAGE_KEY].bandwidth;
+      }
+    } catch {}
+    if (Math.random() < 0.1) {
+      const bwResult = await estimateBandwidth(qualityMonitorProxy);
+      bandwidth = bwResult.bandwidth || 0;
+    }
+
+    const metrics = {
+      latency: latencyResult.latency || 0,
+      jitter: jitterResult,
+      packetLoss,
+      bandwidth,
+      lastCheck: Date.now()
+    };
+
+    // Update in-memory singleton for this session
+    qualityMonitor.updateMetrics(metrics);
+
+    // Persist to storage so metrics survive service worker restarts
+    await chrome.storage.local.set({ [QUALITY_METRICS_STORAGE_KEY]: qualityMonitor.getMetrics() });
+  } catch (error) {
+    console.error('Quality alarm error:', error);
+  }
+}
+
+// Get quality status — loads from storage if available (survives SW restart)
 function getQualityStatus() {
   const metrics = qualityMonitor.getMetrics();
   const average = qualityMonitor.getAverageMetrics();
@@ -409,9 +449,10 @@ function getQualityRecommendations(metrics) {
 // EXPORTS
 // ============================================================================
 
-module.exports = {
+export {
   // Constants
   QUALITY_LEVELS,
+  QUALITY_MONITOR_ALARM,
   
   // Monitor
   QualityMonitor,
@@ -428,5 +469,6 @@ module.exports = {
   startQualityMonitoring,
   stopQualityMonitoring,
   getQualityStatus,
-  getQualityRecommendations
+  getQualityRecommendations,
+  handleQualityAlarm
 };

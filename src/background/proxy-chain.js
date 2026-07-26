@@ -1,7 +1,9 @@
 // PeasyProxy - Proxy Chain Module
-// Implements proxy chaining for enhanced privacy
+// Creates and manages proxy chains. Testing uses proxyConfig for safety.
+//
 
-const { THRESHOLDS } = require('../popup/constants.js');
+import { proxyConfig } from './proxy-config-manager.js';
+import { buildProxyConfig } from '../shared/utils.js';
 
 // ============================================================================
 // CHAIN CONFIGURATION
@@ -15,29 +17,28 @@ const CHAIN_PROTOCOLS = {
 };
 
 const MAX_CHAIN_LENGTH = 5;
-const DEFAULT_CHAIN_TIMEOUT = 10000; // 10 seconds
+const DEFAULT_CHAIN_TIMEOUT = 10000;
 
 // ============================================================================
-// CHAIN MANAGER
+// CHAIN MANAGER (CRUD — kept as-is, solid)
 // ============================================================================
 
-// Create a new proxy chain
 async function createChain(name, proxyIds, options = {}) {
   try {
-    const { chains = {} } = await chrome.storage.local.get(['proxyChains']);
+    const { proxyChains = {} } = await chrome.storage.local.get(['proxyChains']);
     
     if (proxyIds.length < 2) {
-      return {
-        success: false,
-        error: 'Chain must have at least 2 proxies'
-      };
+      return { success: false, error: 'Chain must have at least 2 proxies' };
+    }
+    if (proxyIds.length > MAX_CHAIN_LENGTH) {
+      return { success: false, error: `Chain cannot exceed ${MAX_CHAIN_LENGTH} proxies` };
     }
 
-    if (proxyIds.length > MAX_CHAIN_LENGTH) {
-      return {
-        success: false,
-        error: `Chain cannot exceed ${MAX_CHAIN_LENGTH} proxies`
-      };
+    // Validate proxy IDs exist
+    const { proxies = [] } = await chrome.storage.local.get(['proxies']);
+    const invalidIds = proxyIds.filter(id => !proxies.some(p => p.ipPort === id));
+    if (invalidIds.length > 0) {
+      return { success: false, error: `Invalid proxy IDs: ${invalidIds.join(', ')}` };
     }
 
     const chain = {
@@ -46,390 +47,164 @@ async function createChain(name, proxyIds, options = {}) {
       proxies: proxyIds,
       protocol: options.protocol || CHAIN_PROTOCOLS.SOCKS5,
       timeout: options.timeout || DEFAULT_CHAIN_TIMEOUT,
-      fallback: options.fallback || proxyIds[0],
+      fallback: options.fallback || null,  // no longer defaults to first proxy (broken fallback)
       createdAt: Date.now(),
       updatedAt: Date.now(),
       enabled: true
     };
 
-    chains[chain.id] = chain;
-    await chrome.storage.local.set({ proxyChains: chains });
+    const allChains = { ...proxyChains, [chain.id]: chain };
+    await chrome.storage.local.set({ proxyChains: allChains });
 
-    return {
-      success: true,
-      chain,
-      message: `Chain "${name}" created`
-    };
+    return { success: true, chain, message: `Chain "${name}" created` };
   } catch (error) {
     console.error('Failed to create chain:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    return { success: false, error: error.message };
   }
 }
 
-// Get chain by ID
 async function getChain(chainId) {
   try {
     const { proxyChains = {} } = await chrome.storage.local.get(['proxyChains']);
-    
     const chain = proxyChains[chainId];
-    if (!chain) {
-      return {
-        success: false,
-        error: `Chain "${chainId}" not found`
-      };
-    }
-
-    return {
-      success: true,
-      chain
-    };
+    if (!chain) return { success: false, error: `Chain "${chainId}" not found` };
+    return { success: true, chain };
   } catch (error) {
     console.error('Failed to get chain:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    return { success: false, error: error.message };
   }
 }
 
-// List all chains
 async function listChains() {
   try {
     const { proxyChains = {} } = await chrome.storage.local.get(['proxyChains']);
-    
-    const chains = Object.values(proxyChains).map(chain => ({
-      id: chain.id,
-      name: chain.name,
-      proxyCount: chain.proxies.length,
-      protocol: chain.protocol,
-      enabled: chain.enabled,
-      createdAt: chain.createdAt
+    const chains = Object.values(proxyChains).map(c => ({
+      id: c.id, name: c.name, proxyCount: c.proxies.length,
+      protocol: c.protocol, enabled: c.enabled, createdAt: c.createdAt
     }));
-
-    return {
-      success: true,
-      chains
-    };
+    return { success: true, chains };
   } catch (error) {
     console.error('Failed to list chains:', error);
-    return {
-      success: false,
-      error: error.message,
-      chains: []
-    };
+    return { success: false, error: error.message, chains: [] };
   }
 }
 
-// Update chain
 async function updateChain(chainId, updates) {
   try {
     const { proxyChains = {} } = await chrome.storage.local.get(['proxyChains']);
-    
-    if (!proxyChains[chainId]) {
-      return {
-        success: false,
-        error: `Chain "${chainId}" not found`
-      };
-    }
+    if (!proxyChains[chainId]) return { success: false, error: `Chain "${chainId}" not found` };
 
-    // Validate proxy list if provided
     if (updates.proxies) {
-      if (updates.proxies.length < 2) {
-        return {
-          success: false,
-          error: 'Chain must have at least 2 proxies'
-        };
-      }
-
-      if (updates.proxies.length > MAX_CHAIN_LENGTH) {
-        return {
-          success: false,
-          error: `Chain cannot exceed ${MAX_CHAIN_LENGTH} proxies`
-        };
-      }
+      if (updates.proxies.length < 2) return { success: false, error: 'Chain must have at least 2 proxies' };
+      if (updates.proxies.length > MAX_CHAIN_LENGTH) return { success: false, error: `Chain cannot exceed ${MAX_CHAIN_LENGTH} proxies` };
     }
 
-    proxyChains[chainId] = {
-      ...proxyChains[chainId],
-      ...updates,
-      updatedAt: Date.now()
-    };
-
+    proxyChains[chainId] = { ...proxyChains[chainId], ...updates, updatedAt: Date.now() };
     await chrome.storage.local.set({ proxyChains });
 
-    return {
-      success: true,
-      chain: proxyChains[chainId],
-      message: 'Chain updated'
-    };
+    return { success: true, chain: proxyChains[chainId], message: 'Chain updated' };
   } catch (error) {
     console.error('Failed to update chain:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    return { success: false, error: error.message };
   }
 }
 
-// Delete chain
 async function deleteChain(chainId) {
   try {
     const { proxyChains = {} } = await chrome.storage.local.get(['proxyChains']);
-    
-    if (!proxyChains[chainId]) {
-      return {
-        success: false,
-        error: `Chain "${chainId}" not found`
-      };
-    }
-
+    if (!proxyChains[chainId]) return { success: false, error: `Chain "${chainId}" not found` };
     delete proxyChains[chainId];
     await chrome.storage.local.set({ proxyChains });
-
-    return {
-      success: true,
-      message: 'Chain deleted'
-    };
+    return { success: true, message: 'Chain deleted' };
   } catch (error) {
     console.error('Failed to delete chain:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    return { success: false, error: error.message };
   }
 }
 
 // ============================================================================
-// CHAIN EXECUTION
+// CHAIN EXECUTION — refactored to use proxyConfig
 // ============================================================================
 
-// Execute request through proxy chain
-async function executeChain(chainId, request) {
-  try {
-    const { proxyChains = {} } = await chrome.storage.local.get(['proxyChains']);
-    const chain = proxyChains[chainId];
-    
-    if (!chain) {
-      throw new Error(`Chain "${chainId}" not found`);
-    }
-
-    if (!chain.enabled) {
-      throw new Error('Chain is disabled');
-    }
-
-    // Get proxy details for each hop
-    const { proxies = [] } = await chrome.storage.local.get(['proxies']);
-    const chainProxies = chain.proxies.map(proxyId => 
-      proxies.find(p => p.ipPort === proxyId)
-    ).filter(Boolean);
-
-    if (chainProxies.length < 2) {
-      throw new Error('Not enough valid proxies in chain');
-    }
-
-    // Execute through chain
-    const result = await executeChainRequest(chainProxies, request, chain);
-    
-    return {
-      success: true,
-      result,
-      hops: chainProxies.length,
-      chain: chain.name
-    };
-  } catch (error) {
-    console.error('Chain execution failed:', error);
-    
-    // Try fallback
-    const { proxyChains = {} } = await chrome.storage.local.get(['proxyChains']);
-    const chain = proxyChains[chainId];
-    
-    if (chain?.fallback) {
-      try {
-        const { proxies = [] } = await chrome.storage.local.get(['proxies']);
-        const fallbackProxy = proxies.find(p => p.ipPort === chain.fallback);
-        
-        if (fallbackProxy) {
-          return {
-            success: true,
-            result: await executeSingleProxy(fallbackProxy, request),
-            fallback: true,
-            originalError: error.message
-          };
-        }
-      } catch (fallbackError) {
-        console.error('Fallback also failed:', fallbackError);
-      }
-    }
-    
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
-// Execute request through chain of proxies
-async function executeChainRequest(proxies, request, chain) {
-  // Note: Real proxy chaining requires SOCKS5 support at each hop
-  // This is a simplified implementation that tests each proxy in sequence
-  
-  const results = [];
-  
-  for (let i = 0; i < proxies.length; i++) {
-    const proxy = proxies[i];
-    const isLastHop = i === proxies.length - 1;
-    
-    try {
-      const hopResult = await executeSingleProxy(proxy, request, {
-        timeout: chain.timeout / proxies.length,
-        hopIndex: i
-      });
-      
-      results.push({
-        hop: i + 1,
-        proxy: proxy.ipPort,
-        success: true,
-        latency: hopResult.latency
-      });
-      
-      // If last hop, return the result
-      if (isLastHop) {
-        return {
-          success: true,
-          response: hopResult.response,
-          hops: results,
-          totalLatency: results.reduce((sum, r) => sum + (r.latency || 0), 0)
-        };
-      }
-    } catch (error) {
-      results.push({
-        hop: i + 1,
-        proxy: proxy.ipPort,
-        success: false,
-        error: error.message
-      });
-      
-      throw new Error(`Hop ${i + 1} failed: ${error.message}`);
-    }
-  }
-}
-
-// Execute request through single proxy
+/**
+ * Test a single proxy through the proxy chain manager.
+ * Uses proxyConfig.withTestConfig to safely set/restore proxy settings.
+ */
 async function executeSingleProxy(proxy, request, options = {}) {
-  const testConfig = {
-    mode: 'fixed_servers',
-    rules: {
-      singleProxy: {
-        scheme: proxy.type === 'SOCKS5' ? 'socks5' : 'http',
-        host: proxy.ip,
-        port: proxy.port
-      },
-      bypassList: ['localhost', '127.0.0.1']
-    }
-  };
-
   const startTime = Date.now();
-  
+  const testConfig = buildProxyConfig(proxy);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), options.timeout || DEFAULT_CHAIN_TIMEOUT);
+
   try {
-    await chrome.proxy.settings.set({ value: testConfig, scope: 'regular' });
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(
-      () => controller.abort(),
-      options.timeout || DEFAULT_CHAIN_TIMEOUT
-    );
-    
-    const response = await fetch(request.url || 'https://httpbin.org/ip', {
-      method: request.method || 'GET',
-      headers: request.headers || {},
-      signal: controller.signal,
-      cache: 'no-store'
-    });
-    
-    clearTimeout(timeoutId);
-    
-    const latency = Date.now() - startTime;
-    
-    await chrome.proxy.settings.clear({ scope: 'regular' });
-    
-    return {
-      success: response.ok,
-      status: response.status,
-      latency,
-      response: await response.text()
-    };
+    return await proxyConfig.withTestConfig(testConfig, async () => {
+      const response = await fetch(request.url || 'https://httpbin.org/ip', {
+        method: request.method || 'GET',
+        headers: request.headers || {},
+        signal: controller.signal,
+        cache: 'no-store'
+      });
+      const latency = Date.now() - startTime;
+      return {
+        success: response.ok,
+        status: response.status,
+        latency,
+        response: await response.text()
+      };
+    }, { timeoutMs: 12000, settleMs: 50 });
   } catch (error) {
-    await chrome.proxy.settings.clear({ scope: 'regular' });
-    throw error;
+    return { success: false, status: 0, latency: null, error: error.message };
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
-// ============================================================================
-// CHAIN TESTING
-// ============================================================================
-
-// Test proxy chain
+/**
+ * Test each proxy in the chain sequentially using proxyConfig.withTestConfig.
+ * Note: This tests each proxy individually (not actual chaining through SOCKS5).
+ * True chaining requires server-side relay support.
+ */
 async function testChain(chainId) {
   try {
     const { proxyChains = {} } = await chrome.storage.local.get(['proxyChains']);
     const chain = proxyChains[chainId];
-    
-    if (!chain) {
-      return {
-        success: false,
-        error: `Chain "${chainId}" not found`
-      };
-    }
+    if (!chain) return { success: false, error: `Chain "${chainId}" not found` };
 
     const { proxies = [] } = await chrome.storage.local.get(['proxies']);
-    const chainProxies = chain.proxies.map(proxyId => 
-      proxies.find(p => p.ipPort === proxyId)
-    ).filter(Boolean);
+    const chainProxies = chain.proxies
+      .map(id => proxies.find(p => p.ipPort === id))
+      .filter(Boolean);
 
-    if (chainProxies.length < 2) {
-      return {
-        success: false,
-        error: 'Not enough valid proxies in chain'
-      };
-    }
+    if (chainProxies.length < 2) return { success: false, error: 'Not enough valid proxies in chain' };
 
-    // Test each hop
     const hopTests = [];
     let cumulativeLatency = 0;
 
     for (let i = 0; i < chainProxies.length; i++) {
       const proxy = chainProxies[i];
-      
       try {
-        const testResult = await testProxyHop(proxy, {
-          timeout: chain.timeout / chainProxies.length
-        });
-        
-        cumulativeLatency += testResult.latency;
-        
-        hopTests.push({
-          hop: i + 1,
-          proxy: proxy.ipPort,
-          success: true,
-          latency: testResult.latency,
-          cumulativeLatency
-        });
+        const testConfig = buildProxyConfig(proxy);
+        const startTime = Date.now();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), (chain.timeout / chainProxies.length) || 5000);
+
+        const result = await proxyConfig.withTestConfig(testConfig, async () => {
+          const response = await fetch('https://httpbin.org/ip', {
+            method: 'HEAD',
+            signal: controller.signal,
+            cache: 'no-store'
+          });
+          clearTimeout(timeoutId);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return { success: true, latency: Date.now() - startTime };
+        }, { timeoutMs: 8000, settleMs: 50 });
+
+        cumulativeLatency += result.latency;
+        hopTests.push({ hop: i + 1, proxy: proxy.ipPort, success: true, latency: result.latency, cumulativeLatency });
       } catch (error) {
-        hopTests.push({
-          hop: i + 1,
-          proxy: proxy.ipPort,
-          success: false,
-          error: error.message
-        });
-        
-        return {
-          success: false,
-          error: `Hop ${i + 1} failed: ${error.message}`,
-          hopTests
-        };
+        clearTimeout(typeof timeoutId !== 'undefined' ? timeoutId : 0); // best-effort
+        hopTests.push({ hop: i + 1, proxy: proxy.ipPort, success: false, error: error.message });
+        return { success: false, error: `Hop ${i + 1} failed: ${error.message}`, hopTests };
       }
     }
 
@@ -442,61 +217,7 @@ async function testChain(chainId) {
     };
   } catch (error) {
     console.error('Chain test failed:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
-// Test single proxy hop
-async function testProxyHop(proxy, options = {}) {
-  const testConfig = {
-    mode: 'fixed_servers',
-    rules: {
-      singleProxy: {
-        scheme: proxy.type === 'SOCKS5' ? 'socks5' : 'http',
-        host: proxy.ip,
-        port: proxy.port
-      },
-      bypassList: ['localhost', '127.0.0.1']
-    }
-  };
-
-  const startTime = Date.now();
-  
-  try {
-    await chrome.proxy.settings.set({ value: testConfig, scope: 'regular' });
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(
-      () => controller.abort(),
-      options.timeout || 5000
-    );
-    
-    const response = await fetch('https://httpbin.org/ip', {
-      method: 'HEAD',
-      signal: controller.signal,
-      cache: 'no-store'
-    });
-    
-    clearTimeout(timeoutId);
-    
-    const latency = Date.now() - startTime;
-    
-    await chrome.proxy.settings.clear({ scope: 'regular' });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    
-    return {
-      success: true,
-      latency
-    };
-  } catch (error) {
-    await chrome.proxy.settings.clear({ scope: 'regular' });
-    throw error;
+    return { success: false, error: error.message };
   }
 }
 
@@ -504,21 +225,15 @@ async function testProxyHop(proxy, options = {}) {
 // CHAIN MONITORING
 // ============================================================================
 
-// Monitor chain performance
+/**
+ * Monitor chain performance. Capped at 50 entries to stay under storage quota.
+ */
 async function monitorChain(chainId) {
   try {
     const testResult = await testChain(chainId);
-    
-    if (!testResult.success) {
-      return {
-        success: false,
-        error: testResult.error
-      };
-    }
+    if (!testResult.success) return { success: false, error: testResult.error };
 
-    // Save monitoring result
     const { chainHistory = [] } = await chrome.storage.local.get(['chainHistory']);
-    
     chainHistory.unshift({
       chainId,
       timestamp: Date.now(),
@@ -528,11 +243,8 @@ async function monitorChain(chainId) {
       success: true
     });
 
-    // Keep only last 100 entries
-    if (chainHistory.length > 100) {
-      chainHistory.length = 100;
-    }
-
+    // Capped at 50 to stay under storage quota
+    if (chainHistory.length > 50) chainHistory.length = 50;
     await chrome.storage.local.set({ chainHistory });
 
     return {
@@ -545,53 +257,34 @@ async function monitorChain(chainId) {
     };
   } catch (error) {
     console.error('Chain monitoring failed:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    return { success: false, error: error.message };
   }
 }
 
-// Get chain statistics
 async function getChainStats(chainId) {
   try {
     const { chainHistory = [] } = await chrome.storage.local.get(['chainHistory']);
-    
-    const chainEntries = chainHistory.filter(entry => entry.chainId === chainId);
-    
+    const chainEntries = chainHistory.filter(e => e.chainId === chainId);
     if (chainEntries.length === 0) {
-      return {
-        success: true,
-        stats: {
-          totalTests: 0,
-          averageLatency: 0,
-          successRate: 0,
-          lastTest: null
-        }
-      };
+      return { success: true, stats: { totalTests: 0, averageLatency: 0, successRate: 0, lastTest: null } };
     }
 
-    const successfulTests = chainEntries.filter(entry => entry.success);
-    const totalLatency = successfulTests.reduce((sum, entry) => sum + entry.totalLatency, 0);
+    const successful = chainEntries.filter(e => e.success);
+    const totalLatency = successful.reduce((s, e) => s + e.totalLatency, 0);
 
     return {
       success: true,
       stats: {
         totalTests: chainEntries.length,
-        successfulTests: successfulTests.length,
-        averageLatency: successfulTests.length > 0 
-          ? Math.round(totalLatency / successfulTests.length) 
-          : 0,
-        successRate: Math.round((successfulTests.length / chainEntries.length) * 100),
+        successfulTests: successful.length,
+        averageLatency: successful.length > 0 ? Math.round(totalLatency / successful.length) : 0,
+        successRate: Math.round((successful.length / chainEntries.length) * 100),
         lastTest: chainEntries[0].timestamp
       }
     };
   } catch (error) {
     console.error('Failed to get chain stats:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    return { success: false, error: error.message };
   }
 }
 
@@ -599,28 +292,16 @@ async function getChainStats(chainId) {
 // EXPORTS
 // ============================================================================
 
-module.exports = {
-  // Configuration
+export {
   CHAIN_PROTOCOLS,
   MAX_CHAIN_LENGTH,
-  
-  // Manager
   createChain,
   getChain,
   listChains,
   updateChain,
   deleteChain,
-  
-  // Execution
-  executeChain,
-  executeChainRequest,
   executeSingleProxy,
-  
-  // Testing
   testChain,
-  testProxyHop,
-  
-  // Monitoring
   monitorChain,
   getChainStats
 };

@@ -1,7 +1,8 @@
 // PeasyProxy - Analytics Dashboard Module
 // Implements real-time graphs, historical charts, and statistics
 
-const { THRESHOLDS } = require('../popup/constants.js');
+import { escapeHtml } from '../shared/utils.js';
+import { THRESHOLDS } from '../popup/constants.js';
 
 // ============================================================================
 // CHART COMPONENTS
@@ -403,7 +404,7 @@ async function updateDashboard() {
       if (countriesList) {
         countriesList.innerHTML = countriesResult.countries.map(({ country, count }) => `
           <div class="setting">
-            <span>${country}</span>
+            <span>${escapeHtml(country)}</span>
             <span style="color: var(--accent-primary); font-weight: 600;">${count} connections</span>
           </div>
         `).join('') || '<p style="color: var(--text-secondary);">No data yet</p>';
@@ -417,7 +418,7 @@ async function updateDashboard() {
         timeline.innerHTML = timelineResult.timeline.map(entry => `
           <div class="timeline-item ${entry.status}">
             <span class="timeline-time">${new Date(entry.timestamp).toLocaleString()}</span>
-            <span class="timeline-proxy">${entry.proxy || 'Unknown'}</span>
+            <span class="timeline-proxy">${escapeHtml(entry.proxy || 'Unknown')}</span>
             <span class="timeline-status">${entry.status === 'connected' ? '✓' : '✗'}</span>
           </div>
         `).join('') || '<p style="color: var(--text-secondary);">No connections yet</p>';
@@ -461,22 +462,15 @@ async function exportAnalyticsData() {
 // EXPORTS
 // ============================================================================
 
-module.exports = {
-  // Chart components
+export {
   createLineChart,
   createBarChart,
   createSparkline,
-  
-  // Data manager
   getConnectionStats,
   getTopCountries,
   getLatencyHistory,
   getConnectionTimeline,
-  
-  // Dashboard rendering
   renderAnalyticsDashboard,
   updateDashboard,
-  
-  // Data export
   exportAnalyticsData
 };

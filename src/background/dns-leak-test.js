@@ -1,178 +1,113 @@
 // PeasyProxy - DNS Leak Testing Module
 // Implements DNS leak detection and protection
 
-const { THRESHOLDS } = require('../popup/constants.js');
+import { proxyConfig } from './proxy-config-manager.js';
 
 // ============================================================================
-// DNS TEST SERVERS
+// CONSTANTS
 // ============================================================================
 
-const DNS_SERVERS = {
-  google: {
-    name: 'Google DNS',
-    resolver: 'https://dns.google/resolve',
-    ips: ['8.8.8.8', '8.8.4.4']
-  },
-  cloudflare: {
-    name: 'Cloudflare DNS',
-    resolver: 'https://cloudflare-dns.com/dns-query',
-    ips: ['1.1.1.1', '1.0.0.1']
-  },
-  quad9: {
-    name: 'Quad9 DNS',
-    resolver: 'https://dns.quad9.net/dns-query',
-    ips: ['9.9.9.9', '149.112.112.112']
-  }
-};
+const SESSION_REAL_IP_KEY = 'sessionRealIp';
+const DNS_HISTORY_KEY = 'dnsLeakHistory';
+const DNS_PROTECTION_KEY = 'dnsProtection';
+const DNS_MONITOR_ALARM = 'dnsMonitoring';
+const MAX_HISTORY_ENTRIES = 50;
 
 // ============================================================================
-// DNS LEAK DETECTION
+// REAL IP CAPTURE (via proxyConfig.fetchDirect)
 // ============================================================================
 
-// Get real IP address
-async function getRealIp() {
+async function captureRealIp() {
   try {
-    const response = await fetch('https://api.ipify.org?format=json', {
-      cache: 'no-store'
+    const ip = await proxyConfig.fetchDirect(async () => {
+      const res = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      return data.ip;
     });
-    const data = await response.json();
-    return data.ip;
+    await chrome.storage.session.set({ [SESSION_REAL_IP_KEY]: ip });
+    return ip;
   } catch (error) {
-    console.error('Failed to get real IP:', error);
+    console.error('Failed to capture real IP:', error);
     return null;
   }
 }
 
-// Test DNS resolution through a specific server
-async function testDnsResolution(domain, serverUrl) {
+async function getStoredRealIp() {
   try {
-    const url = `${serverUrl}?name=${domain}&type=A`;
-    const response = await fetch(url, {
-      headers: {
-        'Accept': 'application/dns-json'
-      },
-      cache: 'no-store'
-    });
-
-    if (!response.ok) {
-      throw new Error(`DNS query failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    if (data.Answer && data.Answer.length > 0) {
-      return {
-        success: true,
-        ips: data.Answer.map(a => a.data),
-        server: serverUrl
-      };
-    }
-
-    return {
-      success: false,
-      error: 'No answer received',
-      server: serverUrl
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message,
-      server: serverUrl
-    };
+    const data = await chrome.storage.session.get([SESSION_REAL_IP_KEY]);
+    return data[SESSION_REAL_IP_KEY] || null;
+  } catch {
+    return null;
   }
 }
 
-// Test DNS leak by comparing resolved IPs
-async function testDnsLeak(proxyIp = null) {
-  const testDomain = 'dns.google';
-  const results = [];
-  
-  // Get real IP for comparison
-  const realIp = await getRealIp();
-  
-  // Test each DNS server
-  for (const [key, server] of Object.entries(DNS_SERVERS)) {
-    const result = await testDnsResolution(testDomain, server.resolver);
-    
-    results.push({
-      server: server.name,
-      serverKey: key,
-      ips: result.ips || [],
-      success: result.success,
-      error: result.error
-    });
+// ============================================================================
+// DNS LEAK TEST
+// ============================================================================
+
+async function testDnsLeak() {
+  const realIp = await getStoredRealIp();
+  if (!realIp) {
+    return { success: false, error: 'Real IP not available. Connect to proxy first to establish baseline.' };
   }
 
-  // Analyze results for leaks
-  const allResolvedIps = results
-    .filter(r => r.success)
-    .flatMap(r => r.ips);
-  
-  const uniqueIps = [...new Set(allResolvedIps)];
-  
-  // Check if any resolved IP matches real IP (potential leak)
-  const leaking = realIp && uniqueIps.includes(realIp);
-  
-  // Check if all servers resolve to same IPs (consistent)
-  const consistent = uniqueIps.length <= 2; // Allow for IPv4/IPv6 pairs
-  
-  // Check if proxy IP is being used for DNS
-  const usingProxyDns = proxyIp && uniqueIps.some(ip => ip === proxyIp);
+  const endpoints = [
+    'https://dnsleaktest.com/api/v1/whoami',
+    'https://whoer.net/api/v2/dns'
+  ];
+
+  for (const endpoint of endpoints) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    try {
+      const res = await fetch(endpoint, { signal: controller.signal, cache: 'no-store' });
+      clearTimeout(timeoutId);
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      const resolverIp = data.ip || data.dns_ip || data.resolver_ip;
+      if (!resolverIp) continue;
+
+      const leaking = resolverIp === realIp;
+
+      const result = {
+        success: true,
+        realIp,
+        resolverIp,
+        leaking,
+        endpoint,
+        message: leaking
+          ? '\u26a0\ufe0f DNS leak detected: DNS resolver sees your real IP'
+          : '\u2705 DNS is secure: queries go through proxy'
+      };
+
+      // Save to history
+      await saveDnsTestResult(result);
+      return result;
+    } catch {
+      clearTimeout(timeoutId);
+      // try next endpoint
+    }
+  }
 
   return {
-    success: true,
-    realIp,
-    proxyIp,
-    servers: results,
-    resolvedIps: uniqueIps,
-    leaking,
-    consistent,
-    usingProxyDns,
-    timestamp: Date.now(),
-    message: leaking 
-      ? '⚠️ DNS leak detected! Your real IP may be visible.'
-      : consistent
-        ? '✅ DNS appears secure - no leaks detected.'
-        : '⚠️ Inconsistent DNS results - potential issue.'
+    success: false,
+    error: 'All DNS leak test endpoints failed',
+    leaking: null,
+    message: '\u26a0\ufe0f Could not test DNS leak \u2014 all endpoints unreachable'
   };
-}
-
-// Quick DNS check (single server)
-async function quickDnsCheck() {
-  try {
-    const result = await testDnsResolution('dns.google', DNS_SERVERS.google.resolver);
-    
-    if (!result.success) {
-      return {
-        success: false,
-        error: result.error
-      };
-    }
-
-    return {
-      success: true,
-      ips: result.ips,
-      server: 'Google DNS'
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
 }
 
 // ============================================================================
 // DNS HISTORY MANAGEMENT
 // ============================================================================
 
-const DNS_HISTORY_KEY = 'dnsTestHistory';
-const MAX_HISTORY_ENTRIES = 50;
-
 // Save DNS test result to history
 async function saveDnsTestResult(result) {
   try {
-    const { dnsTestHistory = [] } = await chrome.storage.local.get([DNS_HISTORY_KEY]);
+    const data = await chrome.storage.local.get([DNS_HISTORY_KEY]);
+    const dnsTestHistory = data[DNS_HISTORY_KEY] || [];
     
     // Add new result
     dnsTestHistory.unshift({
@@ -185,7 +120,7 @@ async function saveDnsTestResult(result) {
       dnsTestHistory.length = MAX_HISTORY_ENTRIES;
     }
     
-    await chrome.storage.local.set({ dnsTestHistory });
+    await chrome.storage.local.set({ [DNS_HISTORY_KEY]: dnsTestHistory });
     
     return { success: true };
   } catch (error) {
@@ -197,7 +132,8 @@ async function saveDnsTestResult(result) {
 // Get DNS test history
 async function getDnsHistory() {
   try {
-    const { dnsTestHistory = [] } = await chrome.storage.local.get([DNS_HISTORY_KEY]);
+    const data = await chrome.storage.local.get([DNS_HISTORY_KEY]);
+    const dnsTestHistory = data[DNS_HISTORY_KEY] || [];
     return { success: true, history: dnsTestHistory };
   } catch (error) {
     console.error('Failed to get DNS history:', error);
@@ -219,7 +155,8 @@ async function clearDnsHistory() {
 // Get DNS leak statistics
 async function getDnsStats() {
   try {
-    const { dnsTestHistory = [] } = await chrome.storage.local.get([DNS_HISTORY_KEY]);
+    const data = await chrome.storage.local.get([DNS_HISTORY_KEY]);
+    const dnsTestHistory = data[DNS_HISTORY_KEY] || [];
     
     if (dnsTestHistory.length === 0) {
       return {
@@ -315,44 +252,51 @@ async function getDnsProtectionStatus() {
 }
 
 // ============================================================================
-// MONITORED DNS CHECKS
+// DNS MONITORING
 // ============================================================================
 
-let dnsMonitorInterval = null;
+async function handleDnsAlarm() {
+  try {
+    const { activeProxy } = await chrome.storage.local.get(['activeProxy']);
+    if (!activeProxy) return;
 
-// Start periodic DNS monitoring
-function startDnsMonitoring(intervalMs = 300000) { // Default: 5 minutes
-  if (dnsMonitorInterval) {
-    clearInterval(dnsMonitorInterval);
-  }
-  
-  dnsMonitorInterval = setInterval(async () => {
-    try {
-      const { dnsProtection } = await chrome.storage.local.get(['dnsProtection']);
-      
-      if (dnsProtection?.enabled) {
-        const result = await testDnsLeak();
-        await saveDnsTestResult(result);
-        
-        // Alert if leak detected
-        if (result.leaking) {
-          chrome.runtime.sendMessage({
-            action: 'dnsLeakDetected',
-            result
-          }).catch(() => {});
-        }
-      }
-    } catch (error) {
-      console.error('DNS monitoring error:', error);
+    const result = await testDnsLeak();
+    if (result.leaking) {
+      chrome.runtime.sendMessage({
+        action: 'dnsLeakDetected',
+        details: result
+      }).catch(() => {});
     }
-  }, intervalMs);
+  } catch (error) {
+    console.error('DNS alarm error:', error);
+  }
 }
 
-// Stop DNS monitoring
-function stopDnsMonitoring() {
-  if (dnsMonitorInterval) {
-    clearInterval(dnsMonitorInterval);
-    dnsMonitorInterval = null;
+async function startDnsMonitoring(intervalMinutes = 5) {
+  // Ensure we have a real IP first
+  const stored = await getStoredRealIp();
+  if (!stored) {
+    await captureRealIp();
+  }
+  
+  try {
+    await chrome.alarms.create(DNS_MONITOR_ALARM, {
+      delayInMinutes: intervalMinutes,
+      periodInMinutes: intervalMinutes
+    });
+    console.log('DNS monitoring started');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+async function stopDnsMonitoring() {
+  try {
+    await chrome.alarms.clear(DNS_MONITOR_ALARM);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
   }
 }
 
@@ -360,28 +304,20 @@ function stopDnsMonitoring() {
 // EXPORTS
 // ============================================================================
 
-module.exports = {
-  // DNS Servers
-  DNS_SERVERS,
-  
-  // Leak Detection
-  getRealIp,
-  testDnsResolution,
+export {
+  captureRealIp,
+  getStoredRealIp,
   testDnsLeak,
-  quickDnsCheck,
-  
-  // History
+  handleDnsAlarm,
+  startDnsMonitoring,
+  stopDnsMonitoring,
+  // DNS history
   saveDnsTestResult,
   getDnsHistory,
   clearDnsHistory,
   getDnsStats,
-  
-  // Protection
+  // DNS protection
   enableDnsProtection,
   disableDnsProtection,
-  getDnsProtectionStatus,
-  
-  // Monitoring
-  startDnsMonitoring,
-  stopDnsMonitoring
+  getDnsProtectionStatus
 };

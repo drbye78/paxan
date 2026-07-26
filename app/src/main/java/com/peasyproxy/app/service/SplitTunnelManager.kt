@@ -21,7 +21,7 @@ class SplitTunnelManager @Inject constructor(
 ) {
 
     private var currentConfig: SplitTunnelConfig? = null
-    private var isEnabled: Boolean = false
+    @Volatile private var isEnabled: Boolean = false
 
     suspend fun getConfig(): SplitTunnelConfig {
         return currentConfig ?: loadConfig()
@@ -86,11 +86,46 @@ class SplitTunnelManager @Inject constructor(
             return true
         }
 
-        // Note: Per-app VPN routing requires VPN permission and user consent
-        // The actual implementation is handled via PerAppRoutingManager
-        Timber.d("Split tunnel config applied, mode: ${config.mode}")
-        isEnabled = true
-        return true
+        try {
+            when (config.mode) {
+                SplitTunnelMode.INCLUDE -> {
+                    val packages = getVerifiedPackages(config.includedApps)
+                    if (packages.isEmpty()) {
+                        Timber.w("Split tunnel INCLUDE mode selected but no verified packages found")
+                        return true
+                    }
+                    packages.forEach { pkg ->
+                        try {
+                            builder.addAllowedApplication(pkg)
+                            Timber.d("Split tunnel: allowed $pkg")
+                        } catch (e: Exception) {
+                            Timber.w(e, "Failed to add allowed application: $pkg")
+                        }
+                    }
+                }
+                SplitTunnelMode.EXCLUDE,
+                SplitTunnelMode.BYPASS -> {
+                    val packages = getVerifiedPackages(config.excludedApps)
+                    packages.forEach { pkg ->
+                        try {
+                            builder.addDisallowedApplication(pkg)
+                            Timber.d("Split tunnel: disallowed $pkg")
+                        } catch (e: Exception) {
+                            Timber.w(e, "Failed to add disallowed application: $pkg")
+                        }
+                    }
+                }
+                SplitTunnelMode.DISABLED -> { /* no routing */ }
+            }
+
+            Timber.d("Split tunnel config applied, mode: ${config.mode}")
+            isEnabled = true
+            return true
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to apply split tunnel config")
+            isEnabled = false
+            return false
+        }
     }
 
     private fun getVerifiedPackages(packageNames: Set<String>): List<String> {
@@ -182,21 +217,30 @@ class SplitTunnelManager @Inject constructor(
     private suspend fun saveConfig(config: SplitTunnelConfig) {
         // Save to settings repository
         when (config.mode) {
-            SplitTunnelMode.INCLUDE, SplitTunnelMode.DISABLED -> {
+            SplitTunnelMode.INCLUDE -> {
                 settingsRepository.updateAppRoutingConfig(
                     com.peasyproxy.app.domain.model.AppRoutingConfig(
+                        mode = com.peasyproxy.app.domain.model.AppRoutingConfig.Mode.INCLUDE,
                         includedApps = config.includedApps,
-                        excludedApps = emptySet(),
-                        isIncludeMode = true
+                        excludedApps = emptySet()
+                    )
+                )
+            }
+            SplitTunnelMode.DISABLED -> {
+                settingsRepository.updateAppRoutingConfig(
+                    com.peasyproxy.app.domain.model.AppRoutingConfig(
+                        mode = com.peasyproxy.app.domain.model.AppRoutingConfig.Mode.DISABLED,
+                        includedApps = emptySet(),
+                        excludedApps = emptySet()
                     )
                 )
             }
             SplitTunnelMode.EXCLUDE, SplitTunnelMode.BYPASS -> {
                 settingsRepository.updateAppRoutingConfig(
                     com.peasyproxy.app.domain.model.AppRoutingConfig(
+                        mode = com.peasyproxy.app.domain.model.AppRoutingConfig.Mode.EXCLUDE,
                         includedApps = emptySet(),
-                        excludedApps = config.excludedApps,
-                        isIncludeMode = false
+                        excludedApps = config.excludedApps
                     )
                 )
             }

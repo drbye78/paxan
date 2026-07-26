@@ -1,13 +1,38 @@
 // PeasyProxy - PAC Script Engine
 // Implements PAC (Proxy Auto-Config) script parsing and execution
+// Security: Does NOT execute arbitrary JavaScript. Only interprets known proxy
+// directives (PROXY, DIRECT, SOCKS, SOCKS5, HTTP, HTTPS) from return statements.
 
-const { THRESHOLDS } = require('../popup/constants.js');
+import { THRESHOLDS } from '../popup/constants.js';
+import { wildcardToRegex } from '../shared/utils.js';
 
 // ============================================================================
 // PAC SCRIPT PARSER
 // ============================================================================
 
-// Parse PAC script content
+/**
+ * Extract the body of FindProxyForURL using brace-counting (safe, non-greedy).
+ * Returns the function body string between the opening and closing braces,
+ * or null if extraction fails.
+ */
+function extractFunctionBody(content) {
+  const funcMatch = content.match(/function\s+FindProxyForURL\s*\(\s*\w+\s*,\s*\w+\s*\)\s*\{/i);
+  if (!funcMatch) return null;
+
+  const startIndex = funcMatch.index + funcMatch[0].length;
+  let depth = 1;
+  let i = startIndex;
+
+  for (; i < content.length && depth > 0; i++) {
+    if (content[i] === '{') depth++;
+    else if (content[i] === '}') depth--;
+  }
+
+  if (depth !== 0) return null;
+  return content.slice(startIndex, i - 1).trim();
+}
+
+// Parse PAC script content (backward-compatible wrapper)
 function parsePacScript(scriptContent) {
   try {
     // Validate script has FindProxyForURL function
@@ -15,18 +40,15 @@ function parsePacScript(scriptContent) {
       throw new Error('PAC script must contain FindProxyForURL function');
     }
 
-    // Extract function body
-    const functionMatch = scriptContent.match(
-      /function\s+FindProxyForURL\s*\(\s*url\s*,\s*host\s*\)\s*\{([\s\S]*)\}/i
-    );
+    const functionBody = extractFunctionBody(scriptContent);
 
-    if (!functionMatch) {
+    if (!functionBody) {
       throw new Error('Invalid PAC script format');
     }
 
     return {
       success: true,
-      functionBody: functionMatch[1],
+      functionBody,
       fullScript: scriptContent
     };
   } catch (error) {
@@ -37,78 +59,172 @@ function parsePacScript(scriptContent) {
   }
 }
 
-// Validate PAC script syntax
-function validatePacScript(scriptContent) {
-  try {
-    // Check for required function
-    if (!scriptContent.includes('FindProxyForURL')) {
-      return {
-        valid: false,
-        error: 'Missing FindProxyForURL function'
-      };
-    }
+/**
+ * Validate PAC script syntax.
+ * Since we no longer execute arbitrary code, validation only checks that
+ * FindProxyForURL exists and braces are balanced.
+ */
+function validatePacScript(content) {
+  if (!content || typeof content !== 'string') return { valid: false, error: 'PAC script content is empty' };
 
-    // Check for dangerous functions
-    const dangerousPatterns = [
-      /eval\s*\(/i,
-      /Function\s*\(/i,
-      /document\./i,
-      /window\./i,
-      /XMLHttpRequest/i,
-      /fetch\s*\(/i,
-      /WebSocket/i
-    ];
+  if (!/function\s+FindProxyForURL\s*\(\s*\w+\s*,\s*\w+\s*\)/i.test(content)) {
+    return { valid: false, error: 'Missing FindProxyForURL function' };
+  }
 
-    for (const pattern of dangerousPatterns) {
-      if (pattern.test(scriptContent)) {
-        return {
-          valid: false,
-          error: `PAC script contains forbidden function: ${pattern.source}`
-        };
+  // Check brace balance
+  const openCount = (content.match(/\{/g) || []).length;
+  const closeCount = (content.match(/\}/g) || []).length;
+
+  if (openCount !== closeCount) {
+    return { valid: false, error: 'Unbalanced braces in PAC script' };
+  }
+
+  // Check script length
+  if (content.length > 100000) {
+    return { valid: false, error: 'PAC script exceeds maximum length (100KB)' };
+  }
+
+  return { valid: true, message: 'PAC script is valid' };
+}
+
+// ============================================================================
+// SAFE PAC EVALUATOR
+// ============================================================================
+
+/**
+ * Evaluate condition functions commonly used in PAC scripts.
+ * Only supports known safe functions: shExpMatch, dnsDomainIs, isPlainHostName.
+ * Unknown or unsupported conditions fall through to the false branch.
+ */
+function evaluateCondition(condition, host) {
+  if (!condition) return false;
+
+  condition = condition.trim();
+
+  // Literal booleans
+  if (condition === 'true') return true;
+  if (condition === 'false') return false;
+
+  // shExpMatch(variable, "pattern")
+  if (condition.startsWith('shExpMatch(')) {
+    const shMatch = condition.match(/shExpMatch\s*\(\s*\w+\s*,\s*["'](.+?)["']\s*\)/i);
+    if (shMatch) {
+      try {
+        const regex = wildcardToRegex(shMatch[1]);
+        return regex.test(host);
+      } catch {
+        return false;
       }
     }
-
-    // Check script length
-    if (scriptContent.length > 100000) {
-      return {
-        valid: false,
-        error: 'PAC script exceeds maximum length (100KB)'
-      };
-    }
-
-    return {
-      valid: true,
-      message: 'PAC script is valid'
-    };
-  } catch (error) {
-    return {
-      valid: false,
-      error: error.message
-    };
   }
+
+  // dnsDomainIs(variable, "domain")
+  if (condition.startsWith('dnsDomainIs(')) {
+    const dnsMatch = condition.match(/dnsDomainIs\s*\(\s*\w+\s*,\s*["'](.+?)["']\s*\)/i);
+    if (dnsMatch) {
+      const domain = dnsMatch[1];
+      return (host === domain || host.endsWith('.' + domain));
+    }
+  }
+
+  // isPlainHostName(variable)
+  if (condition.startsWith('isPlainHostName(')) {
+    return !host.includes('.');
+  }
+
+  // isResolvable, dnsResolve, isInNet, myIpAddress — not safely evaluable,
+  // fall through to false
+  return false;
+}
+
+/**
+ * Evaluate a ternary expression: condition ? "trueBranch" : "falseBranch"
+ */
+function evaluateTernary(expr, host) {
+  // Match: condition ? "string1" : "string2"
+  // Quoted strings may contain semicolons for proxy chains
+  const ternaryMatch = expr.match(/^(.+?)\s*\?\s*["'](.+?)["']\s*:\s*["'](.+?)["']$/);
+  if (ternaryMatch) {
+    const condition = evaluateCondition(ternaryMatch[1].trim(), host);
+    return condition ? ternaryMatch[2] : ternaryMatch[3];
+  }
+  return expr;
+}
+
+/**
+ * Safely evaluate a PAC script's FindProxyForURL function body for the given URL.
+ * Only interprets return statements with proxy directives.
+ * Does NOT execute or evaluate arbitrary JavaScript.
+ *
+ * @param {string} pacFunctionBody - The body of FindProxyForURL (between braces)
+ * @param {string} url - The full URL to evaluate
+ * @param {string} host - The hostname to evaluate
+ * @returns {string} The proxy directive string (e.g. "PROXY host:port; DIRECT")
+ */
+function evaluateFindProxyForURL(pacFunctionBody, url, host) {
+  // Find the return statement — look for "return X;" or "return X" at end
+  const returnMatch = pacFunctionBody.match(/return\s+([^;]+);?\s*$/m);
+  if (!returnMatch) return 'DIRECT';
+
+  let returnExpr = returnMatch[1].trim();
+
+  // If it's a ternary expression, evaluate it
+  returnExpr = evaluateTernary(returnExpr, host);
+
+  // If it's still a plain variable reference (not a proxy directive), fall back
+  if (!/[A-Z]/.test(returnExpr) || returnExpr.match(/^[a-z_]\w*$/i)) {
+    return 'DIRECT';
+  }
+
+  return returnExpr;
+}
+
+/**
+ * Parse proxy directives from a result string into structured objects.
+ *
+ * @param {string} result - e.g. "PROXY 192.168.1.1:8080; SOCKS5 10.0.0.1:1080"
+ * @returns {Array<{type: 'proxy'|'direct', host?: string, port?: number, scheme?: string}>}
+ */
+function parseProxyDirectives(result) {
+  if (!result || result === 'DIRECT') return [{ type: 'direct' }];
+
+  const directives = result.split(';').map(d => d.trim()).filter(Boolean);
+  return directives.map(d => {
+    const parts = d.split(/\s+/);
+    const directive = parts[0]?.toUpperCase();
+    const hostPort = parts[1];
+
+    if (directive === 'DIRECT') return { type: 'direct' };
+    if (!hostPort) return { type: 'direct' };
+
+    const [host, port] = hostPort.split(':');
+    let scheme = 'http';
+    if (directive === 'SOCKS5' || directive === 'SOCKS') scheme = 'socks5';
+    else if (directive === 'SOCKS4') scheme = 'socks4';
+    else if (directive === 'HTTPS') scheme = 'https';
+
+    return { type: 'proxy', host, port: parseInt(port) || 1080, scheme };
+  });
 }
 
 // ============================================================================
 // PAC SCRIPT EXECUTION ENGINE
 // ============================================================================
 
-// PAC helper functions
+// PAC helper functions — available as local helpers for manual evaluation.
+// NOTE: Most of these are not used by the safe evaluator (which does not
+// execute arbitrary JavaScript). They exist for reference and manual testing.
 const PAC_HELPERS = {
-  // Check if host matches domain pattern
+  /**
+   * Check if host matches a shell/wildcard pattern.
+   * Uses wildcardToRegex from shared utils for safe pattern conversion.
+   */
   shExpMatch: function(str, pattern) {
     if (!str || !pattern) return false;
-    
-    // Convert pattern to regex
-    let regex = pattern
-      .replace(/\./g, '\\.')
-      .replace(/\*/g, '.*')
-      .replace(/\?/g, '.');
-    
-    regex = `^${regex}$`;
-    
     try {
-      return new RegExp(regex, 'i').test(str);
-    } catch (e) {
+      const regex = wildcardToRegex(pattern);
+      return regex.test(str);
+    } catch {
       return false;
     }
   },
@@ -118,50 +234,63 @@ const PAC_HELPERS = {
     return host === domain || host.endsWith('.' + domain);
   },
 
-  // Check if host is localhost
+  // Check if host is localhost (no dots)
   isPlainHostName: function(host) {
     return !host.includes('.');
   },
 
-  // Check if host is resolvable
+  // ── Stubs below: browser service worker context cannot resolve DNS ──
+
+  /**
+   * Check if host is resolvable.
+   * STUB — browser context cannot resolve DNS. Returns true as fallback.
+   */
   isResolvable: function(host) {
-    // In browser context, assume all hosts are resolvable
     return true;
   },
 
-  // Get host IP address
+  /**
+   * Get host IP address.
+   * STUB — browser context cannot resolve DNS. Returns null.
+   */
   dnsResolve: function(host) {
-    // Cannot resolve DNS in browser context
     return null;
   },
 
-  // Check if IP is in range
+  /**
+   * Check if IP is in subnet range.
+   * STUB — requires DNS resolution which is unavailable. Returns false.
+   */
   isInNet: function(ip, pattern, mask) {
-    // Simplified check - would need actual IP range calculation
     return false;
   },
 
-  // Get local host IP
+  /**
+   * Get local host IP address.
+   * STUB — browser cannot determine real IP. Returns loopback address.
+   */
   myIpAddress: function() {
     return '127.0.0.1';
   },
 
-  // Convert weekday to number
+  // ── Date/time helpers — these work correctly in any JS context ──
+
+  /** Convert weekday to number. Supports weekdayRange(wd1, wd2, [gmt]). */
   weekdayRange: function() {
     const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
     const today = days[new Date().getDay()];
-    
+
     if (arguments.length === 1) {
       return today === arguments[0].toUpperCase();
     }
-    
+
     let start = arguments[0].toUpperCase();
     let end = arguments[1].toUpperCase();
-    
+
     let startIdx = days.indexOf(start);
     let endIdx = days.indexOf(end);
     let todayIdx = days.indexOf(today);
-    
+
     if (startIdx <= endIdx) {
       return todayIdx >= startIdx && todayIdx <= endIdx;
     } else {
@@ -169,17 +298,17 @@ const PAC_HELPERS = {
     }
   },
 
-  // Convert date range
+  /** Convert date range. Supports dateRange(day), dateRange(day1, day2), etc. */
   dateRange: function() {
     const today = new Date();
     const day = today.getDate();
     const month = today.getMonth() + 1;
     const year = today.getFullYear();
-    
+
     if (arguments.length === 1) {
       return day === arguments[0];
     }
-    
+
     if (arguments.length === 2) {
       // Day range
       if (typeof arguments[0] === 'number' && typeof arguments[1] === 'number') {
@@ -188,84 +317,82 @@ const PAC_HELPERS = {
       // Month and day
       return month === arguments[0] && day === arguments[1];
     }
-    
+
     if (arguments.length === 3) {
       // Month, day, year
       return month === arguments[0] && day === arguments[1] && year === arguments[2];
     }
-    
+
     return false;
   },
 
-  // Convert time range
+  /** Convert time range. Supports timeRange(h1, h2) and timeRange(h1, m1, h2, m2). */
   timeRange: function() {
     const now = new Date();
     const hour = now.getHours();
     const minute = now.getMinutes();
     const currentMinutes = hour * 60 + minute;
-    
+
     if (arguments.length === 1) {
       return hour === arguments[0];
     }
-    
+
     if (arguments.length === 2) {
       const startMinutes = arguments[0] * 60;
       const endMinutes = arguments[1] * 60;
       return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
     }
-    
+
     if (arguments.length === 4) {
       const startMinutes = arguments[0] * 60 + arguments[1];
       const endMinutes = arguments[2] * 60 + arguments[3];
       return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
     }
-    
+
     return false;
   }
 };
 
-// Execute PAC script for a URL
-function executePacScript(scriptContent, url, host) {
+/**
+ * Execute a PAC script by ID for the given URL.
+ * Uses the safe evaluator — does NOT execute arbitrary JavaScript.
+ *
+ * @param {string} scriptId - The name/key of the saved PAC script
+ * @param {string} [url='https://example.com'] - URL to evaluate against
+ * @returns {Promise<Object>} Result with directives array
+ */
+async function executePacScript(scriptId, url = 'https://example.com') {
   try {
-    // Create sandbox with helper functions
-    const sandbox = {
-      ...PAC_HELPERS,
-      url,
-      host
-    };
+    const result = await getPacScript(scriptId);
+    if (!result.success) return { success: false, error: result.error };
 
-    // Build execution context
-    const helperFunctions = Object.keys(PAC_HELPERS)
-      .map(name => `const ${name} = sandbox.${name};`)
-      .join('\n');
+    const script = result.script;
+    const hostname = new URL(url).hostname;
 
-    const executionCode = `
-      ${helperFunctions}
-      const url = sandbox.url;
-      const host = sandbox.host;
-      
-      ${scriptContent}
-      
-      return FindProxyForURL(url, host);
-    `;
+    // Extract FindProxyForURL body using brace-counting (not greedy regex)
+    const funcBody = extractFunctionBody(script.content);
+    if (!funcBody) return { success: false, error: 'Could not parse FindProxyForURL' };
 
-    // Execute in function context
-    const execute = new Function('sandbox', executionCode);
-    const result = execute(sandbox);
+    const proxyResult = evaluateFindProxyForURL(funcBody, url, hostname);
+    const directives = parseProxyDirectives(proxyResult);
 
-    // Parse result
-    return parseProxyResult(result);
-  } catch (error) {
-    console.error('PAC execution error:', error);
     return {
-      success: false,
-      error: error.message,
-      proxy: 'DIRECT'
+      success: true,
+      url,
+      hostname,
+      result: proxyResult,
+      directives,
+      scriptName: script.name || scriptId
     };
+  } catch (error) {
+    return { success: false, error: error.message };
   }
 }
 
-// Parse proxy result from PAC script
+/**
+ * Parse proxy result string (backward-compatible wrapper).
+ * Delegates to parseProxyDirectives and returns the old format.
+ */
 function parseProxyResult(result) {
   if (!result || result === 'DIRECT') {
     return {
@@ -275,38 +402,29 @@ function parseProxyResult(result) {
     };
   }
 
-  // Parse proxy string (e.g., "PROXY 192.168.1.1:8080; SOCKS5 10.0.0.1:1080")
-  const proxies = result.split(';').map(p => p.trim());
-  const primaryProxy = proxies[0];
+  const directives = parseProxyDirectives(result);
+  const primary = directives[0];
 
-  if (primaryProxy === 'DIRECT') {
+  if (primary.type === 'direct') {
     return {
       success: true,
       proxy: 'DIRECT',
-      fallbacks: proxies.slice(1),
+      fallbacks: directives.slice(1).map(d => `${d.scheme?.toUpperCase() || 'PROXY'} ${d.host}:${d.port}`),
       message: 'Direct connection with fallbacks'
     };
   }
 
-  // Parse proxy type and address
-  const match = primaryProxy.match(/^(PROXY|SOCKS5|SOCKS4|HTTPS)\s+(.+)$/i);
-  
-  if (match) {
-    return {
-      success: true,
-      proxy: {
-        type: match[1].toUpperCase(),
-        address: match[2]
-      },
-      fallbacks: proxies.slice(1),
-      message: `Using ${match[1]} proxy: ${match[2]}`
-    };
-  }
-
   return {
-    success: false,
-    error: 'Invalid proxy result format',
-    proxy: 'DIRECT'
+    success: true,
+    proxy: {
+      type: primary.scheme.toUpperCase(),
+      address: `${primary.host}:${primary.port}`
+    },
+    fallbacks: directives.slice(1).map(d => {
+      if (d.type === 'direct') return 'DIRECT';
+      return `${d.scheme?.toUpperCase() || 'PROXY'} ${d.host}:${d.port}`;
+    }),
+    message: `Using ${primary.scheme.toUpperCase()} proxy: ${primary.host}:${primary.port}`
   };
 }
 
@@ -320,7 +438,7 @@ const PAC_SCRIPTS_KEY = 'pacScripts';
 async function savePacScript(name, scriptContent, isDefault = false) {
   try {
     const { pacScripts = {} } = await chrome.storage.local.get([PAC_SCRIPTS_KEY]);
-    
+
     // Validate script
     const validation = validatePacScript(scriptContent);
     if (!validation.valid) {
@@ -356,7 +474,7 @@ async function savePacScript(name, scriptContent, isDefault = false) {
 async function getPacScript(name) {
   try {
     const { pacScripts = {} } = await chrome.storage.local.get([PAC_SCRIPTS_KEY]);
-    
+
     const script = pacScripts[name];
     if (!script) {
       return {
@@ -367,7 +485,7 @@ async function getPacScript(name) {
 
     return {
       success: true,
-      script
+      script: { ...script, name }
     };
   } catch (error) {
     console.error('Failed to get PAC script:', error);
@@ -382,7 +500,7 @@ async function getPacScript(name) {
 async function listPacScripts() {
   try {
     const { pacScripts = {} } = await chrome.storage.local.get([PAC_SCRIPTS_KEY]);
-    
+
     const scripts = Object.entries(pacScripts).map(([name, script]) => ({
       name,
       createdAt: script.createdAt,
@@ -408,7 +526,7 @@ async function listPacScripts() {
 async function deletePacScript(name) {
   try {
     const { pacScripts = {} } = await chrome.storage.local.get([PAC_SCRIPTS_KEY]);
-    
+
     if (!pacScripts[name]) {
       return {
         success: false,
@@ -436,7 +554,7 @@ async function deletePacScript(name) {
 async function setDefaultPacScript(name) {
   try {
     const { pacScripts = {} } = await chrome.storage.local.get([PAC_SCRIPTS_KEY]);
-    
+
     // Clear all defaults
     Object.keys(pacScripts).forEach(key => {
       pacScripts[key].isDefault = false;
@@ -466,7 +584,10 @@ async function setDefaultPacScript(name) {
 // PAC SCRIPT TESTING
 // ============================================================================
 
-// Test PAC script with sample URLs
+/**
+ * Test a PAC script with sample URLs using the safe evaluator.
+ * Does NOT execute arbitrary code.
+ */
 async function testPacScript(scriptContent, testUrls = []) {
   const defaultTestUrls = [
     'https://www.google.com',
@@ -480,21 +601,52 @@ async function testPacScript(scriptContent, testUrls = []) {
   const results = [];
 
   for (const url of urls) {
+    // Parse hostname once, outside the main try/catch (fix double-catch of new URL)
+    let host;
     try {
-      const host = new URL(url).hostname;
-      const result = executePacScript(scriptContent, url, host);
-      
-      results.push({
-        url,
-        host,
-        proxy: result.proxy,
-        success: result.success,
-        message: result.message
-      });
+      host = new URL(url).hostname;
+    } catch {
+      host = url;
+    }
+
+    try {
+      const funcBody = extractFunctionBody(scriptContent);
+      if (!funcBody) {
+        results.push({
+          url,
+          host,
+          proxy: 'ERROR',
+          success: false,
+          message: 'Could not parse FindProxyForURL'
+        });
+        continue;
+      }
+
+      const evalResult = evaluateFindProxyForURL(funcBody, url, host);
+      const directives = parseProxyDirectives(evalResult);
+      const primary = directives[0];
+
+      if (primary.type === 'proxy') {
+        results.push({
+          url,
+          host,
+          proxy: { type: primary.scheme.toUpperCase(), address: `${primary.host}:${primary.port}` },
+          success: true,
+          message: `Using ${primary.scheme.toUpperCase()} proxy: ${primary.host}:${primary.port}`
+        });
+      } else {
+        results.push({
+          url,
+          host,
+          proxy: 'DIRECT',
+          success: true,
+          message: 'Direct connection'
+        });
+      }
     } catch (error) {
       results.push({
         url,
-        host: new URL(url).hostname,
+        host,
         proxy: 'ERROR',
         success: false,
         error: error.message
@@ -508,7 +660,7 @@ async function testPacScript(scriptContent, testUrls = []) {
     summary: {
       total: results.length,
       direct: results.filter(r => r.proxy === 'DIRECT').length,
-      proxied: results.filter(r => r.proxy !== 'DIRECT' && r.success).length,
+      proxied: results.filter(r => r.proxy !== 'DIRECT' && r.proxy !== 'ERROR' && r.success).length,
       errors: results.filter(r => !r.success).length
     }
   };
@@ -518,25 +670,20 @@ async function testPacScript(scriptContent, testUrls = []) {
 // EXPORTS
 // ============================================================================
 
-module.exports = {
-  // Parser
+export {
   parsePacScript,
   validatePacScript,
-  
-  // Execution
   executePacScript,
   parseProxyResult,
-  
-  // Manager
   savePacScript,
   getPacScript,
   listPacScripts,
   deletePacScript,
   setDefaultPacScript,
-  
-  // Testing
   testPacScript,
-  
-  // Helpers
-  PAC_HELPERS
+  PAC_HELPERS,
+  // Export new safe evaluator functions for external use
+  extractFunctionBody,
+  evaluateFindProxyForURL,
+  parseProxyDirectives
 };

@@ -1,0 +1,131 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - link "Skip to proxy list" [ref=e2] [cursor=pointer]:
+    - /url: "#proxyList"
+  - application "PeasyProxy Proxy Manager" [ref=e3]:
+    - alert [ref=e4]:
+      - img [ref=e5]
+      - generic [ref=e7]:
+        - strong [ref=e8]: "⚠️ Security Notice:"
+        - text: Free proxies can intercept traffic. Do not use for banking or sensitive logins. Use HTTPS sites only.
+      - button "Dismiss security warning" [ref=e9] [cursor=pointer]:
+        - img [ref=e10]
+    - banner [ref=e13]:
+      - img "PeasyProxy Logo" [ref=e15]:
+        - img [ref=e16]
+        - generic [ref=e18]: PeasyProxy
+        - generic [ref=e19]: Proxy Manager
+      - navigation "Header actions" [ref=e20]:
+        - button "More actions" [ref=e21] [cursor=pointer]:
+          - img [ref=e22]
+        - button "Open settings" [ref=e26] [cursor=pointer]:
+          - img [ref=e27]
+    - generic [ref=e30]:
+      - generic [ref=e32]:
+        - generic [ref=e35]: Disconnected
+        - button "Connect/Disconnect" [ref=e37] [cursor=pointer]:
+          - img [ref=e38]
+      - generic [ref=e42]:
+        - generic [ref=e43]: IP Address Check
+        - button "Check IPs" [ref=e44] [cursor=pointer]
+      - button "Details" [ref=e45] [cursor=pointer]:
+        - generic [ref=e46]: Details
+        - img [ref=e47]
+    - search "Proxy filters" [ref=e49]:
+      - generic [ref=e50]:
+        - img
+        - textbox "Search proxies" [ref=e51]:
+          - /placeholder: Search by country, IP, or type...
+        - generic "Press slash to search" [ref=e52]: /
+      - tablist "Proxy categories" [ref=e53]:
+        - tab "All" [selected] [ref=e54] [cursor=pointer]
+        - tab "⭐" [ref=e55] [cursor=pointer]
+        - tab "🕐" [ref=e56] [cursor=pointer]
+      - group "Filter proxies" [ref=e57]:
+        - button "All" [pressed] [ref=e58] [cursor=pointer]
+        - button "⭐ Best" [ref=e59] [cursor=pointer]
+        - button "⚡ <100ms" [ref=e60] [cursor=pointer]
+        - button "🟢 Trusted" [ref=e61] [cursor=pointer]
+        - button "⚠️ Tampered" [ref=e62] [cursor=pointer]
+        - button "HTTPS" [ref=e63] [cursor=pointer]
+        - button "SOCKS5" [ref=e64] [cursor=pointer]
+    - generic [ref=e65]:
+      - generic [ref=e67]:
+        - generic [ref=e69]: Available Proxies
+        - generic "Proxy count" [ref=e71]: "5"
+        - generic [ref=e72]:
+          - checkbox "Select all proxies" [ref=e73]
+          - generic [ref=e74]: Select all
+      - text: • • • •
+      - list "Proxy servers list" [ref=e75]:
+        - listitem "Germany, HTTPS, 45ms" [active] [ref=e76] [cursor=pointer]:
+          - generic [ref=e77]:
+            - generic [ref=e78]:
+              - checkbox "Select proxy" [ref=e79]
+              - generic [ref=e80]: 🇩🇪
+              - generic [ref=e81]: 185.162.128.153:80
+            - generic [ref=e82]:
+              - generic [ref=e83]: Germany
+              - generic [ref=e84]: HTTPS
+              - generic [ref=e85]: ⚡ 45ms
+          - generic [ref=e86]:
+            - button "Add to favorites" [ref=e87]: ☆
+            - button "Connect to 185.162.128.153:80" [ref=e88]: Connect
+        - listitem "France, HTTPS, 65ms" [ref=e89] [cursor=pointer]:
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - checkbox "Select proxy" [ref=e92]
+              - generic [ref=e93]: 🇫🇷
+              - generic [ref=e94]: 91.107.232.58:80
+            - generic [ref=e95]:
+              - generic [ref=e96]: France
+              - generic [ref=e97]: HTTPS
+              - generic [ref=e98]: ⚡ 65ms
+          - generic [ref=e99]:
+            - button "Add to favorites" [ref=e100]: ☆
+            - button "Connect to 91.107.232.58:80" [ref=e101]: Connect
+        - listitem "USA, HTTPS, 120ms" [ref=e102] [cursor=pointer]:
+          - generic [ref=e103]:
+            - generic [ref=e104]:
+              - checkbox "Select proxy" [ref=e105]
+              - generic [ref=e106]: 🇺🇸
+              - generic [ref=e107]: 103.159.46.34:83
+            - generic [ref=e108]:
+              - generic [ref=e109]: USA
+              - generic [ref=e110]: HTTPS
+              - generic [ref=e111]: ⚡ 120ms
+          - generic [ref=e112]:
+            - button "Add to favorites" [ref=e113]: ☆
+            - button "Connect to 103.159.46.34:83" [ref=e114]: Connect
+        - listitem "Brazil, HTTPS, 180ms" [ref=e115] [cursor=pointer]:
+          - generic [ref=e116]:
+            - generic [ref=e117]:
+              - checkbox "Select proxy" [ref=e118]
+              - generic [ref=e119]: 🇧🇷
+              - generic [ref=e120]: 200.25.48.150:3128
+            - generic [ref=e121]:
+              - generic [ref=e122]: Brazil
+              - generic [ref=e123]: HTTPS
+              - generic [ref=e124]: ⚡ 180ms
+          - generic [ref=e125]:
+            - button "Add to favorites" [ref=e126]: ☆
+            - button "Connect to 200.25.48.150:3128" [ref=e127]: Connect
+        - listitem "Japan, SOCKS5, 200ms" [ref=e128] [cursor=pointer]:
+          - generic [ref=e129]:
+            - generic [ref=e130]:
+              - checkbox "Select proxy" [ref=e131]
+              - generic [ref=e132]: 🇯🇵
+              - generic [ref=e133]: 45.77.55.173:8080
+            - generic [ref=e134]:
+              - generic [ref=e135]: Japan
+              - generic [ref=e136]: SOCKS5
+              - generic [ref=e137]: ⚡ 200ms
+          - generic [ref=e138]:
+            - button "Add to favorites" [ref=e139]: ☆
+            - button "Connect to 45.77.55.173:8080" [ref=e140]: Connect
+    - button "Connect" [ref=e141] [cursor=pointer]:
+      - img [ref=e142]
+  - text: "&t=1774996312815"
+```

@@ -1,6 +1,7 @@
 {
   "name": "peasyproxy-tests",
   "version": "2.3.0",
+  "type": "module",
   "description": "Comprehensive test suite for PeasyProxy Chrome extension",
   "private": true,
   "scripts": {
@@ -14,14 +15,14 @@
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage --watchAll=false",
-    "lint": "eslint src/ tests/",
-    "lint:fix": "eslint src/ tests/ --fix",
-    "security:audit": "npm audit",
-    "security:scan": "npm audit --audit-level=moderate",
+    "lint": "eslint ../src/ .",
+    "lint:fix": "eslint ../src/ . --fix",
+    "security:audit": "pnpm audit",
+    "security:scan": "pnpm audit --audit-level=moderate",
     "performance:audit": "lighthouse-ci autorun",
     "playwright:install": "npx playwright install",
     "playwright:install-deps": "npx playwright install-deps",
-    "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e",
+    "test:all": "pnpm test:unit && pnpm test:integration && pnpm test:e2e",
     "test:debug": "jest --debug",
     "test:verbose": "jest --verbose",
     "test:clear-cache": "jest --clearCache"
@@ -40,39 +41,6 @@
     "playwright": "^1.40.0",
     "supertest": "^6.3.3"
   },
-  "eslintConfig": {
-    "env": {
-      "browser": true,
-      "es6": true,
-      "jest": true
-    },
-    "extends": [
-      "eslint:recommended"
-    ],
-    "parserOptions": {
-      "ecmaVersion": 2022,
-      "sourceType": "module"
-    },
-    "rules": {
-      "no-console": "warn",
-      "no-unused-vars": "error",
-      "prefer-const": "error",
-      "no-var": "error"
-    },
-    "overrides": [
-      {
-        "files": [
-          "**/*.test.js"
-        ],
-        "env": {
-          "jest": true
-        },
-        "rules": {
-          "no-console": "off"
-        }
-      }
-    ]
-  },
   "jest-junit": {
     "outputDirectory": "./test-results",
     "outputName": "junit.xml",
@@ -85,39 +53,17 @@
   "lighthouse-ci": {
     "ci": {
       "collect": {
-        "url": [
-          "http://localhost:3000"
-        ],
-        "startServerCommand": "npm start",
+        "url": ["http://localhost:3000"],
+        "startServerCommand": "pnpm start",
         "startServerReadyPattern": "ready",
         "startServerReadyTimeout": 30000
       },
       "assert": {
         "assertions": {
-          "categories:performance": [
-            "error",
-            {
-              "minScore": 0.8
-            }
-          ],
-          "categories:accessibility": [
-            "error",
-            {
-              "minScore": 0.9
-            }
-          ],
-          "categories:best-practices": [
-            "error",
-            {
-              "minScore": 0.8
-            }
-          ],
-          "categories:seo": [
-            "error",
-            {
-              "minScore": 0.8
-            }
-          ]
+          "categories:performance": ["error", { "minScore": 0.8 }],
+          "categories:accessibility": ["error", { "minScore": 0.9 }],
+          "categories:best-practices": ["error", { "minScore": 0.8 }],
+          "categories:seo": ["error", { "minScore": 0.8 }]
         }
       },
       "upload": {

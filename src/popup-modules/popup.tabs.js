@@ -1,7 +1,8 @@
 // PeasyProxy - Tab Proxy UI Module
 // Implements tab list with proxy indicators, quick proxy switch, and domain rules UI
 
-const { THRESHOLDS } = require('../popup/constants.js');
+import { escapeHtml, truncate } from '../shared/utils.js';
+import { THRESHOLDS } from '../popup/constants.js';
 
 // ============================================================================
 // TAB LIST RENDERING
@@ -29,8 +30,8 @@ function renderTabList(tabs, tabProxyMappings, domainRules) {
         return `
           <div class="tab-item ${hasProxy ? 'has-proxy' : ''}" data-tab-id="${tab.id}">
             <div class="tab-info">
-              <div class="tab-title" title="${tab.title || tab.url}">${truncate(tab.title || tab.url, 40)}</div>
-              <div class="tab-url">${tab.hostname || 'Unknown'}</div>
+              <div class="tab-title" title="${escapeHtml(tab.title || tab.url)}">${escapeHtml(truncate(tab.title || tab.url, 40))}</div>
+              <div class="tab-url">${escapeHtml(tab.hostname || 'Unknown')}</div>
             </div>
             <div class="tab-proxy-status">
               ${hasProxy ? `
@@ -70,7 +71,7 @@ function renderAssignProxyDialog(tabId, tabHostname, availableProxies) {
         </div>
         <div class="dialog-content">
           <div class="dialog-info">
-            <p><strong>Tab:</strong> ${tabHostname}</p>
+            <p><strong>Tab:</strong> ${escapeHtml(tabHostname)}</p>
           </div>
           <div class="proxy-selection">
             <label>Select Proxy:</label>
@@ -262,13 +263,6 @@ function getPatternTypeIcon(patternType) {
   return icons[patternType] || '🎯';
 }
 
-// Truncate string
-function truncate(str, maxLength) {
-  if (!str) return '';
-  if (str.length <= maxLength) return str;
-  return str.slice(0, maxLength - 3) + '...';
-}
-
 // ============================================================================
 // EVENT HANDLERS
 // ============================================================================
@@ -317,20 +311,15 @@ function handleToggleRule(domain, enabled, callback) {
 // EXPORTS
 // ============================================================================
 
-module.exports = {
-  // Rendering
+export {
   renderTabList,
   renderAssignProxyDialog,
   renderDomainRules,
   renderDomainRuleEditor,
-  
-  // Helpers
   findDomainRule,
   matchDomainPattern,
   getPatternTypeIcon,
   truncate,
-  
-  // Event handlers
   handleAssignProxy,
   handleRemoveProxy,
   handleSaveRule,

@@ -22,12 +22,16 @@ This guide is for developers who want to understand, modify, or contribute to th
 - **Node.js** (v16+)
 - **Text Editor** (VS Code recommended)
 - **Git**
-- **crx3** (optional): `npm install -g crx3`
+- **crx3** (optional): `pnpm add -g crx3`
 
 ### Setup
 
 ```bash
 cd proxy-vpn-extension
+
+# Install dependencies and build
+pnpm install
+pnpm build
 
 # Load in Chrome:
 # 1. Navigate to chrome://extensions/
@@ -35,6 +39,7 @@ cd proxy-vpn-extension
 # 3. Click "Load unpacked"
 # 4. Select the project folder
 ```
+> **Important:** `popup.js` is a build artifact (bundled from `src/popup-modules/main.js`). Fresh clones must run `pnpm build` before loading the extension. Background modules use native ES modules — no build step needed.
 
 ### Recommended VS Code Extensions
 
@@ -88,13 +93,16 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture documentation.
 |------|-------------|
 | `manifest.json` | Extension config (MV3) |
 | `popup.html` | UI structure |
-| `popup.js` | Main UI logic |
-| `background.js` | Service worker |
+| `popup.js` | **Build artifact** — bundled popup code |
 | `styles.css` | Styling |
-| `src/background/` | Service worker modules |
-| `src/popup/` | Popup modules (i18n, virtual-scroller) |
+| `src/background/index.js` | Service worker entry point |
+| `src/background/` | Background modules (proxy, health, quality, DNS, chain, PAC, rules) |
+| `src/background/proxy-config-manager.js` | **Single authority** for chrome.proxy.settings |
+| `src/popup-modules/` | Popup UI modules (bundled into popup.js) |
+| `src/shared/` | Shared utilities (both contexts) |
 | `src/core/` | Core modules (reputation engine) |
-| `src/security/` | Security modules |
+| `src/security/` | Security modules (tamper detection) |
+| `src/modules/webrtc-blocker.js` | Content script |
 
 For detailed API documentation, see [API.md](API.md).
 
@@ -102,20 +110,20 @@ For detailed API documentation, see [API.md](API.md).
 
 ## Building & Testing
 
-### npm Scripts
+### pnpm Scripts
 
 | Script | Description |
 |--------|-------------|
-| `npm run build` | Build bundled modules |
-| `npm run watch` | Watch mode for development |
-| `npm run distribute` | Build ZIP + CRX packages |
-| `npm run release` | Publish to GitHub Releases |
-| `npm test` | Run tests |
+| `pnpm build` | Build bundled modules |
+| `pnpm watch` | Watch mode for development |
+| `pnpm distribute` | Build ZIP + CRX packages |
+| `pnpm release` | Publish to GitHub Releases |
+| `ppnpm test` | Run tests |
 
 ### Distribution Build
 
 ```bash
-npm run distribute
+pnpm distribute
 ```
 
 Output in `dist/`:
@@ -131,7 +139,7 @@ See [RELEASE_GUIDE.md](RELEASE_GUIDE.md) for detailed release process.
 ### Quick Release
 
 ```bash
-npm version patch  # or minor, major
+pnpm version patch  # or minor, major
 git push --follow-tags
 ```
 
@@ -197,80 +205,7 @@ docs: update installation instructions
 - [API.md](API.md) - API reference
 - [ARCHITECTURE.md](ARCHITECTURE.md) - Architecture details
 - [RELEASE_GUIDE.md](RELEASE_GUIDE.md) - Release process
-
-Happy coding!
-MITM attack detection.
-
-**Key Functions:**
-- `testProxy(proxy)` - Test for tampering
-- `markTampered(ipPort, tampered)` - Mark proxy as tampered
-
-#### `src/utils/rate-limiter.js`
-Rate limiting and debouncing utilities.
-
-**Key Functions:**
-- `debounce(fn, delay)` - Debounce function calls
-- `throttle(fn, limit)` - Throttle function calls
-
-#### `popup.js`
-Popup UI logic:
-- Displaying proxy list with caching
-- Filtering (country, type, speed, blacklist)
-- User interaction handling
-- Settings management
-- Virtual scrolling for large lists
-
-**Key Functions:**
-- `loadProxies(forceRefresh)` - Loads from cache with 5-min TTL, optional force refresh
-- `connectToProxy(proxy, event)` - Connects to selected proxy
-- `filterProxies()` - Applies all filters including country blacklist
-- `renderProxyList(proxies)` - Renders proxy items
-- `switchToTab(tabName)` - Switches between All/Favorites/Recent
-- `calculateProxyScore(proxy)` - Enhanced scoring with historical data
-- `initVirtualScroller()` - Initialize virtual scrolling
-
-#### `src/popup/i18n.js`
-Internationalization system for RU/EN.
-
-#### `src/popup/virtual-scroller.js`
-Virtual scrolling for large proxy lists.
-
-#### `popup.html`
-UI structure with:
-- Status indicator
-- Control buttons
-- Filter dropdowns
-- Proxy list container
-- Settings panel
-- Stats panel
-
-#### `distribute.js`
-Distribution build script - creates ZIP and CRX packages for release.
-
-**Features:**
-- Pure Node.js implementation (no external dependencies)
-- Excludes development files automatically
-- Creates Chrome Web Store-ready ZIP
-- Creates signed CRX using existing PEM key
-
-#### `release.js`
-GitHub release publisher - uploads distribution packages to GitHub Releases.
-
-**Features:**
-- Auto-detects version from package.json
-- Creates release with generated notes
-- Uploads ZIP and CRX as assets
-- Supports draft and prerelease modes
-
-#### `.github/workflows/release.yml`
-GitHub Actions workflow for automated releases on version tag push.
-
-#### `styles.css`
-Visual styling including:
-- Dark theme
-- Animations (pulse, spin)
-- Responsive layout
-- Custom scrollbars
+- [AGENTS.md](AGENTS.md) - Instructions for AI coding agents
 
 ---
 
@@ -410,13 +345,13 @@ To create production-ready packages for distribution:
 
 ```bash
 # Build both ZIP and CRX packages
-npm run distribute
+pnpm distribute
 
 # Build ZIP only (for Chrome Web Store submission)
-npm run distribute:zip
+pnpm distribute:zip
 
 # Build CRX only (for sideloading/enterprise distribution)
-npm run distribute:crx
+pnpm distribute:crx
 ```
 
 **Output:** Packages are created in the `dist/` directory:
@@ -434,7 +369,7 @@ npm run distribute:crx
 
 **CRX Signing:**
 - The build script uses your existing `.pem` key for signing
-- To rebuild CRX with updated source, install `crx3`: `npm install -g crx3`
+- To rebuild CRX with updated source, install `crx3`: `pnpm add -g crx3`
 - Without `crx3`, the existing CRX file is copied (may be outdated)
 
 ### Distribution Channels
@@ -451,7 +386,7 @@ Before submitting to Chrome Web Store:
 
 1. **Test the ZIP package:**
    ```bash
-   npm run distribute:zip
+   pnpm distribute:zip
    ```
    
 2. **Load unpacked from ZIP:**
@@ -461,7 +396,7 @@ Before submitting to Chrome Web Store:
 
 3. **Test the CRX package:**
    ```bash
-   npm run distribute:crx
+   pnpm distribute:crx
    ```
    
 4. **Install CRX:**
@@ -483,10 +418,10 @@ To manually publish a release to GitHub:
 export GITHUB_TOKEN=ghp_...
 
 # 2. Build and publish
-npm run release
+pnpm release
 
 # Or create as draft for review
-npm run release:draft
+pnpm release:draft
 ```
 
 **Script options:**
@@ -507,7 +442,7 @@ Releases are automatically published when you push a version tag:
 
 ```bash
 # 1. Update version in package.json
-npm version patch  # or: minor, major, or specific version like 1.2.3
+pnpm version patch  # or: minor, major, or specific version like 1.2.3
 
 # 2. Commit and push with tags
 git push --follow-tags
@@ -525,7 +460,7 @@ This triggers the `.github/workflows/release.yml` workflow which:
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
 │  Update version │────▶│  Push tag to Git │────▶│ GitHub Actions  │
-│  (npm version)  │     │  (git push)      │     │ (release.yml)   │
+│  (pnpm version)  │     │  (git push)      │     │ (release.yml)   │
 └─────────────────┘     └──────────────────┘     └────────┬────────┘
                                                           │
                                                           ▼
@@ -539,8 +474,8 @@ This triggers the `.github/workflows/release.yml` workflow which:
 
 - [ ] Update version in `package.json`
 - [ ] Update `CHANGELOG.md` with changes
-- [ ] Run tests: `npm test`
-- [ ] Build distribution: `npm run distribute`
+- [ ] Run tests: `pnpm test`
+- [ ] Build distribution: `pnpm distribute`
 - [ ] Test built packages locally
 - [ ] Commit changes: `git commit -am "chore: release v1.0.0"`
 - [ ] Push with tags: `git push --follow-tags`
@@ -789,24 +724,24 @@ function filterProxies() {
 
 ## Development Tools Reference
 
-### npm Scripts
+### pnpm Scripts
 
 | Script | Description |
 |--------|-------------|
-| `npm run build` | Build bundled modules |
-| `npm run watch` | Watch mode for development |
-| `npm run distribute` | Build ZIP + CRX packages |
-| `npm run distribute:zip` | Build ZIP only (Chrome Web Store) |
-| `npm run distribute:crx` | Build CRX only (sideloading) |
-| `npm run release` | Publish to GitHub Releases |
-| `npm run release:draft` | Create draft release |
-| `npm run release:prerelease` | Create prerelease |
-| `npm test` | Run tests |
-| `npm run lint` | Run linter |
+| `pnpm build` | Build bundled modules |
+| `pnpm watch` | Watch mode for development |
+| `pnpm distribute` | Build ZIP + CRX packages |
+| `pnpm distribute:zip` | Build ZIP only (Chrome Web Store) |
+| `pnpm distribute:crx` | Build CRX only (sideloading) |
+| `pnpm release` | Publish to GitHub Releases |
+| `pnpm release:draft` | Create draft release |
+| `pnpm release:prerelease` | Create prerelease |
+| `pnpm test` | Run tests |
+| `pnpm lint` | Run linter |
 
 ### Distribution Files
 
-After running `npm run distribute`:
+After running `pnpm distribute`:
 
 ```
 dist/

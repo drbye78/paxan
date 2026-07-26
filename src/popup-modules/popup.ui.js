@@ -1,6 +1,8 @@
 // PeasyProxy - Popup UI Rendering
 // Handles all UI rendering and updates
 
+import { escapeHtml } from '../shared/utils.js';
+
 import {
   getCurrentProxy,
   setCurrentProxy,
@@ -23,7 +25,9 @@ import {
   filterProxies,
   renderQuickConnect,
   renderRecommended,
-  connectToBestProxy
+  connectToBestProxy,
+  loadProxies,
+  switchToTab
 } from './popup.proxy-list.js';
 
 // Country flag mapping
@@ -78,6 +82,8 @@ function updateUI() {
   const proxyCountry = document.getElementById('proxyCountry');
   const connectionTimer = document.getElementById('connectionTimer');
   const connectionQualityInline = document.getElementById('connectionQualityInline');
+  const connectionInfo = document.getElementById('connectionInfo');
+  const fabMini = document.getElementById('fabMini');
   
   if (currentProxy) {
     // Status badge
@@ -92,15 +98,24 @@ function updateUI() {
       if (proxyCountry) proxyCountry.textContent = currentProxy.country;
     }
     
-    // Timer
+    // Timer and Quality
     if (connectionTimer) connectionTimer.style.display = 'flex';
-    
-    // Quality badge inline
     if (connectionQualityInline) {
       connectionQualityInline.style.display = 'flex';
     }
     
-    updateFab();
+    // Show connection info
+    if (connectionInfo) connectionInfo.style.display = 'block';
+    
+    // Update FAB mini
+    if (fabMini) {
+      fabMini.classList.remove('disconnected');
+      fabMini.classList.add('connected');
+      const fabConnect = fabMini.querySelector('.fab-connect');
+      const fabDisconnect = fabMini.querySelector('.fab-disconnect');
+      if (fabConnect) fabConnect.style.display = 'none';
+      if (fabDisconnect) fabDisconnect.style.display = 'block';
+    }
     
   } else {
     // Status badge
@@ -112,12 +127,23 @@ function updateUI() {
       currentProxyDisplay.style.display = 'none';
     }
     
-    // Timer
+    // Timer and Quality
     if (connectionTimer) connectionTimer.style.display = 'none';
-    
-    // Quality badge inline
     if (connectionQualityInline) {
       connectionQualityInline.style.display = 'none';
+    }
+    
+    // Hide connection info
+    if (connectionInfo) connectionInfo.style.display = 'none';
+    
+    // Update FAB mini
+    if (fabMini) {
+      fabMini.classList.remove('connected');
+      fabMini.classList.add('disconnected');
+      const fabConnect = fabMini.querySelector('.fab-connect');
+      const fabDisconnect = fabMini.querySelector('.fab-disconnect');
+      if (fabConnect) fabConnect.style.display = 'block';
+      if (fabDisconnect) fabDisconnect.style.display = 'none';
     }
     
     // Reset IP detector
@@ -131,8 +157,6 @@ function updateUI() {
     
     const ipInfo = getIpInfo();
     ipInfo.expanded = false;
-    
-    updateFab();
   }
   
   updateSecurityUI();
@@ -378,7 +402,7 @@ function renderSiteRules() {
       <div class="rule-info">
         <span class="rule-url">${escapeHtml(rule.url)}</span>
         <span class="rule-pattern-type">${rule.patternType || 'exact'}</span>
-        <span class="rule-country">${getFlag(rule.country)} ${rule.country}</span>
+        <span class="rule-country">${getFlag(rule.country)} ${escapeHtml(rule.country)}</span>
       </div>
       <div class="rule-actions-right">
         <div class="toggle rule-toggle ${rule.enabled ? 'active' : ''}" data-id="${rule.id}">
@@ -395,11 +419,9 @@ function renderSiteRules() {
   `).join('');
 }
 
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
+// ============================================================================
+// HTML escaping imported from shared/utils.js — no local definition
+// ============================================================================
 
 // ============================================================================
 // BLACKLIST RENDERING
@@ -418,8 +440,8 @@ function renderBlacklistChips() {
   
   let html = blacklist.map(country => `
     <span class="chip chip-active blacklist-chip">
-      ${getFlag(country)} ${country}
-      <button class="remove-btn" data-country="${country}">×</button>
+      ${getFlag(country)} ${escapeHtml(country)}
+      <button class="remove-btn" data-country="${escapeHtml(country)}">×</button>
     </span>
   `).join('');
   
@@ -428,7 +450,7 @@ function renderBlacklistChips() {
     html += `
       <select class="blacklist-add-select" id="blacklistAddSelect">
         <option value="">+ Add country...</option>
-        ${availableToAdd.map(c => `<option value="${c}">${getFlag(c)} ${c}</option>`).join('')}
+        ${availableToAdd.map(c => `<option value="${escapeHtml(c)}">${getFlag(c)} ${escapeHtml(c)}</option>`).join('')}
       </select>
     `;
   }
@@ -480,7 +502,7 @@ async function addToBlacklist(country) {
 // STATS DISPLAY
 // ============================================================================
 
-function updateStatsDisplay() {
+async function updateStatsDisplay() {
   const dailyStats = getDailyStats();
   const proxies = getProxies();
   const proxyStats = getProxyStats();
@@ -519,7 +541,7 @@ function updateStatsDisplay() {
   if (topCountriesList) {
     topCountriesList.innerHTML = topCountries.map(([country, count]) => `
       <div class="setting">
-        <span>${getFlag(country)} ${country}</span>
+        <span>${getFlag(country)} ${escapeHtml(country)}</span>
         <span style="color: var(--accent-primary); font-weight: 600;">${count} connections</span>
       </div>
     `).join('') || '<p style="color: var(--text-secondary); text-align: center;">No data yet</p>';
@@ -544,7 +566,7 @@ function updateStatsDisplay() {
           <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
             <div>
               <div style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                ${flag} ${ipPort}
+                ${flag} ${escapeHtml(ipPort)}
               </div>
               <div style="font-size: 10px; color: var(--text-secondary);">
                 ${country} • Success: ${stats.successRate}% • Avg: ${stats.avgLatency || 0}ms
@@ -564,7 +586,11 @@ function updateStatsDisplay() {
   const suspiciousList = document.getElementById('suspiciousProxiesList');
   
   if (suspiciousSection && suspiciousList) {
-    const proxyReputation = {}; // Would need to load from storage
+    let proxyReputation = {};
+    try {
+      const repResult = await chrome.runtime.sendMessage({ action: 'getAllReputation' });
+      if (repResult && typeof repResult === 'object') proxyReputation = repResult;
+    } catch {}
     const tamperedProxies = Object.entries(proxyReputation)
       .filter(([, rep]) => rep.tamperDetected)
       .slice(0, 10);
@@ -575,20 +601,27 @@ function updateStatsDisplay() {
         const proxy = proxies.find(p => p.ipPort === ipPort);
         const country = proxy?.country || rep.country || 'Unknown';
         const flag = getFlag(country);
+        const safeCountry = escapeHtml(country);
         return `
           <div class="setting" style="border-left: 3px solid #ff5252;">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
               <div>
-                <div style="font-weight: 600;">${flag} ${ipPort}</div>
+                <div style="font-weight: 600;">${flag} ${escapeHtml(ipPort)}</div>
                 <div style="font-size: 10px; color: var(--text-secondary);">
-                  ${country} • Score: ${rep.reputationScore || 0}
+                  ${safeCountry} • Score: ${rep.reputationScore || 0}
                 </div>
               </div>
-              <button class="btn btn-danger btn-sm" onclick="removeFromBlacklist('${country}')">Clear</button>
+              <button class="btn btn-danger btn-sm clear-suspicious-btn" data-country="${safeCountry}">Clear</button>
             </div>
           </div>
         `;
       }).join('');
+
+      suspiciousList.querySelectorAll('.clear-suspicious-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          removeFromBlacklist(btn.dataset.country);
+        });
+      });
     } else {
       suspiciousSection.style.display = 'none';
     }
@@ -617,7 +650,7 @@ function showToast(message, type = 'info', onUndo = null) {
   
   toast.innerHTML = `
     <span class="toast-icon">${icons[type]}</span>
-    <span class="toast-message">${message}</span>
+    <span class="toast-message">${escapeHtml(message)}</span>
     ${undoHtml}
   `;
   
@@ -706,13 +739,6 @@ function showEmptyState(type) {
       }
     });
   }
-}
-
-// Helper function for switching tabs (defined in popup.proxy-list.js but needed here)
-function switchToTab(tabName) {
-  // This will be handled by the proxy-list module
-  setCurrentTab(tabName);
-  filterProxies();
 }
 
 // Export functions for testing

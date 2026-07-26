@@ -1,7 +1,8 @@
 // PeasyProxy - Search & Filter Module
 // Implements advanced search, saved presets, and filter shortcuts
 
-const { THRESHOLDS } = require('../popup/constants.js');
+import { escapeHtml } from '../shared/utils.js';
+import { THRESHOLDS } from '../popup/constants.js';
 
 // ============================================================================
 // SEARCH ENGINE
@@ -473,9 +474,9 @@ function renderSearchSuggestions(suggestions, history, popular) {
       <div class="search-section">
         <div class="search-section-title">Suggestions</div>
         ${suggestions.map(s => `
-          <div class="search-suggestion" data-value="${s.display}">
-            <span class="suggestion-type">${s.type}</span>
-            <span class="suggestion-value">${s.value}</span>
+          <div class="search-suggestion" data-value="${escapeHtml(s.display)}">
+            <span class="suggestion-type">${escapeHtml(s.type)}</span>
+            <span class="suggestion-value">${escapeHtml(s.value)}</span>
           </div>
         `).join('')}
       </div>
@@ -487,8 +488,8 @@ function renderSearchSuggestions(suggestions, history, popular) {
       <div class="search-section">
         <div class="search-section-title">Recent Searches</div>
         ${history.slice(0, 5).map(h => `
-          <div class="search-history-item" data-value="${h.query}">
-            <span class="history-query">${h.query}</span>
+          <div class="search-history-item" data-value="${escapeHtml(h.query)}">
+            <span class="history-query">${escapeHtml(h.query)}</span>
             <span class="history-time">${new Date(h.timestamp).toLocaleDateString()}</span>
           </div>
         `).join('')}
@@ -501,8 +502,8 @@ function renderSearchSuggestions(suggestions, history, popular) {
       <div class="search-section">
         <div class="search-section-title">Popular Searches</div>
         ${popular.slice(0, 5).map(p => `
-          <div class="search-popular-item" data-value="${p.query}">
-            <span class="popular-query">${p.query}</span>
+          <div class="search-popular-item" data-value="${escapeHtml(p.query)}">
+            <span class="popular-query">${escapeHtml(p.query)}</span>
             <span class="popular-count">${p.count}x</span>
           </div>
         `).join('')}
@@ -517,34 +518,23 @@ function renderSearchSuggestions(suggestions, history, popular) {
 // EXPORTS
 // ============================================================================
 
-module.exports = {
-  // Search engine
+export {
   parseSearchQuery,
   searchProxies,
-  
-  // Search history
   saveSearchHistory,
   getSearchHistory,
   clearSearchHistory,
   getPopularSearches,
-  
-  // Filter presets
   saveFilterPreset,
   getFilterPreset,
   listFilterPresets,
   deleteFilterPreset,
   shareFilterPreset,
   importFilterPreset,
-  
-  // Filter shortcuts
   BUILT_IN_SHORTCUTS,
   getFilterShortcut,
   applyFilterShortcut,
-  
-  // Smart filters
   getSmartFilterSuggestions,
   getFilterAutocomplete,
-  
-  // UI helpers
   renderSearchSuggestions
 };

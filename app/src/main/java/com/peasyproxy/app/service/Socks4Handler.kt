@@ -14,6 +14,10 @@ import javax.inject.Singleton
 @Singleton
 class Socks4Handler @Inject constructor() {
 
+    companion object {
+        private val IPV4_REGEX = Regex("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$")
+    }
+
     private var socket: Socket? = null
 
     private val _isConnected = MutableStateFlow(false)
@@ -72,7 +76,7 @@ class Socks4Handler @Inject constructor() {
         request.add((port and 0xFF).toByte())
 
         // For SOCKS4a, use 0.0.0.1 and append domain
-        val isDomain = !host.matches(Regex("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
+        val isDomain = !host.matches(IPV4_REGEX)
         
         if (isDomain) {
             // IPv4 placeholder - will be ignored for SOCKS4a

@@ -43,13 +43,13 @@ abstract class PeasyProxyDatabase : RoomDatabase() {
         
         /**
          * Migration from version 1 to 2.
-         * Adds encryption support columns if needed.
+         * No-op migration: schema unchanged, version bump only.
+         * Encryption is handled at the database level by SQLCipher
+         * and at the field level by SecurityManager.
          */
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                // Version 2 doesn't require schema changes
-                // Encryption is handled at the database level by SQLCipher
-                // and at the field level by SecurityManager
+                // No schema changes
             }
         }
         

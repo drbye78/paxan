@@ -426,10 +426,6 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.proxy-flag {
-  font-size: 18px;
-}
-
 .proxy-address {
   font-weight: 600;
   color: var(--text-primary);

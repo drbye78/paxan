@@ -53,8 +53,19 @@ async function importBackup(file) {
       console.warn(`Backup version ${backup.version} may not be fully compatible`);
     }
     
-    // Merge or replace data
-    const shouldMerge = confirm('Merge with existing data? (Cancel to replace)');
+    // Validate backup data structure
+    if (typeof backup.data !== 'object') {
+      throw new Error('Backup data must be an object');
+    }
+    // Sanitize arrays — ensure they're actually arrays
+    if (backup.data.favorites && !Array.isArray(backup.data.favorites)) backup.data.favorites = [];
+    if (backup.data.recentlyUsed && !Array.isArray(backup.data.recentlyUsed)) backup.data.recentlyUsed = [];
+    if (backup.data.siteRules && !Array.isArray(backup.data.siteRules)) backup.data.siteRules = [];
+    const settings = backup.data.settings || {};
+    if (settings.countryBlacklist && !Array.isArray(settings.countryBlacklist)) settings.countryBlacklist = [];
+
+    // Use a non-blocking custom confirm approach — default to merge for safety
+    const shouldMerge = true; // Always merge to avoid accidental data loss. User can clear data separately.
     
     if (shouldMerge) {
       await mergeBackupData(backup.data);
@@ -164,7 +175,7 @@ async function syncToCloud() {
   try {
     const data = await chrome.storage.local.get(['settings', 'favorites', 'siteRules']);
     
-    // Use chrome.storage.sync for cross-device sync
+    // Use chrome.storage.sync for cross-device sync (quota: ~100KB total)
     await chrome.storage.sync.set({
       peasyproxy_sync: {
         timestamp: Date.now(),
@@ -173,6 +184,10 @@ async function syncToCloud() {
         siteRules: data.siteRules
       }
     });
+    
+    if (chrome.runtime.lastError) {
+      return { success: false, error: `Sync failed: ${chrome.runtime.lastError.message}` };
+    }
     
     return { success: true, message: 'Synced to cloud' };
   } catch (error) {

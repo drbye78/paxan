@@ -13,9 +13,12 @@ import javax.inject.Singleton
 
 @Singleton
 class Socks5Handler @Inject constructor() {
-    
+
+    companion object {
+        private val IPV4_REGEX = Regex("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$")
+    }
+
     private var socket: Socket? = null
-    private var remoteSocket: Socket? = null
 
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected
@@ -24,9 +27,7 @@ class Socks5Handler @Inject constructor() {
 
     enum class AuthMethod {
         NO_AUTH,
-        USERNAME_PASSWORD,
-        NONE,
-        UNSUPPORTED
+        USERNAME_PASSWORD
     }
 
     suspend fun connect(proxy: Proxy, targetHost: String, targetPort: Int): Boolean = withContext(Dispatchers.IO) {
@@ -120,7 +121,7 @@ class Socks5Handler @Inject constructor() {
         val socket = this@Socks5Handler.socket ?: return@withContext false
 
         val addressType: Byte = when {
-            targetHost.matches(Regex("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$")) -> 0x01
+            targetHost.matches(IPV4_REGEX) -> 0x01
             targetHost.contains(":") -> 0x04
             else -> 0x03
         }
@@ -214,12 +215,10 @@ class Socks5Handler @Inject constructor() {
     suspend fun disconnect() = withContext(Dispatchers.IO) {
         try {
             socket?.close()
-            remoteSocket?.close()
         } catch (e: Exception) {
             // Ignore
         }
         socket = null
-        remoteSocket = null
         _isConnected.value = false
     }
 

@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.peasyproxy.app.domain.model.VibrationPattern
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -20,7 +21,7 @@ fun NotificationSettingsScreen(
     onNavigateBack: () -> Unit,
     viewModel: NotificationSettingsViewModel = hiltViewModel()
 ) {
-    val notificationPrefs by viewModel.notificationPreferences.collectAsState()
+    val notificationPrefs by viewModel.notificationPreferences.collectAsStateWithLifecycle()
     var showVibrationDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -164,7 +165,6 @@ private fun NotificationSwitchSetting(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -215,7 +215,7 @@ private fun NotificationClickableSetting(
 
 @Composable
 private fun VibrationPatternDialog(
-    currentPattern: LongArray,
+    currentPattern: List<Long>,
     patterns: List<VibrationPattern>,
     onPatternSelected: (VibrationPattern) -> Unit,
     onDismiss: () -> Unit
@@ -234,7 +234,7 @@ private fun VibrationPatternDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
-                            selected = pattern.pattern.contentEquals(currentPattern),
+                            selected = pattern.pattern == currentPattern,
                             onClick = { onPatternSelected(pattern) }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -254,7 +254,7 @@ private fun VibrationPatternDialog(
     )
 }
 
-private fun getVibrationPatternDisplayName(pattern: LongArray): String {
-    return VibrationPattern.entries.find { it.pattern.contentEquals(pattern) }?.displayName 
+private fun getVibrationPatternDisplayName(pattern: List<Long>): String {
+    return VibrationPattern.entries.find { it.pattern == pattern }?.displayName 
         ?: "Default"
 }

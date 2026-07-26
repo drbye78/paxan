@@ -1,16 +1,8 @@
 import { THRESHOLDS } from '../popup/constants.js';
+import { buildProxyConfig } from '../shared/utils.js';
+import { proxyConfig } from './proxy-config-manager.js';
 
 const MAX_PAGES = 5;
-const BYPASS_LIST = [
-  'localhost', '127.0.0.1', '::1', '*.local',
-  '192.168.*', '10.*', '172.16.*', '172.17.*',
-  '172.18.*', '172.19.*', '172.20.*', '172.21.*',
-  '172.22.*', '172.23.*', '172.24.*', '172.25.*',
-  '172.26.*', '172.27.*', '172.28.*', '172.29.*',
-  '172.30.*', '172.31.*',
-  'chrome-extension://*', 'chrome://*',
-  'https://proxymania.su'
-];
 
 async function fetchProxies() {
   try {
@@ -47,32 +39,47 @@ async function fetchPeasyProxy() {
       ? 'https://proxymania.su/free-proxy' 
       : `https://proxymania.su/free-proxy?page=${page}`;
     
-    const response = await fetch(url);
-    if (!response.ok) break;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     
-    const html = await response.text();
-    const proxies = parsePeasyProxy(html);
-    
-    if (!proxies || proxies.length === 0) break;
-    
-    allProxies.push(...proxies);
-    console.log(`PeasyProxy: Fetched page ${page}, total proxies: ${allProxies.length}`);
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (!response.ok) break;
+      
+      const html = await response.text();
+      const proxies = parsePeasyProxy(html);
+      
+      if (!proxies || proxies.length === 0) break;
+      
+      allProxies.push(...proxies);
+      console.log(`PeasyProxy: Fetched page ${page}, total proxies: ${allProxies.length}`);
+    } catch (error) {
+      clearTimeout(timeoutId);
+      console.error(`PeasyProxy: Failed to fetch page ${page}:`, error.message);
+      break;
+    }
   }
   
   return allProxies;
 }
 
 async function fetchProxyScrape() {
-  const response = await fetch(
-    'https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&format=csv&proxy_type=all&timeout=5000'
-  );
-  
-  if (!response.ok) {
-    throw new Error('Failed to fetch from ProxyScrape: ' + response.statusText);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch(
+      'https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&format=csv&proxy_type=all&timeout=5000',
+      { signal: controller.signal }
+    );
+    clearTimeout(timeoutId);
+    if (!response.ok) throw new Error('Failed to fetch from ProxyScrape: ' + response.statusText);
+    const csvText = await response.text();
+    return parseProxyScrapeCSV(csvText);
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
   }
-  
-  const csvText = await response.text();
-  return parseProxyScrapeCSV(csvText);
 }
 
 function parseProxyScrapeCSV(csvText) {
@@ -201,8 +208,8 @@ function getCountryName(code) {
 function normalizeProxyType(typeStr) {
   const type = typeStr?.toUpperCase() || '';
   if (type.includes('HTTPS') || type.includes('HTTP')) return 'HTTPS';
-  if (type.includes('SOCKS5') || type.includes('SOCKS')) return 'SOCKS5';
   if (type.includes('SOCKS4')) return 'SOCKS4';
+  if (type.includes('SOCKS5') || type.includes('SOCKS')) return 'SOCKS5';
   return 'HTTPS';
 }
 
@@ -238,105 +245,92 @@ function createProxyObject(ip, port, country, type, speed, lastCheck) {
   };
 }
 
-function createProxyConfig(proxy) {
-  return {
-    mode: 'fixed_servers',
-    rules: {
-      singleProxy: {
-        scheme: proxy.type === 'SOCKS5' ? 'socks5' : 'http',
-        host: proxy.ip,
-        port: proxy.port
-      },
-      bypassList: BYPASS_LIST
-    }
-  };
-}
-
-const TestUrls = [
-  'http://www.google.com/generate_204',
-  'https://httpbin.org/ip',
-  'http://connectivitycheck.gstatic.com/generate_204'
-];
-
 async function testProxyConnectivity(proxy, keepProxy = false) {
-  return new Promise((resolve) => {
-    const startTime = Date.now();
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
-    const testConfig = createProxyConfig(proxy);
-    
-    chrome.proxy.settings.set({ value: testConfig, scope: 'regular' }, () => {
-      const testNext = (index = 0) => {
-        if (index >= TestUrls.length) {
+  const startTime = Date.now();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+  if (keepProxy) {
+    // When keepProxy is true, just test through the current proxy config
+    // We assume the proxy is already set
+    try {
+      const response = await fetch('https://httpbin.org/ip', { signal: controller.signal, cache: 'no-store' });
+      clearTimeout(timeoutId);
+      return { success: response.ok, latency: Date.now() - startTime, status: response.status, working: response.ok };
+    } catch {
+      clearTimeout(timeoutId);
+      return { success: false, latency: null, status: null, working: false, error: 'Connection failed' };
+    }
+  }
+
+  const testConfig = buildProxyConfig(proxy);
+  try {
+    const result = await proxyConfig.withTestConfig(testConfig, async () => {
+      // Try multiple endpoints
+      const urls = [
+        'https://httpbin.org/ip',
+        'https://www.google.com/generate_204',
+        'https://connectivitycheck.gstatic.com/generate_204'
+      ];
+      for (const url of urls) {
+        try {
+          const response = await fetch(url, { method: 'HEAD', signal: controller.signal, cache: 'no-store' });
           clearTimeout(timeoutId);
-          if (!keepProxy) {
-            chrome.proxy.settings.clear({ scope: 'regular' }, () => {});
-          }
-          resolve({
-            success: false,
-            latency: null,
-            status: null,
-            working: false,
-            error: 'All test endpoints failed'
-          });
-          return;
-        }
-        
-        fetch(TestUrls[index], {
-          method: 'HEAD',
-          signal: controller.signal,
-          cache: 'no-store'
-        })
-        .then(response => {
-          clearTimeout(timeoutId);
-          const latency = Date.now() - startTime;
-          if (!keepProxy) {
-            chrome.proxy.settings.clear({ scope: 'regular' }, () => {});
-          }
-          
-          resolve({
+          controller.abort(); // stop other attempts
+          return {
             success: response.ok || response.status === 204,
-            latency: latency,
+            latency: Date.now() - startTime,
             status: response.status,
             working: response.ok || response.status === 204,
-            endpoint: TestUrls[index]
-          });
-        })
-        .catch(() => {
-          testNext(index + 1);
-        });
-      };
-      
-      testNext();
-    });
-  });
+            endpoint: url
+          };
+        } catch (e) {
+          if (e.name === 'AbortError') break;
+          // continue to next endpoint
+        }
+      }
+      throw new Error('All test endpoints failed');
+    }, { timeoutMs: 8000, settleMs: 50 });
+    return result;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    return { success: false, latency: null, status: null, working: false, error: error.message };
+  }
 }
 
 async function quickLatencyTest(proxy) {
   const startTime = Date.now();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 3000);
-  
   try {
-    const response = await fetch('https://httpbin.org/ip', {
-      method: 'GET',
-      signal: controller.signal,
-      cache: 'no-store'
-    });
-    clearTimeout(timeoutId);
-    
-    return {
-      success: response.ok,
-      latency: Date.now() - startTime
-    };
+    const testConfig = buildProxyConfig(proxy);
+    return await proxyConfig.withTestConfig(testConfig, async () => {
+      const response = await fetch('https://httpbin.org/ip', {
+        method: 'GET', signal: controller.signal, cache: 'no-store'
+      });
+      clearTimeout(timeoutId);
+      return { success: response.ok, latency: Date.now() - startTime };
+    }, { timeoutMs: 5000, settleMs: 50 });
   } catch (error) {
     clearTimeout(timeoutId);
-    return {
-      success: false,
-      latency: null,
-      error: error.message
-    };
+    return { success: false, latency: null, error: error.message };
+  }
+}
+
+async function testThroughProxy(proxy, url) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  try {
+    const testConfig = buildProxyConfig(proxy);
+    return await proxyConfig.withTestConfig(testConfig, async () => {
+      const response = await fetch(url, { method: 'GET', signal: controller.signal, cache: 'no-store' });
+      clearTimeout(timeoutId);
+      const data = await response.json();
+      return { success: true, ip: data.ip || data.origin };
+    }, { timeoutMs: 12000, settleMs: 50 });
+  } catch (error) {
+    clearTimeout(timeoutId);
+    return { success: false, error: error.message };
   }
 }
 
@@ -350,26 +344,8 @@ export {
   getCountryName,
   normalizeProxyType,
   parseSpeed,
-  createProxyConfig,
+  createProxyObject,
   testProxyConnectivity,
   quickLatencyTest,
-  BYPASS_LIST
+  testThroughProxy
 };
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    fetchProxies,
-    fetchPeasyProxy,
-    fetchProxyScrape,
-    parsePeasyProxy,
-    parseProxyScrapeCSV,
-    parseCSVLine,
-    getCountryName,
-    normalizeProxyType,
-    parseSpeed,
-    createProxyConfig,
-    testProxyConnectivity,
-    quickLatencyTest,
-    BYPASS_LIST
-  };
-}

@@ -1,10 +1,14 @@
 package com.peasyproxy.app.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.peasyproxy.app.domain.model.ProxyProtocol
 
-@Entity(tableName = "proxies")
+@Entity(
+    tableName = "proxies",
+    indices = [Index(value = ["trustScore", "latency"])]
+)
 data class ProxyEntity(
     @PrimaryKey
     val id: String,
@@ -25,7 +29,12 @@ data class ProxyEntity(
     val lastUsed: Long? = null
 )
 
-@Entity(tableName = "connection_logs")
+@Entity(
+    tableName = "connection_logs",
+    indices = [Index("proxyId"), Index("connectedAt")]
+)
+// Note: No FK constraint on proxyId — transient proxies from VpnService Intent
+// extras may be logged before they exist in the proxies table.
 data class ConnectionLogEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,

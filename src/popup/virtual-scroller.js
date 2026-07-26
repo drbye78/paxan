@@ -1,14 +1,16 @@
 class VirtualScroller {
   constructor(container, options = {}) {
     this.container = container;
-    this.itemHeight = options.itemHeight || 72;
+    this.itemHeight = Math.max(1, options.itemHeight || 72);
     this.buffer = options.buffer || 5;
     this.renderItem = options.renderItem || (() => '');
     this.onVisible = options.onVisible || (() => {});
+    this.sanitize = options.sanitize !== false;
     
     this.items = [];
     this.scrollTop = 0;
     this.containerHeight = 0;
+    this._viewportHeight = null;
     this.renderedElements = new Map();
     
     this.handleScroll = this.handleScroll.bind(this);
@@ -24,14 +26,15 @@ class VirtualScroller {
   }
 
   updateDimensions() {
-    this.containerHeight = this.container.innerHeight || this.container.clientHeight;
+    this.containerHeight = this.container.clientHeight;
     this.handleScroll();
   }
 
   setItems(items) {
     this.items = items;
-    // Set container to full height for scrolling
-    this.container.style.height = `${Math.max(items.length * this.itemHeight, this.container.clientHeight)}px`;
+    // Save viewport height before overriding
+    this._viewportHeight = this._viewportHeight || this.container.clientHeight;
+    this.container.style.height = `${Math.max(items.length * this.itemHeight, this._viewportHeight)}px`;
     this.renderAll();
   }
 
@@ -65,7 +68,14 @@ class VirtualScroller {
       if (!this.renderedElements.has(i)) {
         const el = document.createElement('div');
         el.style.height = `${this.itemHeight}px`;
-        el.innerHTML = this.renderItem(this.items[i], i);
+        const raw = this.renderItem(this.items[i], i);
+        if (this.sanitize) {
+          const tmp = document.createElement('div');
+          tmp.textContent = raw;
+          el.innerHTML = tmp.innerHTML;
+        } else {
+          el.innerHTML = raw;
+        }
         this.container.appendChild(el);
         this.renderedElements.set(i, el);
         
@@ -89,7 +99,8 @@ class VirtualScroller {
   }
 
   scrollToBottom() {
-    this.container.scrollTop = this.items.length * this.itemHeight;
+    const viewportHeight = this._viewportHeight || this.container.clientHeight;
+    this.container.scrollTop = Math.max(0, this.items.length * this.itemHeight - viewportHeight);
   }
 
   getVisibleItems() {
@@ -105,6 +116,4 @@ class VirtualScroller {
   }
 }
 
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { VirtualScroller };
-}
+export { VirtualScroller };

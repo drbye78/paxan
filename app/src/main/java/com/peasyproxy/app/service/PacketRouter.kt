@@ -78,8 +78,8 @@ class PacketRouter @Inject constructor() {
         return RouteInfo("dns", 53, isDnsQuery = true)
     }
 
-    fun resolveDomainToIp(domain: String): String? {
-        return try {
+    suspend fun resolveDomainToIp(domain: String): String? = withContext(Dispatchers.IO) {
+        try {
             InetAddress.getByName(domain).hostAddress
         } catch (e: Exception) {
             null
@@ -122,7 +122,15 @@ object IpPacketBuilder {
             data = data
         )
 
-        return ipHeader + tcpHeader + data
+        // Compute TCP checksum over pseudo-header + TCP header + data
+        val srcIpBytes = ipToBytes(srcIp)
+        val dstIpBytes = ipToBytes(dstIp)
+        val tcpSegment = tcpHeader + data
+        val tcpChecksum = calculateChecksum(tcpSegment, 0, tcpSegment.size, srcIpBytes, dstIpBytes, 6)
+        tcpHeader[16] = (tcpChecksum shr 8).toByte()
+        tcpHeader[17] = (tcpChecksum and 0xFF).toByte()
+
+        return ipHeader + tcpSegment
     }
 
     fun buildUdpPacket(
@@ -146,7 +154,15 @@ object IpPacketBuilder {
             length = 8 + payload.size
         )
 
-        return ipHeader + udpHeader + payload
+        // Compute UDP checksum over pseudo-header + UDP header + payload
+        val srcIpBytes = ipToBytes(srcIp)
+        val dstIpBytes = ipToBytes(dstIp)
+        val udpSegment = udpHeader + payload
+        val udpChecksum = calculateChecksum(udpSegment, 0, udpSegment.size, srcIpBytes, dstIpBytes, 17)
+        udpHeader[6] = (udpChecksum shr 8).toByte()
+        udpHeader[7] = (udpChecksum and 0xFF).toByte()
+
+        return ipHeader + udpSegment
     }
 
     private fun buildIpHeader(
@@ -287,5 +303,53 @@ object IpPacketBuilder {
             sum = (sum and 0xFFFF) + (sum shr 16)
         }
         return sum.inv() and 0xFFFF
+    }
+
+    /**
+     * Calculate TCP/UDP checksum using the IP pseudo-header.
+     * [data] is the segment (header + payload) with the checksum field zeroed.
+     */
+    private fun calculateChecksum(
+        data: ByteArray,
+        offset: Int,
+        length: Int,
+        srcAddr: ByteArray,
+        dstAddr: ByteArray,
+        protocol: Int
+    ): Int {
+        var sum = 0
+
+        // Pseudo-header: source IP
+        for (i in 0 until srcAddr.size step 2) {
+            sum += ((srcAddr[i].toInt() and 0xFF) shl 8) or (srcAddr[i + 1].toInt() and 0xFF)
+        }
+        // Pseudo-header: dest IP
+        for (i in 0 until dstAddr.size step 2) {
+            sum += ((dstAddr[i].toInt() and 0xFF) shl 8) or (dstAddr[i + 1].toInt() and 0xFF)
+        }
+        // Zero + protocol
+        sum += protocol
+        // Length of TCP/UDP segment (header + payload)
+        sum += length
+
+        // TCP/UDP header + payload
+        for (i in offset until offset + length step 2) {
+            if (i + 1 < offset + length) {
+                sum += ((data[i].toInt() and 0xFF) shl 8) or (data[i + 1].toInt() and 0xFF)
+            } else {
+                sum += (data[i].toInt() and 0xFF) shl 8
+            }
+        }
+
+        // Fold 32-bit sum to 16-bit
+        while (sum shr 16 > 0) {
+            sum = (sum and 0xFFFF) + (sum shr 16)
+        }
+
+        return sum.inv() and 0xFFFF
+    }
+
+    private fun ipToBytes(ip: String): ByteArray {
+        return ip.split(".").map { it.toInt().toByte() }.toByteArray()
     }
 }

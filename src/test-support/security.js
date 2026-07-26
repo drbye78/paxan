@@ -74,6 +74,13 @@ function validateProxyUrl(url) {
 function validateProxyAuth(auth) {
   if (!auth) return true; // Auth is optional
   
+  // Accept string format "user:pass" or object {username, password}
+  if (typeof auth === 'string') {
+    const parts = auth.split(':');
+    if (parts.length !== 2) return false;
+    return validateProxyAuth({ username: parts[0], password: parts[1] });
+  }
+  
   if (typeof auth !== 'object') return false;
   
   // Sanitize username and password
@@ -264,7 +271,8 @@ function base64ToArrayBuffer(base64) {
   return bytes.buffer;
 }
 
-export async function encryptProxyData(data, password = 'PeasyProxySecureKey') {
+export async function encryptProxyData(data, password) {
+  if (!password) throw new Error('Password is required');
   if (!data) return null;
   
   try {
@@ -292,7 +300,8 @@ export async function encryptProxyData(data, password = 'PeasyProxySecureKey') {
   }
 }
 
-export async function decryptProxyData(encryptedData, password = 'PeasyProxySecureKey') {
+export async function decryptProxyData(encryptedData, password) {
+  if (!password) throw new Error('Password is required');
   if (!encryptedData) return null;
   
   try {
@@ -374,7 +383,7 @@ function sanitizeProxyForDisplay(proxy) {
     country: sanitizeString(proxy.country),
     type: sanitizeString(proxy.type),
     speed: sanitizeString(proxy.speed),
-    ipPort: sanitizeString(proxy.ipPort)
+    ipPort: proxy.ipPort || (proxy.ip && proxy.port ? `${proxy.ip}:${proxy.port}` : undefined)
   };
 }
 
@@ -476,29 +485,22 @@ class SecurityManager {
   }
 }
 
-// Export all functions
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    // Validation functions
-    validateProxyInput,
-    validateProxyPort,
-    validateProxyType,
-    validateProxyUrl,
-    validateProxyAuth,
-    validateProxySource,
-    validateStorageData,
-    
-    // Sanitization functions
-    sanitizeProxyData,
-    sanitizeProxyForDisplay,
-    filterMaliciousProxies,
-    
-    // Security functions
-    rateLimitProxyFetch,
-    rateLimitConnection,
-    encryptProxyData,
-    decryptProxyData,
-    handleProxyError,
-    logProxyActivity
-  };
-}
+export {
+  validateProxyInput,
+  validateProxyPort,
+  validateProxyType,
+  validateProxyUrl,
+  validateProxyAuth,
+  validateProxySource,
+  validateStorageData,
+  sanitizeProxyData,
+  sanitizeProxyForDisplay,
+  filterMaliciousProxies,
+  rateLimitProxyFetch,
+  rateLimitConnection,
+  handleProxyError,
+  logProxyActivity,
+  SecurityManager
+};
+
+

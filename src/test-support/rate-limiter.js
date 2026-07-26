@@ -62,7 +62,3 @@ function throttle(fn, limit) {
 }
 
 export { RateLimiter, proxyFetchLimiter, proxyTestLimiter, debounce, throttle };
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { RateLimiter, proxyFetchLimiter, proxyTestLimiter, debounce, throttle };
-}

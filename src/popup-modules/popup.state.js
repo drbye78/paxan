@@ -170,10 +170,18 @@ async function loadAllState() {
       onboardingState = { ...onboardingState, ...result.onboarding };
     }
 
-    // Set connection state
-    if (currentProxy) {
-      connectionStartTime = result.connectionStartTime;
+    // Load proxy reputation from background
+    try {
+      const repResult = await chrome.runtime.sendMessage({ action: 'getAllReputation' });
+      if (repResult) {
+        proxyReputation = repResult;
+      }
+    } catch (e) {
+      console.warn('Could not load proxy reputation:', e.message);
     }
+
+    // NOTE: Removed duplicate connectionStartTime assignment (was lines 184-186).
+    // The first assignment at line 137-138 is sufficient.
   } catch (error) {
     console.error('Error loading all state:', error);
   }
@@ -198,6 +206,11 @@ async function saveAllState() {
   } catch (error) {
     console.error('Error saving all state:', error);
   }
+}
+
+// Flush state: guaranteed to return the save promise so callers can await it.
+function flushState() {
+  return saveAllState();
 }
 
 // ============================================================================
@@ -313,12 +326,52 @@ function setOnboardingState(state) {
   onboardingState = { ...onboardingState, ...state };
 }
 
+function setLanguage(lang) {
+  settings.language = lang;
+  document.documentElement.setAttribute('lang', lang);
+  // Update i18n messages if the i18n module is available
+  try {
+    const messages = document.querySelector(`script[src*="i18n"]`);
+    // i18n is handled by the i18n.js module - just persist the setting
+  } catch {}
+}
+
+// ============================================================================
+// MONITORING / DISCONNECT STATE GETTERS AND SETTERS
+// ============================================================================
+
+function getMonitoringActive() {
+  return monitoringActive;
+}
+
+function setMonitoringActive(value) {
+  monitoringActive = value;
+}
+
+function getLastDisconnectedProxy() {
+  return lastDisconnectedProxy;
+}
+
+function setLastDisconnectedProxy(proxy) {
+  lastDisconnectedProxy = proxy;
+}
+
+function getDisconnectTimeout() {
+  return disconnectTimeout;
+}
+
+function setDisconnectTimeout(timeout) {
+  disconnectTimeout = timeout;
+}
+
 // ============================================================================
 // PROXY OPERATIONS
 // ============================================================================
 
 function setProxies(newProxies) {
   proxies = newProxies;
+  // Persist proxies to chrome.storage.local for consistency with addProxy/removeProxy
+  chrome.storage.local.set({ proxies }).catch(console.error);
 }
 
 function getProxies() {
@@ -327,17 +380,22 @@ function getProxies() {
 
 function addProxy(proxy) {
   proxies.push(proxy);
+  chrome.storage.local.set({ proxies }).catch(console.error);
 }
 
 function removeProxy(proxyIpPort) {
   proxies = proxies.filter(p => p.ipPort !== proxyIpPort);
+  chrome.storage.local.set({ proxies }).catch(console.error);
 }
 
 // Favorite operations
 async function toggleFavorite(proxy) {
   const idx = favorites.findIndex(f => f.ipPort === proxy.ipPort);
   if (idx === -1) {
-    favorites.push({ ...proxy, favoritedAt: Date.now() });
+    // Deep-clone to avoid shared reference mutations
+    const clone = structuredClone(proxy);
+    clone.favoritedAt = Date.now();
+    favorites.push(clone);
   } else {
     favorites.splice(idx, 1);
   }
@@ -353,7 +411,7 @@ function isFavorite(proxy) {
 async function addToRecentlyUsed(proxy) {
   try {
     const filtered = recentlyUsed.filter(r => r && r.proxy && r.proxy.ipPort !== proxy.ipPort);
-    filtered.unshift({ proxy: { ...proxy }, lastUsed: Date.now() });
+    filtered.unshift({ proxy: structuredClone(proxy), lastUsed: Date.now() });
     recentlyUsed = filtered.slice(0, 10);
     await chrome.storage.local.set({ recentlyUsed });
   } catch (error) {
@@ -392,6 +450,7 @@ export {
   // Functions
   loadAllState,
   saveAllState,
+  flushState,
   getCurrentProxy,
   setCurrentProxy,
   getConnectionStartTime,
@@ -419,6 +478,12 @@ export {
   setAutoRotation,
   getOnboardingState,
   setOnboardingState,
+  getMonitoringActive,
+  setMonitoringActive,
+  getLastDisconnectedProxy,
+  setLastDisconnectedProxy,
+  getDisconnectTimeout,
+  setDisconnectTimeout,
   setProxies,
   getProxies,
   addProxy,
@@ -427,5 +492,6 @@ export {
   isFavorite,
   addToRecentlyUsed,
   getProxyReputation,
-  setProxyReputation
+  setProxyReputation,
+  setLanguage
 };

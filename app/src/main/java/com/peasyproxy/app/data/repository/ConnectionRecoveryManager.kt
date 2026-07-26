@@ -9,7 +9,6 @@ import com.peasyproxy.app.service.VpnService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -53,7 +52,7 @@ class ConnectionRecoveryManager @Inject constructor(
                     break
                 } else {
                     if (attempt < maxRetries) {
-                        val delayMs = baseDelayMs * (2 shl (attempt - 1))
+                        val delayMs = baseDelayMs * (1L shl (attempt - 1))
                         delay(delayMs)
                     }
                 }
@@ -85,11 +84,7 @@ class ConnectionRecoveryManager @Inject constructor(
             proxy.password?.let { putExtra(VpnService.EXTRA_PROXY_PASSWORD, it) }
         }
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            context.startForegroundService(intent)
-        } else {
-            context.startService(intent)
-        }
+        context.startForegroundService(intent)
     }
 
     private suspend fun isConnectionRestored(): Boolean {

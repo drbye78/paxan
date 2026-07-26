@@ -18,6 +18,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.peasyproxy.app.domain.model.Statistics
 import com.peasyproxy.app.ui.screens.home.formatBytes
+import kotlin.math.roundToInt
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -72,9 +73,9 @@ fun StatisticsDetailScreen(
                         Column(
                             modifier = Modifier.padding(start = 24.dp)
                         ) {
-                            StatRow("Successful", "${statistics.successRate.toInt()}%", Color(0xFF4CAF50))
-                            Spacer(modifier = Modifier.height(8.dp))
-                            StatRow("Failed", "${(100 - statistics.successRate).toInt()}%", Color(0xFFF44336))
+StatRow("Successful", "${statistics.successRate.roundToInt()}%", MaterialTheme.colorScheme.primary)
+Spacer(modifier = Modifier.height(8.dp))
+StatRow("Failed", "${(100 - statistics.successRate).roundToInt()}%", MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -159,8 +160,8 @@ fun PieChart(
     successRate: Float,
     modifier: Modifier = Modifier
 ) {
-    val successColor = Color(0xFF4CAF50)
-    val failureColor = Color(0xFFF44336)
+    val successColor = MaterialTheme.colorScheme.primary
+    val failureColor = MaterialTheme.colorScheme.error
 
     Canvas(modifier = modifier) {
         val strokeWidth = 20f
@@ -198,8 +199,8 @@ fun DataUsageBar(
     val total = received + sent
     val receivedRatio = if (total > 0) received.toFloat() / total else 0.5f
 
-    val receivedColor = Color(0xFF2196F3)
-    val sentColor = Color(0xFFFF9800)
+    val receivedColor = MaterialTheme.colorScheme.primary
+    val sentColor = MaterialTheme.colorScheme.tertiary
 
     Canvas(modifier = modifier) {
         val barHeight = size.height

@@ -1,3 +1,6 @@
+// PeasyProxy - Reputation Engine
+// Tracks proxy trust scores based on test history
+
 import { THRESHOLDS, TRUST_THRESHOLDS, REPUTATION_WEIGHTS } from '../popup/constants.js';
 
 const REPUTATION_KEY = 'proxyReputation';
@@ -7,14 +10,19 @@ const MAX_TEST_AGE_DAYS = 7;
 class ReputationEngine {
   constructor() {
     this.reputation = {};
+    this._initialized = false;
+    this._saveTimer = null;
   }
 
   async init() {
     const result = await chrome.storage.local.get([REPUTATION_KEY]);
     this.reputation = result[REPUTATION_KEY] || {};
+    this._initialized = true;
   }
 
   async save() {
+    // Guard: never save empty/uninitialized data over existing storage
+    if (!this._initialized) return;
     await chrome.storage.local.set({ [REPUTATION_KEY]: this.reputation });
   }
 
@@ -23,89 +31,85 @@ class ReputationEngine {
   }
 
   async recordTest(proxy, success, latency) {
-    const key = this.getKey(proxy.ipPort);
-    
+    const key = typeof proxy === 'string' ? proxy : proxy.ipPort;
+
     if (!this.reputation[key]) {
-      this.reputation[key] = this.createEmptyReputation(proxy);
+      this.reputation[key] = {
+        trustScore: 50,
+        latencyHistory: [],
+        successCount: 0,
+        failureCount: 0,
+        consecutiveFailures: 0,
+        lastTested: null,
+        tampered: false,
+        ip: proxy.ip,
+        port: proxy.port,
+        ipPort: proxy.ipPort || key,
+        country: proxy.country || null,
+        type: proxy.type || null,
+        successRate: 0,
+        httpsOnly: proxy.type === 'HTTPS',
+        firstSeen: Date.now()
+      };
     }
-    
+
     const rep = this.reputation[key];
-    rep.totalTests++;
-    
+    rep.lastTested = Date.now();
+
     if (success) {
-      rep.successes++;
-      rep.lastSuccess = Date.now();
-      
-      if (latency) {
+      rep.successCount++;
+      rep.consecutiveFailures = 0;
+      if (latency != null && !Number.isNaN(latency)) {
         rep.latencyHistory.push(latency);
         if (rep.latencyHistory.length > MAX_LATENCY_HISTORY) {
           rep.latencyHistory.shift();
         }
-        rep.avgLatency = Math.round(
-          rep.latencyHistory.reduce((a, b) => a + b, 0) / rep.latencyHistory.length
-        );
+        // Filter NaN values before averaging
+        rep.latencyHistory = rep.latencyHistory.filter(v => typeof v === 'number' && !isNaN(v));
+        rep.avgLatency = rep.latencyHistory.length > 0
+          ? Math.round(
+              rep.latencyHistory.reduce((a, b) => a + b, 0) / rep.latencyHistory.length
+            )
+          : null;
       }
     } else {
-      rep.failures++;
+      rep.failureCount++;
       rep.consecutiveFailures++;
-      rep.lastFailure = Date.now();
     }
-    
-    rep.lastTested = Date.now();
-    
-    if (success) {
-      rep.consecutiveFailures = 0;
-    }
-    
-    rep.successRate = Math.round((rep.successes / rep.totalTests) * 100);
-    rep.uptime = this.calculateUptime(rep);
-    
-    await this.save();
+
+    // Recalculate derived fields
+    const totalTests = rep.successCount + rep.failureCount;
+    rep.successRate = totalTests > 0 ? Math.round((rep.successCount / totalTests) * 100) : 0;
+
+    // Backward-compatible aliases for existing tests and callers
+    rep.totalTests = totalTests;
+    rep.successes = rep.successCount;
+    rep.failures = rep.failureCount;
+    rep.tamperDetected = rep.tampered;
+
+    // Recalculate trust score
+    rep.trustScore = this.calculateScore(key);
+
+    // Debounce: save at most once per 5 seconds
+    this._scheduleSave();
+
     return rep;
+  }
+
+  _scheduleSave() {
+    if (this._saveTimer) return;
+    this._saveTimer = setTimeout(() => {
+      this._saveTimer = null;
+      this.save().catch(() => {});
+    }, 5000);
   }
 
   async recordFailure(proxy, error) {
     return this.recordTest(proxy, false, null);
   }
 
-  createEmptyReputation(proxy) {
-    return {
-      ip: proxy.ip,
-      port: proxy.port,
-      ipPort: proxy.ipPort,
-      country: proxy.country,
-      type: proxy.type,
-      
-      totalTests: 0,
-      successes: 0,
-      failures: 0,
-      successRate: 0,
-      
-      latencyHistory: [],
-      avgLatency: null,
-      
-      consecutiveFailures: 0,
-      uptime: 0,
-      
-      tamperDetected: false,
-      httpsOnly: proxy.type === 'HTTPS',
-      
-      firstSeen: Date.now(),
-      lastTested: Date.now(),
-      lastSuccess: null,
-      lastFailure: null,
-      
-      reputationScore: 0
-    };
-  }
-
   calculateUptime(rep) {
-    const hourMs = 3600000;
-    const now = Date.now();
-    const hourAgo = now - hourMs;
-    
     if (!rep.totalTests || rep.totalTests === 0) return 0;
-    
     return Math.max(0, Math.round((rep.successes / rep.totalTests) * 100));
   }
 
@@ -115,27 +119,28 @@ class ReputationEngine {
   }
 
   calculateScore(proxy) {
-    const rep = this.reputation[proxy.ipPort];
+    const key = typeof proxy === 'string' ? proxy : proxy.ipPort;
+    const rep = this.reputation[key];
     if (!rep) return 30;
-    
+
     const speedScore = this.calculateSpeedScore(rep.avgLatency);
     const reliabilityScore = rep.successRate || 0;
     const trustScore = this.calculateTrustScore(rep);
     const freshnessScore = this.calculateFreshnessScore(rep.lastTested);
-    
+
     const score = Math.round(
       (speedScore * REPUTATION_WEIGHTS.SPEED) +
       (reliabilityScore * REPUTATION_WEIGHTS.RELIABILITY) +
       (trustScore * REPUTATION_WEIGHTS.TRUST) +
       (freshnessScore * REPUTATION_WEIGHTS.FRESHNESS)
     );
-    
+
     rep.reputationScore = score;
     return score;
   }
 
   calculateSpeedScore(latency) {
-    if (!latency || latency === null) return 50;
+    if (latency == null || Number.isNaN(latency)) return 50;
     if (latency < 50) return 100;
     if (latency > 2000) return 0;
     return Math.max(0, Math.round(100 - latency / 20));
@@ -143,26 +148,26 @@ class ReputationEngine {
 
   calculateTrustScore(rep) {
     let score = 50;
-    
+
     if (rep.httpsOnly) score += 20;
     if (!rep.tamperDetected) score += 15;
-    if (rep.uptime > 90) score += 10;
+    if (rep.successRate > 90) score += 10;
     if (rep.totalTests > 10) score += 5;
-    
+
     return Math.min(100, score);
   }
 
   calculateFreshnessScore(lastTested) {
     if (!lastTested) return 50;
-    
+
     const now = Date.now();
     const hourMs = 3600000;
     const hoursSinceTest = (now - lastTested) / hourMs;
-    
+
     if (hoursSinceTest < 1) return 100;
     if (hoursSinceTest > 24) return 30;
-    
-    return Math.round(100 - (hoursSinceTest * 3));
+
+    return Math.max(0, Math.round(100 - (hoursSinceTest * 3)));
   }
 
   getTrustedProxies(threshold = TRUST_THRESHOLDS.UNVERIFIED) {
@@ -195,10 +200,10 @@ class ReputationEngine {
         suspiciousCount: 0
       };
     }
-    
+
     const scores = reps.map(r => r.reputationScore);
     const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-    
+
     return {
       totalProxies: reps.length,
       avgScore,
@@ -210,19 +215,15 @@ class ReputationEngine {
   async clearOldData() {
     const now = Date.now();
     const maxAge = MAX_TEST_AGE_DAYS * 24 * 3600000;
-    
+
     for (const [key, rep] of Object.entries(this.reputation)) {
       if (now - rep.lastTested > maxAge) {
         delete this.reputation[key];
       }
     }
-    
+
     await this.save();
   }
 }
 
 export { ReputationEngine };
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { ReputationEngine };
-}

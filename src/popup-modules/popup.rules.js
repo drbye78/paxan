@@ -1,7 +1,8 @@
 // PeasyProxy - URL Rules UI Module
 // Implements whitelist/blacklist UI with add/remove URLs, import/export, and pattern testing
 
-const { THRESHOLDS } = require('../popup/constants.js');
+import { escapeHtml, truncate } from '../shared/utils.js';
+import { THRESHOLDS } from '../popup/constants.js';
 
 // ============================================================================
 // RULES LIST RENDERING
@@ -35,7 +36,7 @@ function renderUrlRules(urlRules) {
                 <div class="rule-info">
                   <div class="rule-pattern">
                     <span class="rule-type-icon">${getRuleTypeIcon(rule.type)}</span>
-                    <span class="rule-pattern-text">${rule.pattern}</span>
+                    <span class="rule-pattern-text">${escapeHtml(rule.pattern)}</span>
                   </div>
                   <div class="rule-details">
                     ${rule.proxyIpPort ? `<span class="rule-proxy">🔗 ${truncate(rule.proxyIpPort, 20)}</span>` : ''}
@@ -79,7 +80,7 @@ function renderRuleEditor(rule = null, availableProxies = []) {
             <label for="rulePattern">URL Pattern:</label>
             <input type="text" id="rulePattern" class="input" 
               placeholder="e.g., *.netflix.com or /tracking\\.js$/"
-              value="${isEdit ? rule.pattern : ''}">
+              value="${isEdit ? escapeHtml(rule.pattern) : ''}">
             <div class="input-hint">Use * for wildcards, /regex/ for patterns</div>
           </div>
           <div class="form-group">
@@ -125,7 +126,7 @@ function renderRuleEditor(rule = null, availableProxies = []) {
           <div class="dialog-actions">
             <button class="btn btn-secondary" id="cancelRuleEdit">Cancel</button>
             <button class="btn btn-ghost" id="testRulePattern">Test Pattern</button>
-            <button class="btn btn-primary" id="saveRule" data-rule-id="${isEdit ? rule.id : ''}">
+            <button class="btn btn-primary" id="saveRule" data-rule-id="${isEdit ? escapeHtml(String(rule.id)) : ''}">
               ${isEdit ? 'Update' : 'Add'} Rule
             </button>
           </div>
@@ -196,7 +197,7 @@ function renderPatternTestDialog(pattern = '', type = 'wildcard') {
         <div class="dialog-content">
           <div class="form-group">
             <label>Pattern:</label>
-            <div class="pattern-display">${pattern}</div>
+            <div class="pattern-display">${escapeHtml(pattern)}</div>
           </div>
           <div class="form-group">
             <label for="testUrl">Test URL:</label>
@@ -209,7 +210,7 @@ function renderPatternTestDialog(pattern = '', type = 'wildcard') {
           </div>
           <div class="dialog-actions">
             <button class="btn btn-secondary" id="cancelTest">Cancel</button>
-            <button class="btn btn-primary" id="runTest" data-pattern="${pattern}" data-type="${type}">
+            <button class="btn btn-primary" id="runTest" data-pattern="${escapeHtml(pattern)}" data-type="${escapeHtml(type)}">
               Test
             </button>
           </div>
@@ -330,13 +331,6 @@ function getRuleTypeIcon(type) {
   return icons[type] || '🎯';
 }
 
-// Truncate string
-function truncate(str, maxLength) {
-  if (!str) return '';
-  if (str.length <= maxLength) return str;
-  return str.slice(0, maxLength - 3) + '...';
-}
-
 // ============================================================================
 // EVENT HANDLERS
 // ============================================================================
@@ -395,22 +389,17 @@ function handleImportRules(rules, merge, callback) {
 // EXPORTS
 // ============================================================================
 
-module.exports = {
-  // Rendering
+export {
   renderUrlRules,
   renderRuleEditor,
   renderImportExportDialog,
   renderPatternTestDialog,
   renderTestResult,
   renderRulesStats,
-  
-  // Helpers
   groupRulesByAction,
   getActionLabel,
   getRuleTypeIcon,
   truncate,
-  
-  // Event handlers
   handleSaveRule,
   handleDeleteRule,
   handleToggleRule,

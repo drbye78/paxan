@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -35,43 +36,46 @@ class QuickSettingsTileService : TileService() {
         super.onClick()
 
         scope.launch {
-            val state = vpnStateRepository.state.first()
+            try {
+                qsTile?.state = Tile.STATE_UNAVAILABLE
+                qsTile?.updateTile()
 
-            if (state.isConnected) {
-                disconnect()
-            } else {
-                connect()
+                val state = vpnStateRepository.state.first()
+
+                if (state.isConnected) {
+                    disconnect()
+                } else {
+                    connect()
+                }
+
+                val newState = vpnStateRepository.state.first()
+                qsTile?.state = if (newState.isConnected) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
+            } catch (e: Exception) {
+                Timber.e(e, "Tile action failed")
             }
-
             updateTile()
         }
     }
 
-    private fun connect() {
-        scope.launch {
-            try {
-                val state = vpnStateRepository.state.first()
-                val proxy = state.currentProxy ?: getDefaultProxy()
+    private suspend fun connect() {
+        val state = vpnStateRepository.state.first()
+        val proxy = state.currentProxy ?: getDefaultProxy()
 
-                if (proxy != null) {
-                    val intent = Intent(this@QuickSettingsTileService, VpnService::class.java).apply {
-                        action = com.peasyproxy.app.service.VpnService.ACTION_CONNECT
-                        putExtra(com.peasyproxy.app.service.VpnService.EXTRA_PROXY_HOST, proxy.host)
-                        putExtra(com.peasyproxy.app.service.VpnService.EXTRA_PROXY_PORT, proxy.port)
-                        putExtra(com.peasyproxy.app.service.VpnService.EXTRA_PROXY_PROTOCOL, proxy.protocol.name)
-                        proxy.username?.let { putExtra(com.peasyproxy.app.service.VpnService.EXTRA_PROXY_USERNAME, it) }
-                        proxy.password?.let { putExtra(com.peasyproxy.app.service.VpnService.EXTRA_PROXY_PASSWORD, it) }
-                    }
-
-                    startForegroundService(intent)
-                }
-            } catch (e: Exception) {
-                // Handle error
+        if (proxy != null) {
+            val intent = Intent(this@QuickSettingsTileService, VpnService::class.java).apply {
+                action = com.peasyproxy.app.service.VpnService.ACTION_CONNECT
+                putExtra(com.peasyproxy.app.service.VpnService.EXTRA_PROXY_HOST, proxy.host)
+                putExtra(com.peasyproxy.app.service.VpnService.EXTRA_PROXY_PORT, proxy.port)
+                putExtra(com.peasyproxy.app.service.VpnService.EXTRA_PROXY_PROTOCOL, proxy.protocol.name)
+                proxy.username?.let { putExtra(com.peasyproxy.app.service.VpnService.EXTRA_PROXY_USERNAME, it) }
+                proxy.password?.let { putExtra(com.peasyproxy.app.service.VpnService.EXTRA_PROXY_PASSWORD, it) }
             }
+
+            startForegroundService(intent)
         }
     }
 
-    private fun disconnect() {
+    private suspend fun disconnect() {
         val intent = Intent(this, VpnService::class.java).apply {
             action = com.peasyproxy.app.service.VpnService.ACTION_DISCONNECT
         }
@@ -109,5 +113,6 @@ class QuickSettingsTileService : TileService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        scope.cancel()
     }
 }

@@ -15,12 +15,12 @@ This project has two versions to manage:
 
 ### Version Commands
 
-#### Chrome Extension (npm)
+#### Chrome Extension (pnpm)
 ```bash
-npm version patch  # 3.0.5 → 3.0.6
-npm version minor  # 3.0.5 → 3.1.0
-npm version major  # 3.0.5 → 4.0.0
-npm version 1.2.3  # Specific version
+pnpm version patch  # 3.0.5 → 3.0.6
+pnpm version minor  # 3.0.5 → 3.1.0
+pnpm version major  # 3.0.5 → 4.0.0
+pnpm version 1.2.3  # Specific version
 ```
 
 #### Android App (Gradle)
@@ -41,7 +41,7 @@ npm version 1.2.3  # Specific version
 
 ```bash
 # 1. Update version for BOTH projects
-npm version patch              # Updates Chrome + creates tag
+pnpm version patch              # Updates Chrome + creates tag
 ./gradlew bumpPatch            # Updates Android versionName + increments versionCode
 
 # 2. Commit and push to trigger automated release
@@ -62,10 +62,10 @@ GitHub Actions will automatically:
 export GITHUB_TOKEN=ghp_...
 
 # 2. Build and publish
-npm run release
+pnpm run release
 
 # Or create as draft for review
-npm run release:draft
+ppnpm release:draft
 ```
 
 ---
@@ -97,13 +97,13 @@ cat proxy-vpn-extension.pem
 
 ```bash
 # Build both ZIP and CRX
-npm run distribute
+pnpm distribute
 
 # Build ZIP only (Chrome Web Store)
-npm run distribute:zip
+pnpm distribute:zip
 
 # Build CRX only (sideloading)
-npm run distribute:crx
+pnpm distribute:crx
 ```
 
 ### Android App
@@ -140,10 +140,10 @@ npm run distribute:crx
 
 ### Release Checklist
 
-- [ ] Update version: `npm version patch` + `./gradlew bumpPatch`
+- [ ] Update version: `pnpm version patch` + `./gradlew bumpPatch`
 - [ ] Update `CHANGELOG.md` with changes
-- [ ] Run tests: `npm test` + `./gradlew test`
-- [ ] Build distribution: `npm run distribute` + `./gradlew assembleRelease`
+- [ ] Run tests: `pnpm test` + `./gradlew test`
+- [ ] Build distribution: `pnpm distribute` + `./gradlew assembleRelease`
 - [ ] Test built packages locally
 - [ ] Commit changes: `git add -A && git commit -m "release: vX.X.X"`
 - [ ] Push with tags: `git push --follow-tags`
@@ -249,7 +249,7 @@ export GITHUB_TOKEN=ghp_...
 ### "crx3 not found"
 
 ```bash
-npm install -g crx3
+pnpm add -g crx3
 ```
 
 ### "Release already exists"

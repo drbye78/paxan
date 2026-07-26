@@ -15,8 +15,8 @@ interface StatisticsDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdate(statistics: StatisticsEntity)
 
-    @Query("UPDATE statistics SET totalConnections = totalConnections + 1, lastUpdated = :timestamp WHERE id = 1")
-    suspend fun incrementConnectionCount(timestamp: Long)
+    @Query("UPDATE statistics SET lastUpdated = :timestamp WHERE id = 1")
+    suspend fun touchStatistics(timestamp: Long)
 
     @Query("UPDATE statistics SET totalDataReceived = totalDataReceived + :bytes, totalBytesTransferred = totalBytesTransferred + :bytes, lastUpdated = :timestamp WHERE id = 1")
     suspend fun addDataReceived(bytes: Long, timestamp: Long)

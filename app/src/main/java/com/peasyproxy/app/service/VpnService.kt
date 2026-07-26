@@ -10,6 +10,7 @@ import android.os.ParcelFileDescriptor
 import androidx.core.app.NotificationCompat
 import com.peasyproxy.app.R
 import com.peasyproxy.app.data.repository.SettingsRepository
+import com.peasyproxy.app.data.repository.VpnStateRepository
 import com.peasyproxy.app.domain.model.ConnectionConfig
 import com.peasyproxy.app.domain.model.ConnectionInfo
 import com.peasyproxy.app.domain.model.ConnectionState
@@ -21,9 +22,13 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.nio.ByteBuffer
+import java.net.InetSocketAddress
+import java.net.Proxy as JavaProxy
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -35,10 +40,20 @@ class VpnService : VpnService() {
     @Inject
     lateinit var settingsRepository: SettingsRepository
 
+    @Inject
+    lateinit var vpnStateRepository: VpnStateRepository
+
+    @Inject
+    lateinit var okHttpClient: OkHttpClient
+
+    @Inject
+    lateinit var splitTunnelManager: SplitTunnelManager
+
     private var vpnInterface: ParcelFileDescriptor? = null
     private var isRunning = false
     private var connectionJob: Job? = null
     private var packetProcessingJob: Job? = null
+    private var healthPollingJob: Job? = null
     
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -61,6 +76,8 @@ class VpnService : VpnService() {
         private const val VPN_ROUTE = "0.0.0.0"
         private const val VPN_MTU = 1500
         private const val DNS_SERVER = "8.8.8.8"
+        private const val HEALTH_CHECK_INTERVAL = 30_000L
+        private const val TEST_CONNECTIVITY_URL = "https://httpbin.org/ip"
     }
 
     override fun onCreate() {
@@ -82,7 +99,7 @@ class VpnService : VpnService() {
                         id = "${host}:${port}:$protocol",
                         host = host,
                         port = port,
-                        protocol = try { ProxyProtocol.valueOf(protocol) } catch (e: Exception) { ProxyProtocol.HTTP },
+                        protocol = try { ProxyProtocol.valueOf(protocol) } catch (e: IllegalArgumentException) { ProxyProtocol.HTTP },
                         username = username,
                         password = password
                     )
@@ -108,11 +125,12 @@ class VpnService : VpnService() {
 
         connectionJob = serviceScope.launch {
             try {
-                val settings = settingsRepository.settingsFlow.first()
-                
+                vpnStateRepository.setConnecting(proxy)
+
                 val config = ConnectionConfig(
                     proxy = proxy,
-                    dnsPrimary = if (settings.selectedTestEndpoints.isNotEmpty()) "8.8.8.8" else settings.selectedTestEndpoints.firstOrNull() ?: "8.8.8.8",
+                    dnsPrimary = "8.8.8.8",
+                    dnsSecondary = "8.8.4.4",
                     routeAllTraffic = true
                 )
 
@@ -122,11 +140,19 @@ class VpnService : VpnService() {
                     setupVpnInterface(config)
                     startForeground(NOTIFICATION_ID, buildNotification(proxy, true))
                     startPacketProcessing()
+
+                    // Probe connectivity through proxy before declaring CONNECTED
+                    val probeOk = probeProxyConnectivity(proxy)
+                    if (!probeOk) {
+                        throw Exception("Proxy connectivity probe failed")
+                    }
                     
                     _connectionInfo.value = _connectionInfo.value.copy(
                         state = ConnectionState.CONNECTED,
                         connectedSince = System.currentTimeMillis()
                     )
+                    vpnStateRepository.setConnected(proxy)
+                    startHealthPolling()
                 } else {
                     throw Exception("Failed to connect to proxy")
                 }
@@ -136,6 +162,7 @@ class VpnService : VpnService() {
                     state = ConnectionState.ERROR,
                     errorMessage = e.message
                 )
+                vpnStateRepository.setError(e.message)
                 stopVpn()
             }
         }
@@ -155,6 +182,10 @@ class VpnService : VpnService() {
 
         builder.setBlocking(true)
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            splitTunnelManager.applyConfig(builder)
+        }
+
         vpnInterface = builder.establish()
         
         if (vpnInterface == null) {
@@ -172,56 +203,113 @@ class VpnService : VpnService() {
     private suspend fun processPackets() {
         val vpnFd = vpnInterface?.fileDescriptor ?: return
         
-        while (isRunning && kotlinx.coroutines.currentCoroutineContext().isActive) {
-            try {
-                val buffer = ByteBuffer.allocate(VPN_MTU)
-                
-                val inputStream = FileInputStream(vpnFd)
-                val outputStream = FileOutputStream(vpnFd)
-                
-                val readDispatcher = serviceScope.launch(Dispatchers.IO) {
+        FileInputStream(vpnFd).use { inputStream ->
+            FileOutputStream(vpnFd).use { outputStream ->
+                while (isRunning && currentCoroutineContext().isActive) {
                     try {
-                        val packet = ByteArray(VPN_MTU)
-                        val bytesRead = inputStream.read(packet)
-                        
-                        if (bytesRead > 0) {
-                            val packetData = packet.copyOf(bytesRead)
-                            
-                            if (PacketParser.isDnsPacket(packetData)) {
-                                // Handle DNS packets
+                        val readDispatcher = serviceScope.launch(Dispatchers.IO) {
+                            try {
+                                val packet = ByteArray(VPN_MTU)
+                                val bytesRead = inputStream.read(packet)
+                                
+                                if (bytesRead > 0) {
+                                    val packetData = packet.copyOf(bytesRead)
+                                    
+                                    if (PacketParser.isDnsPacket(packetData)) {
+                                        // Handle DNS packets
+                                    }
+                                    
+                                    vpnController.sendPacket(packetData)
+                                }
+                            } catch (e: Exception) {
+                                if (isRunning) {
+                                    handleConnectionError(e)
+                                }
                             }
-                            
-                            vpnController.sendPacket(packetData)
                         }
+                        
+                        val writeJob = serviceScope.launch(Dispatchers.IO) {
+                            try {
+                                val packet = vpnController.receivePacket()
+                                if (packet != null && packet.isNotEmpty()) {
+                                    outputStream.write(packet)
+                                    outputStream.flush()
+                                }
+                            } catch (e: Exception) {
+                                if (isRunning) {
+                                    handleConnectionError(e)
+                                }
+                            }
+                        }
+                        
+                        readDispatcher.join()
+                        writeJob.join()
+                        
+                        delay(10)
+                        
                     } catch (e: Exception) {
                         if (isRunning) {
                             handleConnectionError(e)
                         }
                     }
                 }
-                
-                val writeJob = serviceScope.launch(Dispatchers.IO) {
-                    try {
-                        val packet = vpnController.receivePacket()
-                        if (packet != null && packet.isNotEmpty()) {
-                            outputStream.write(packet)
-                            outputStream.flush()
-                        }
-                    } catch (e: Exception) {
-                        if (isRunning) {
-                            handleConnectionError(e)
+            }
+        }
+    }
+
+    private suspend fun probeProxyConnectivity(proxy: Proxy): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val client = okHttpClient.newBuilder()
+                .connectTimeout(10, TimeUnit.SECONDS)
+                .readTimeout(10, TimeUnit.SECONDS)
+                .proxy(JavaProxy(
+                    when (proxy.protocol) {
+                        ProxyProtocol.SOCKS4, ProxyProtocol.SOCKS5 -> JavaProxy.Type.SOCKS
+                        else -> JavaProxy.Type.HTTP
+                    },
+                    InetSocketAddress(proxy.host, proxy.port)
+                ))
+                .build()
+
+            client.use { c ->
+                val request = Request.Builder()
+                    .url(TEST_CONNECTIVITY_URL)
+                    .head()
+                    .build()
+
+                val response = c.newCall(request).execute()
+                response.close()
+                response.isSuccessful
+            }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun startHealthPolling() {
+        healthPollingJob?.cancel()
+        healthPollingJob = serviceScope.launch {
+            while (isActive) {
+                delay(HEALTH_CHECK_INTERVAL)
+                try {
+                    val proxy = vpnController.getCurrentProxy()
+                    if (proxy != null) {
+                        val result = probeProxyConnectivity(proxy)
+                        if (!result) {
+                            _connectionInfo.value = _connectionInfo.value.copy(
+                                state = ConnectionState.UNSTABLE
+                            )
+                            vpnStateRepository.setUnstable("Proxy health check failed")
+                        } else {
+                            // Recover: reset back to Connected if previously Unstable
+                            vpnStateRepository.recoverFromUnstable(
+                                proxy,
+                                _connectionInfo.value.connectedSince ?: System.currentTimeMillis()
+                            )
                         }
                     }
-                }
-                
-                readDispatcher.join()
-                writeJob.join()
-                
-                delay(10)
-                
-            } catch (e: Exception) {
-                if (isRunning) {
-                    handleConnectionError(e)
+                } catch (e: Exception) {
+                    // Log and continue
                 }
             }
         }
@@ -249,6 +337,8 @@ class VpnService : VpnService() {
         isRunning = false
         connectionJob?.cancel()
         packetProcessingJob?.cancel()
+        healthPollingJob?.cancel()
+        healthPollingJob = null
         
         serviceScope.launch {
             try {
@@ -266,6 +356,7 @@ class VpnService : VpnService() {
         }
 
         _connectionInfo.value = ConnectionInfo(state = ConnectionState.DISCONNECTED)
+        vpnStateRepository.setDisconnected()
         
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()

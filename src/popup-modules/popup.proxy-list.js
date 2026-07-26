@@ -1,6 +1,8 @@
 // PeasyProxy - Popup Proxy List Management
 // Handles proxy filtering, sorting, scoring, and rendering
 
+import { escapeHtml } from '../shared/utils.js';
+
 import {
   getCurrentProxy,
   getSettings,
@@ -37,11 +39,6 @@ let virtualScroller = null;
 
 async function loadProxies(forceRefresh = false) {
   const CACHE_MAX_AGE = 5 * 60 * 1000; // 5 minutes
-  
-  // If force refresh, clear cache first
-  if (forceRefresh) {
-    await chrome.storage.local.remove(['proxies', 'proxiesTimestamp']);
-  }
   
   // Try to load cached proxies first
   try {
@@ -80,6 +77,10 @@ async function loadProxies(forceRefresh = false) {
     showLoading(true);
     const response = await chrome.runtime.sendMessage({ action: 'fetchProxies' });
     if (response?.proxies) {
+      // Clear cache after successful fetch on forceRefresh
+      if (forceRefresh) {
+        await chrome.storage.local.remove(['proxies', 'proxiesTimestamp']);
+      }
       // Merge new proxies with existing stats
       const mergedProxies = await mergeProxiesWithStats(response.proxies);
       setProxies(mergedProxies);
@@ -175,6 +176,8 @@ function populateCountryFilter() {
   const countryFilter = document.getElementById('countryFilter');
   if (!countryFilter) return;
   
+  const savedValue = countryFilter.value;
+  
   const proxies = getProxies();
   const countries = [...new Set(proxies.map(p => p.country))].sort();
   countryFilter.innerHTML = '<option value="">🌍 All Countries</option>';
@@ -184,6 +187,8 @@ function populateCountryFilter() {
     opt.textContent = `${getFlag(country)} ${country}`;
     countryFilter.appendChild(opt);
   });
+  
+  countryFilter.value = savedValue || '';
 }
 
 async function filterProxies() {
@@ -314,7 +319,7 @@ function calculateProxyScore(proxy) {
   // Extra boost for proxies with proven track record (many attempts)
   const experienceBonus = (proxy.historicalAttempts > 10) ? (SCORING_WEIGHTS.ATTEMPTS_BONUS * 100) : 0;
   
-  return (speedScore * SCORING_WEIGHTS.SPEED) + (reliabilityScore * SCORING_WEIGHTS.RELIABILITY) + (freshnessScore * SCORING_WEIGHTS.FRESHNESS) + favoriteBonus + historicalBonus + experienceBonus;
+  return Math.min(100, (speedScore * SCORING_WEIGHTS.SPEED) + (reliabilityScore * SCORING_WEIGHTS.RELIABILITY) + (freshnessScore * SCORING_WEIGHTS.FRESHNESS) + favoriteBonus + historicalBonus + experienceBonus);
 }
 
 // Get recommended proxies
@@ -391,6 +396,9 @@ function renderProxyList(proxyItems) {
       proxyList.appendChild(item);
     });
   }
+  
+  // Update selection state after rendering
+  updateSelectionState();
 }
 
 function createProxyItem(proxy, proxyItemsList) {
@@ -405,22 +413,29 @@ function createProxyItem(proxy, proxyItemsList) {
   const workingStatus = getWorkingStatus(proxy);
   const trustBadge = getTrustBadge(proxy);
   const isActive = currentProxy?.ipPort === proxy.ipPort;
-  
+   
   item.setAttribute('role', 'listitem');
   item.setAttribute('tabindex', '0');
   item.setAttribute('aria-label', `${proxy.country}, ${proxy.type}, ${proxy.speedMs}ms${isActive ? ', connected' : ''}`);
+  item.dataset.proxyIpPort = proxy.ipPort;
+   
+  // Escape user-controlled data from untrusted proxy sources
+  const safeIpPort = escapeHtml(proxy.ipPort);
+  const safeCountry = escapeHtml(proxy.country);
+  const safeType = escapeHtml(proxy.type);
   
   item.innerHTML = `
     <div class="proxy-info">
       <div class="proxy-ip">
+        <input type="checkbox" class="proxy-select-checkbox" aria-label="Select proxy">
         <span class="proxy-flag">${flag}</span>
-        <span>${proxy.ipPort}</span>
+        <span>${safeIpPort}</span>
         ${trustBadge}
         ${isFav ? '<span class="fav-indicator">⭐</span>' : ''}
       </div>
       <div class="proxy-details">
-        <span>${proxy.country}</span>
-        <span class="proxy-type">${proxy.type}</span>
+        <span>${safeCountry}</span>
+        <span class="proxy-type">${safeType}</span>
         <span class="proxy-speed">⚡ ${proxy.speedMs}ms</span>
         ${stats.successRate ? `<span class="proxy-rate">✓ ${stats.successRate}%</span>` : ''}
         ${workingStatus !== 'unknown' ? `<span class="proxy-status ${workingStatus}">${workingStatus === 'good' ? '✓' : '⚠'}</span>` : ''}
@@ -429,32 +444,63 @@ function createProxyItem(proxy, proxyItemsList) {
     </div>
     <div class="proxy-actions">
       <button class="icon-btn fav-btn ${isFav ? 'active' : ''}" aria-label="${isFav ? 'Remove from favorites' : 'Add to favorites'}">${isFav ? '⭐' : '☆'}</button>
-      <button class="connect-btn ${isActive ? 'active' : ''}" aria-label="${isActive ? 'Connected to' : 'Connect to'} ${proxy.ipPort}">
+      <button class="connect-btn ${isActive ? 'active' : ''}" aria-label="${isActive ? 'Connected to' : 'Connect to'} ${safeIpPort}">
         ${isActive ? 'Connected' : 'Connect'}
       </button>
     </div>
   `;
-  
+   
   item.querySelector('.fav-btn').addEventListener('click', async (e) => {
     e.stopPropagation();
     await toggleFavorite(proxy);
     renderProxyList(proxyItemsList);
     renderRecommended();
   });
-  
+   
   item.querySelector('.connect-btn').addEventListener('click', (e) => {
     e.stopPropagation();
     connectToProxy(proxy, { target: item });
   });
-  
+   
+  item.querySelector('.proxy-select-checkbox').addEventListener('change', (e) => {
+    e.stopPropagation();
+    const isSelected = e.target.checked;
+    item.classList.toggle('selected', isSelected);
+    updateSelectionState();
+  });
+   
   item.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      connectToProxy(proxy, { target: item });
+      item.querySelector('.connect-btn')?.click();
     }
   });
-  
+   
   return item;
+}
+
+// Update selection state UI
+function updateSelectionState() {
+  const selectedCheckboxes = document.querySelectorAll('.proxy-select-checkbox:checked');
+  const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+  const bulkActions = document.getElementById('bulkActions');
+  
+  // Update select all checkbox
+  if (selectAllCheckbox) {
+    const totalItems = document.querySelectorAll('.proxy-item').length;
+    const selectedItems = selectedCheckboxes.length;
+    selectAllCheckbox.checked = totalItems > 0 && selectedItems === totalItems;
+    selectAllCheckbox.indeterminate = selectedItems > 0 && selectedItems < totalItems;
+  }
+  
+  // Show/hide bulk actions
+  if (bulkActions) {
+    bulkActions.style.display = selectedCheckboxes.length > 0 ? 'flex' : 'none';
+    const selectedCount = document.getElementById('selectedCount');
+    if (selectedCount) {
+      selectedCount.textContent = selectedCheckboxes.length;
+    }
+  }
 }
 
 function renderSparkline(latencies) {
@@ -552,9 +598,9 @@ function renderQuickConnect() {
   quickConnectSection.style.display = 'block';
   
   quickConnectGrid.innerHTML = fastest.map(p => `
-    <button class="quick-connect-btn" data-proxy="${p.ipPort}">
+    <button class="quick-connect-btn" data-proxy="${escapeHtml(p.ipPort)}">
       <span class="qc-flag">${getFlag(p.country)}</span>
-      <span class="qc-country">${p.country}</span>
+      <span class="qc-country">${escapeHtml(p.country)}</span>
       <span class="qc-speed">${p.speedMs}ms</span>
     </button>
   `).join('');
@@ -583,11 +629,11 @@ function renderRecommended() {
   recommendedList.innerHTML = recommended.slice(0, 3).map(proxy => {
     const stats = proxyStats[proxy.ipPort] || {};
     return `
-      <div class="recommended-item" data-proxy="${proxy.ipPort}">
+      <div class="recommended-item" data-proxy="${escapeHtml(proxy.ipPort)}">
         <div class="rec-info">
           <span class="rec-flag">${getFlag(proxy.country)}</span>
-          <span class="rec-country">${proxy.country}</span>
-          <span class="rec-type">${proxy.type}</span>
+          <span class="rec-country">${escapeHtml(proxy.country)}</span>
+          <span class="rec-type">${escapeHtml(proxy.type)}</span>
         </div>
         <div class="rec-stats">
           <span class="rec-speed">⚡ ${proxy.speedMs}ms</span>
@@ -661,5 +707,6 @@ export {
   showLoading,
   renderQuickConnect,
   renderRecommended,
-  switchToTab
+  switchToTab,
+  updateSelectionState
 };

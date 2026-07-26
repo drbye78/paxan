@@ -22,6 +22,7 @@ sealed class Screen(
     object AdvancedSettings : Screen("advanced_settings", "Advanced Settings", null)
     object NotificationSettings : Screen("notification_settings", "Notification Settings", null)
     object LanguageSettings : Screen("language_settings", "Language Settings", null)
+    object StatisticsDetail : Screen("statistics_detail", "Statistics Detail", null)
 }
 
 val bottomNavItems = listOf(

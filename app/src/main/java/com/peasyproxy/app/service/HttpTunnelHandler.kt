@@ -1,15 +1,12 @@
 package com.peasyproxy.app.service
 
 import com.peasyproxy.app.domain.model.Proxy
-import com.peasyproxy.app.domain.model.ProxyProtocol
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
 import javax.inject.Inject
@@ -20,7 +17,6 @@ class HttpTunnelHandler @Inject constructor(
     private val okHttpClient: OkHttpClient
 ) {
     private var socket: Socket? = null
-    private var localServer: LocalServer? = null
 
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected
@@ -45,8 +41,6 @@ class HttpTunnelHandler @Inject constructor(
 
             if (response.contains("200") || response.contains("Connection established")) {
                 _isConnected.value = true
-                localServer = LocalServer(0)
-                startForwarding()
                 true
             } else {
                 disconnect()
@@ -112,10 +106,6 @@ class HttpTunnelHandler @Inject constructor(
         }
     }
 
-    private fun startForwarding() {
-        // Local server would handle forwarding to VPN interface
-    }
-
     suspend fun disconnect() = withContext(Dispatchers.IO) {
         try {
             socket?.close()
@@ -123,8 +113,6 @@ class HttpTunnelHandler @Inject constructor(
             // Ignore
         }
         socket = null
-        localServer?.close()
-        localServer = null
         _isConnected.value = false
     }
 
@@ -136,13 +124,5 @@ class HttpTunnelHandler @Inject constructor(
         // Clear any pending data in channels
         incomingData.tryReceive()
         outgoingData.tryReceive()
-    }
-
-    fun getLocalPort(): Int = localServer?.localPort ?: 0
-
-    private class LocalServer(port: Int) : java.net.ServerSocket(port) {
-        init {
-            soTimeout = 30000
-        }
     }
 }

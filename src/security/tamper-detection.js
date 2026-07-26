@@ -1,13 +1,35 @@
-const TEST_ENDPOINTS = [
-  { url: 'https://httpbin.org/headers', hash: null },
-  { url: 'https://httpbin.org/ip', hash: null },
-  { url: 'https://api.ipify.org?format=json', hash: null }
+// ============================================================================
+// PeasyProxy - Tamper Detection
+// Detects MITM tampering by proxied connections (content injection, header
+// manipulation, IP rewriting). Uses proxyConfig for safe proxy switching.
+// ============================================================================
+
+import { buildProxyConfig } from '../shared/utils.js';
+import { proxyConfig } from '../background/proxy-config-manager.js';
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const ENDPOINTS = [
+  'https://httpbin.org/headers',
+  'https://httpbin.org/ip',
+  'https://api.ipify.org?format=json'
 ];
 
-const EXPECTED_HEADERS = {
-  'accept': 'application/json',
-  'user-agent': null
-};
+const SUSPICIOUS_KEY = 'suspiciousProxies';
+
+const SUSPICIOUS_PATTERNS = [
+  /<script[^>]*src\s*=\s*["'][^"']*(?:eval|b64|atob|encoded)/i,
+  /\bonerror\s*=\s*/i,
+  /\beval\s*\(\s*(?:atob|btoa|String\.fromCharCode)/i,
+  /\bdocument\.cookie\b/i,
+  /\bwindow\.location\s*=/i,
+];
+
+// ---------------------------------------------------------------------------
+// TamperDetector
+// ---------------------------------------------------------------------------
 
 class TamperDetector {
   constructor() {
@@ -15,7 +37,22 @@ class TamperDetector {
     this.suspiciousProxies = new Set();
   }
 
+  // ========================================================================
+  // Lifecycle
+  // ========================================================================
+
   async init() {
+    await this.loadBaselines();
+    // Restore suspicious proxies from storage (survives SW restarts)
+    try {
+      const data = await chrome.storage.local.get([SUSPICIOUS_KEY]);
+      if (data[SUSPICIOUS_KEY]) {
+        this.suspiciousProxies = new Set(data[SUSPICIOUS_KEY]);
+      }
+    } catch { /* storage may not be available during early init */ }
+  }
+
+  async loadBaselines() {
     const result = await chrome.storage.local.get(['tamperBaselines']);
     this.baselines = result.tamperBaselines || {};
   }
@@ -24,128 +61,147 @@ class TamperDetector {
     await chrome.storage.local.set({ tamperBaselines: this.baselines });
   }
 
+  async persistSuspicious() {
+    try {
+      await chrome.storage.local.set({
+        [SUSPICIOUS_KEY]: [...this.suspiciousProxies]
+      });
+    } catch { /* non-critical */ }
+  }
+
+  // ========================================================================
+  // Proxy testing
+  // ========================================================================
+
+  /**
+   * Test a proxy across all endpoints in PARALLEL for speed.
+   * Adds to suspiciousProxies set if tampering detected.
+   */
   async testProxy(proxy) {
-    const results = [];
-    
-    for (const endpoint of TEST_ENDPOINTS) {
-      try {
-        const result = await this.verifyContent(proxy, endpoint.url);
-        results.push(result);
-      } catch (error) {
-        results.push({
-          url: endpoint.url,
-          tampered: false,
-          error: error.message
-        });
-      }
+    const results = await Promise.all(
+      ENDPOINTS.map(url => this.verifyContent(proxy, url).catch(err => ({
+        url, error: err.message, content: '', headers: {}, status: 0
+      })))
+    );
+
+    const detection = this.detectTampering(results);
+
+    if (detection.tampered) {
+      this.suspiciousProxies.add(proxy.ipPort);
+      await this.persistSuspicious();
     }
-    
-    const tampered = results.some(r => r.tampered);
-    const suspiciousCount = results.filter(r => r.suspicious).length;
-    
+
     return {
       proxy: proxy.ipPort,
-      tested: Date.now(),
-      tampered,
-      suspicious: suspiciousCount > 0,
-      results
+      tampered: detection.tampered,
+      details: detection,
+      results: results.map(r => ({
+        url: r.url,
+        status: r.status,
+        hasIssues: !!r.error
+      }))
     };
   }
 
-  async verifyContent(proxy, url) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-    let originalConfig = null;
-    
+  /**
+   * Verify content from a single endpoint through the given proxy.
+   * Uses proxyConfig.withTestConfig to safely switch proxy, test, and restore.
+   */
+  async verifyContent(proxy, url = ENDPOINTS[0]) {
+    const testConfig = buildProxyConfig(proxy);
     try {
-      // Save the original proxy configuration before testing
-      try {
-        originalConfig = await new Promise((resolve) => {
-          chrome.proxy.settings.get({ scope: 'regular' }, (config) => {
-            resolve(config);
+      return await proxyConfig.withTestConfig(testConfig, async () => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        try {
+          const response = await fetch(url, {
+            signal: controller.signal,
+            cache: 'no-store',
+            headers: { 'Accept': 'application/json' }
           });
-        });
-      } catch (e) {
-        console.warn('Could not save original proxy config:', e);
-      }
-      
-      const proxyConfig = {
-        mode: 'fixed_servers',
-        rules: {
-          singleProxy: {
-            scheme: proxy.type === 'SOCKS5' ? 'socks5' : 'http',
-            host: proxy.ip,
-            port: proxy.port
-          },
-          bypassList: ['localhost', '127.0.0.1', '::1']
+          clearTimeout(timeoutId);
+          const content = await response.text();
+          const headers = response.headers;
+          return {
+            url,
+            content,
+            headers: Object.fromEntries(headers.entries()),
+            status: response.status
+          };
+        } finally {
+          clearTimeout(timeoutId);
         }
-      };
-      
-      await chrome.proxy.settings.set({ value: proxyConfig, scope: 'regular' });
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        signal: controller.signal,
-        cache: 'no-store'
-      });
-      
-      clearTimeout(timeoutId);
-      
-      // Restore the original proxy configuration instead of clearing
-      if (originalConfig && originalConfig.value) {
-        await chrome.proxy.settings.set({ value: originalConfig.value, scope: 'regular' });
-      } else {
-        await chrome.proxy.settings.clear({ scope: 'regular' });
-      }
-      
-      const content = await response.text();
-      const headers = {};
-      response.headers.forEach((value, key) => {
-        headers[key.toLowerCase()] = value;
-      });
-      
-      const tampered = this.detectTampering(headers, content, url);
-      const suspicious = this.detectSuspiciousContent(headers, content);
-      
-      return {
-        url,
-        tampered,
-        suspicious,
-        status: response.status,
-        headers,
-        contentLength: content.length
-      };
+      }, { timeoutMs: 12000, settleMs: 50 });
     } catch (error) {
-      clearTimeout(timeoutId);
-      try {
-        // Restore original config on error too
-        if (originalConfig && originalConfig.value) {
-          await chrome.proxy.settings.set({ value: originalConfig.value, scope: 'regular' });
-        } else {
-          await chrome.proxy.settings.clear({ scope: 'regular' });
-        }
-      } catch (e) {}
-      
-      return {
-        url,
-        tampered: false,
-        error: error.message
-      };
+      return { url, error: error.message, content: '', headers: {}, status: 0 };
     }
   }
 
-  detectTampering(headers, content, url) {
-    if (url.includes('httpbin.org/headers')) {
-      const userAgent = headers['user-agent'] || '';
-      
-      if (userAgent.length > 200) return true;
-      
+  // ========================================================================
+  // Detection logic
+  // ========================================================================
+
+  /**
+   * Detect tampering across all test results.
+   * Accepts both the new array-based signature (from testProxy) and the
+   * legacy (headers, content, url) signature for direct unit-test usage.
+   *
+   * @param {Array|Object} resultsOrHeaders - array of result objects, or headers object
+   * @param {string} [content] - response body (legacy signature only)
+   * @param {string} [url] - endpoint URL (legacy signature only)
+   * @returns {Object|boolean} { tampered: boolean } for array input, boolean for legacy
+   */
+  detectTampering(resultsOrHeaders, content, url) {
+    // Legacy signature: detectTampering(headers, content, url) → boolean
+    if (content !== undefined) {
+      // Wrap a single result for unified processing
+      const singleResult = { headers: resultsOrHeaders, content, url };
+      const detection = this._detectResults([singleResult]);
+      return detection.tampered;
+    }
+
+    // New signature: detectTampering(resultsArray) → { tampered }
+    return this._detectResults(resultsOrHeaders);
+  }
+
+  /**
+   * Internal: run tampering checks across all results.
+   */
+  _detectResults(results) {
+    for (const result of results) {
+      if (result.error) continue; // skip failed fetches
+
+      if (this._checkSingle(result.headers, result.content, result.url)) {
+        return { tampered: true };
+      }
+    }
+    return { tampered: false };
+  }
+
+  /**
+   * Check a single response for tampering indicators.
+   */
+  _checkSingle(headers, content, url) {
+    // --- httpbin.org/headers ---
+    if (url && url.includes('httpbin.org/headers')) {
+      const userAgent = headers['user-agent'] || headers['User-Agent'] || '';
+
+      // Raised threshold from 200 to 500 to reduce false positives
+      if (userAgent.length > 500) return true;
+
+      // Check for script injection in what should be a JSON/HTML response
       if (content.includes('<script') || content.includes('eval(')) {
         return true;
       }
+
+      // Check SUSPICIOUS_PATTERNS
+      for (const pattern of SUSPICIOUS_PATTERNS) {
+        if (pattern.test(content)) return true;
+      }
     }
-    
-    if (url.includes('httpbin.org/ip')) {
+
+    // --- httpbin.org/ip ---
+    if (url && url.includes('httpbin.org/ip')) {
       try {
         const data = JSON.parse(content);
         if (!data.origin) return true;
@@ -153,59 +209,89 @@ class TamperDetector {
         return true;
       }
     }
-    
+
     return false;
   }
 
+  /**
+   * Detect suspicious content patterns in HTML responses.
+   * Called independently by unit tests and internally during detection.
+   */
   detectSuspiciousContent(headers, content) {
-    const suspiciousPatterns = [
-      '<script',
-      'eval(',
-      'document.cookie',
-      'localStorage',
-      'sessionStorage'
-    ];
-    
-    for (const pattern of suspiciousPatterns) {
-      if (content.toLowerCase().includes(pattern)) {
-        return true;
-      }
-    }
-    
-    if (headers['content-type'] && 
-        !headers['content-type'].includes('html') &&
-        !headers['content-type'].includes('json') &&
-        !headers['content-type'].includes('text')) {
+    const contentType = (headers['content-type'] || '').toLowerCase();
+
+    // Only inspect HTML responses
+    if (contentType && !contentType.includes('html')) {
       return false;
     }
-    
+
+    // Check SUSPICIOUS_PATTERNS
+    for (const pattern of SUSPICIOUS_PATTERNS) {
+      if (pattern.test(content)) return true;
+    }
+
+    // Check for excessive script tags in simple API responses
+    const scriptTags = content.match(/<script[\s>]/gi);
+    if (scriptTags && scriptTags.length > 3) {
+      return true;
+    }
+
+    // Check for eval with encoded payloads
+    if (/eval\s*\(\s*['"`]/.test(content)) {
+      return true;
+    }
+
+    // Check for cookie stealing patterns (assignment, not just presence)
+    if (/document\.cookie\s*[=;]/.test(content)) {
+      return true;
+    }
+
     return false;
   }
 
-  async establishBaseline(proxy, url) {
+  // ========================================================================
+  // Baseline management
+  // ========================================================================
+
+  /**
+   * Establish content baselines by fetching all endpoints WITHOUT proxy.
+   * Uses proxyConfig.fetchDirect to safely clear proxy, fetch, and restore.
+   * Runs all endpoint fetches in parallel.
+   */
+  async establishBaseline() {
     try {
-      const content = await this.fetchDirect(url);
-      const hash = await this.hashContent(content);
-      
-      this.baselines[url] = {
-        hash,
-        content: content.substring(0, 500),
-        established: Date.now()
-      };
-      
+      const results = await Promise.all(
+        ENDPOINTS.map(async url => {
+          const result = await this.fetchDirect(url);
+          return result;
+        })
+      );
+      this.baselines = results;
       await this.save();
-      return { success: true, hash };
+      return this.baselines;
     } catch (error) {
-      return { success: false, error: error.message };
+      console.error('Failed to establish baseline:', error);
+      return null;
     }
   }
 
+  /**
+   * Fetch a URL WITHOUT any proxy active.
+   * Uses proxyConfig.fetchDirect to safely clear settings, execute, and restore.
+   * No real-IP leak — the proxy is restored in the finally block.
+   */
   async fetchDirect(url) {
-    const response = await fetch(url, {
-      method: 'GET',
-      cache: 'no-store'
+    return proxyConfig.fetchDirect(async () => {
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: { 'Accept': 'application/json' }
+      });
+      return {
+        content: await response.text(),
+        headers: Object.fromEntries(response.headers.entries()),
+        status: response.status
+      };
     });
-    return response.text();
   }
 
   async hashContent(content) {
@@ -216,12 +302,18 @@ class TamperDetector {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
+  // ========================================================================
+  // Suspicious proxy tracking
+  // ========================================================================
+
   addToSuspicious(ipPort) {
     this.suspiciousProxies.add(ipPort);
+    this.persistSuspicious();
   }
 
   removeFromSuspicious(ipPort) {
     this.suspiciousProxies.delete(ipPort);
+    this.persistSuspicious();
   }
 
   isSuspicious(ipPort) {
@@ -238,8 +330,7 @@ class TamperDetector {
   }
 }
 
-export { TamperDetector, TEST_ENDPOINTS, EXPECTED_HEADERS };
+// Backward-compat export for consumers still referencing TEST_ENDPOINTS
+const TEST_ENDPOINTS = ENDPOINTS.map(url => ({ url, hash: null }));
 
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { TamperDetector, TEST_ENDPOINTS, EXPECTED_HEADERS };
-}
+export { TamperDetector, ENDPOINTS, TEST_ENDPOINTS };

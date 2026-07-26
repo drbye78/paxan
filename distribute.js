@@ -52,6 +52,7 @@ const EXCLUDE_PATTERNS = [
   '.gitignore',
   '.gitattributes',
   'package-lock.json',
+  'pnpm-lock.yaml',
   '.DS_Store',
   // Android-related files (not needed for Chrome extension)
   'app',
@@ -339,8 +340,8 @@ function createCrxPackage() {
     const existingCrx = join(ROOT_DIR, 'proxy-vpn-extension.crx');
     if (existsSync(existingCrx)) {
       console.log('⚠ Using existing CRX file (may be outdated).');
-      console.log('   Ensure crx3 is installed: npm install -g crx3');
-      const newCrxPath = join(DIST_DIR, 'proxy-vpn-extension.crx');
+      console.log('   Ensure crx3 is installed: pnpm add -g crx3');
+      const newCrxPath = join(DIST_DIR, 'peasyproxy.crx');
       const content = readFileSync(existingCrx);
       const output = createWriteStream(newCrxPath);
       output.write(content);

@@ -25,6 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -37,7 +38,7 @@ class KillSwitchService : Service() {
     @Inject
     lateinit var vpnStateRepository: VpnStateRepository
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private lateinit var scope: CoroutineScope
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var isKillSwitchActive = false
     private var shouldBlockTraffic = false
@@ -56,6 +57,7 @@ class KillSwitchService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         createNotificationChannel()
         Timber.d("KillSwitchService created")
     }
@@ -246,8 +248,9 @@ class KillSwitchService : Service() {
     }
 
     override fun onDestroy() {
+        runBlocking { disableKillSwitch() }
+        scope.cancel()
         super.onDestroy()
-        scope.launch { disableKillSwitch() }
         Timber.d("KillSwitchService destroyed")
     }
 }

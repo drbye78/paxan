@@ -160,6 +160,9 @@ let currentLang = 'ru';
 function setLanguage(lang) {
   if (translations[lang]) {
     currentLang = lang;
+    document.documentElement.lang = lang;
+    const sel = document.getElementById('languageSelect');
+    if (sel) sel.value = lang;
     applyTranslations();
   }
 }
@@ -171,9 +174,7 @@ function t(key) {
 function applyTranslations() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
-    if (translations[currentLang][key]) {
-      el.textContent = translations[currentLang][key];
-    }
+    el.textContent = t(key);
   });
   
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
@@ -195,7 +196,7 @@ function applyTranslations() {
 
 function updateDynamicText() {
   const warningText = document.querySelector('.security-warning .warning-text');
-  if (warningText) warningText.innerHTML = t('security_warning');
+  if (warningText) warningText.textContent = t('security_warning');
   
   const statusText = document.querySelector('.status-text');
   if (statusText && !document.querySelector('.status-badge')?.classList.contains('connected')) {
@@ -242,12 +243,10 @@ function updateDynamicText() {
   if (quickConnectTitle) quickConnectTitle.textContent = t('quick_connect');
   
   const settingsHeaders = document.querySelectorAll('#settingsPanel .setting-group h3');
-  if (settingsHeaders[0]) settingsHeaders[0].textContent = t('appearance');
-  if (settingsHeaders[1]) settingsHeaders[1].textContent = t('connection');
-  if (settingsHeaders[2]) settingsHeaders[2].textContent = t('notifications');
-  if (settingsHeaders[3]) settingsHeaders[3].textContent = t('security');
-  if (settingsHeaders[4]) settingsHeaders[4].textContent = t('advanced_features');
-  if (settingsHeaders[5]) settingsHeaders[5].textContent = t('data');
+  const headerKeys = ['appearance', 'connection', 'notifications', 'security', 'advanced_features', 'data'];
+  settingsHeaders.forEach((header, i) => {
+    if (headerKeys[i]) header.textContent = t(headerKeys[i]);
+  });
   
   updateLabels();
 }
@@ -280,20 +279,21 @@ function updateLabels() {
   
   const themeSelect = document.getElementById('themeSelect');
   if (themeSelect) {
-    themeSelect.options[0].textContent = t('dark');
-    themeSelect.options[1].textContent = t('light');
-    themeSelect.options[2].textContent = t('system');
+    const darkOpt = themeSelect.querySelector('option[value="dark"]');
+    const lightOpt = themeSelect.querySelector('option[value="light"]');
+    const systemOpt = themeSelect.querySelector('option[value="system"]');
+    if (darkOpt) darkOpt.textContent = t('dark');
+    if (lightOpt) lightOpt.textContent = t('light');
+    if (systemOpt) systemOpt.textContent = t('system');
   }
   
   const languageSelect = document.getElementById('languageSelect');
   if (languageSelect) {
-    languageSelect.options[0].textContent = 'Русский';
-    languageSelect.options[1].textContent = 'English';
+    const ruOpt = languageSelect.querySelector('option[value="ru"]');
+    const enOpt = languageSelect.querySelector('option[value="en"]');
+    if (ruOpt) ruOpt.textContent = 'Русский';
+    if (enOpt) enOpt.textContent = 'English';
   }
 }
 
-// Export for both browser (global functions) and Node.js (module.exports)
-// Functions are already defined globally for browser usage
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { translations, setLanguage, t, applyTranslations, updateDynamicText, updateLabels, currentLang };
-}
+export { translations, currentLang, setLanguage, t, applyTranslations, updateDynamicText, updateLabels };

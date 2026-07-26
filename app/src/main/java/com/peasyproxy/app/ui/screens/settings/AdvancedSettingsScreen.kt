@@ -28,6 +28,13 @@ fun AdvancedSettingsScreen(
     var timeout by remember { mutableIntStateOf(settings.connectionTimeout / 1000) }
     var healthCheckInterval by remember { mutableIntStateOf(settings.healthCheckIntervalSeconds) }
 
+    LaunchedEffect(settings.connectionTimeout) {
+        timeout = settings.connectionTimeout / 1000
+    }
+    LaunchedEffect(settings.healthCheckIntervalSeconds) {
+        healthCheckInterval = settings.healthCheckIntervalSeconds
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(

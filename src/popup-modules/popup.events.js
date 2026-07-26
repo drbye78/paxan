@@ -1,6 +1,10 @@
 // PeasyProxy - Popup Event Handlers
 // Manages all DOM event listeners and user interactions
 
+import { escapeHtml } from '../shared/utils.js';
+import { setLanguage } from '../popup/i18n.js';
+import { showOnboardingStep, hideOnboarding } from './popup.onboarding.js';
+
 import {
   getCurrentProxy,
   setCurrentProxy,
@@ -17,7 +21,8 @@ import {
   saveAllState,
   toggleFavorite,
   addToRecentlyUsed,
-  updateDailyStats
+  updateDailyStats,
+  getIpInfo
 } from './popup.state.js';
 
 import {
@@ -48,7 +53,7 @@ import {
   showToast,
   renderSiteRules,
   renderBlacklistChips,
-  switchToTab
+  getFlag
 } from './popup.ui.js';
 
 import {
@@ -56,8 +61,14 @@ import {
   connectToBestProxy,
   filterProxies,
   renderQuickConnect,
-  renderRecommended
+  renderRecommended,
+  updateSelectionState,
+  switchToTab
 } from './popup.proxy-list.js';
+
+import {
+  startSpeedGraph
+} from './popup.connection.js';
 
 // DOM Elements
 let fab;
@@ -71,6 +82,8 @@ let settingsBtn, settingsPanel, statsPanel;
 let themeSelect, proxySourceSelect, rotationToggle, rotationIntervalSelect;
 let manageBlacklistBtn, blacklistContainer, blacklistChips;
 let bestProxyBtn;
+
+let refreshTimerId = null;
 
 // Initialize DOM elements
 function initDOMElements() {
@@ -127,6 +140,7 @@ function setupEventListeners() {
   setupEmptyState();
   setupSettings();
   setupFilters();
+  setupSpeedGraphControls();
   setupKeyboardShortcuts();
 }
 
@@ -197,20 +211,18 @@ function setupOverflowMenu() {
     });
   }
   
-  // Close overflow menu when clicking outside
-  document.addEventListener('click', (e) => {
+  // Close overflow menu when clicking outside (named function for cleanup)
+  function closeOverflowOnClickOutside(e) {
     if (overflowMenu && !overflowBtn?.contains(e.target) && !overflowMenu.contains(e.target)) {
       overflowMenu.style.display = 'none';
     }
-  });
+  }
+  document.addEventListener('click', closeOverflowOnClickOutside);
 }
 
 function toggleOverflowMenu() {
-  if (overflowMenu.style.display === 'none') {
-    overflowMenu.style.display = 'block';
-  } else {
-    overflowMenu.style.display = 'none';
-  }
+  const current = getComputedStyle(overflowMenu).display;
+  overflowMenu.style.display = current === 'none' ? 'block' : 'none';
 }
 
 function setupDetailsToggle() {
@@ -219,7 +231,12 @@ function setupDetailsToggle() {
       const isExpanded = detailsToggle.getAttribute('aria-expanded') === 'true';
       detailsToggle.setAttribute('aria-expanded', !isExpanded);
       if (connectionDetails) {
+        connectionDetails.dataset.expanded = !isExpanded;
+        // Trigger CSS transition
         connectionDetails.style.display = isExpanded ? 'none' : 'block';
+        // Force reflow for transition
+        void connectionDetails.offsetWidth;
+        connectionDetails.style.height = isExpanded ? '0px' : 'auto';
       }
     });
   }
@@ -263,6 +280,22 @@ function setupEmptyState() {
   const emptyRefreshBtn = document.getElementById('emptyRefreshBtn');
   if (emptyRefreshBtn) {
     emptyRefreshBtn.addEventListener('click', loadProxies);
+  }
+  
+  // Bulk action buttons
+  const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+  if (deleteSelectedBtn) {
+    deleteSelectedBtn.addEventListener('click', deleteSelectedProxies);
+  }
+  
+  const exportSelectedBtn = document.getElementById('exportSelectedBtn');
+  if (exportSelectedBtn) {
+    exportSelectedBtn.addEventListener('click', exportSelectedProxies);
+  }
+  
+  const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+  if (selectAllCheckbox) {
+    selectAllCheckbox.addEventListener('change', toggleSelectAll);
   }
 }
 
@@ -381,10 +414,22 @@ function setupFilters() {
   }
 }
 
+function setupSpeedGraphControls() {
+  const speedGraphRange = document.getElementById('speedGraphRange');
+  if (speedGraphRange) {
+    speedGraphRange.addEventListener('change', () => {
+      // In a real implementation, this would update the speed graph time range
+      // For now, we'll just trigger a refresh of the speed graph data
+      // The actual implementation would depend on how the speed graph data is managed
+      startSpeedGraph();
+    });
+  }
+}
+
 function setupKeyboardShortcuts() {
   document.addEventListener('keydown', (e) => {
-    // Ignore if typing in input/select
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
+    // Ignore if typing in input/select/contentEditable
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
         proxySearch?.focus();
@@ -579,9 +624,7 @@ function setupSettingsListeners() {
       settings.language = e.target.value;
       setSettings(settings);
       saveAllState();
-      if (typeof setLanguage === 'function') {
-        setLanguage(e.target.value);
-      }
+      setLanguage(e.target.value);
       showToast(`Language changed to ${e.target.options[e.target.selectedIndex].text}`, 'info');
     });
   }
@@ -614,9 +657,9 @@ function setupMessageListener() {
     if (message.action === 'securityStatusUpdate') updateSecurityStatus(message);
     if (message.action === 'healthStatusUpdate') updateHealthStatus(message);
     if (message.action === 'connectionDegraded') handleConnectionDegraded(message);
-    if (message.action === 'showOnboarding' && typeof showOnboardingStep === 'function') showOnboardingStep(message.step);
-    if (message.action === 'hideOnboarding' && typeof hideOnboarding === 'function') hideOnboarding();
-    if (message.action === 'showOnboardingStep' && typeof showOnboardingStep === 'function') showOnboardingStep(message.step);
+    if (message.action === 'showOnboarding') showOnboardingStep(message.step);
+    if (message.action === 'hideOnboarding') hideOnboarding();
+    if (message.action === 'showOnboardingStep') showOnboardingStep(message.step);
   });
 }
 
@@ -649,13 +692,13 @@ function applyTheme() {
 
 function startAutoRefresh() {
   const settings = getSettings();
-  const refreshTimer = window.refreshTimer;
-  if (refreshTimer) clearInterval(refreshTimer);
+  if (refreshTimerId) clearInterval(refreshTimerId);
   if (settings.refreshInterval > 0) {
-    window.refreshTimer = setInterval(loadProxies, settings.refreshInterval);
+    refreshTimerId = setInterval(loadProxies, settings.refreshInterval);
   }
 }
 
+// Lightweight debounce — module-scoped for event listener use
 function debounce(fn, delay) {
   let timeoutId;
   return (...args) => {
@@ -676,18 +719,33 @@ function importProxies() {
     try {
       const imported = JSON.parse(text);
       if (Array.isArray(imported)) {
+        const validProxies = imported.filter(p =>
+          p && typeof p === 'object' &&
+          typeof p.ip === 'string' && p.ip.trim() &&
+          typeof p.port === 'number' && p.port > 0 && p.port <= 65535
+        );
+        if (validProxies.length === 0) {
+          showToast('No valid proxies found in file', 'warning');
+          return;
+        }
         const currentProxies = getProxies();
-        setProxies([...currentProxies, ...imported]);
+        setProxies([...currentProxies, ...validProxies]);
         await chrome.storage.local.set({ proxies: getProxies() });
-        showToast(`Imported ${imported.length} proxies`, 'success');
+        showToast(`Imported ${validProxies.length} proxies`, 'success');
         loadProxies();
       }
     } catch {
       const lines = text.split('\n').map(l => l.trim()).filter(l => l);
       const imported = lines.map(line => {
-        const [ip, port] = line.split(':');
-        return { ip, port: parseInt(port), ipPort: line, country: 'Unknown', type: 'HTTPS', speedMs: 9999 };
-      }).filter(p => p.ip && p.port);
+        const [ip, portStr] = line.split(':');
+        const port = parseInt(portStr, 10);
+        if (!ip || !portStr || isNaN(port) || port <= 0 || port > 65535) return null;
+        return { ip: ip.trim(), port, ipPort: `${ip.trim()}:${port}`, country: 'Unknown', type: 'HTTPS', speedMs: 9999 };
+      }).filter(p => p !== null);
+      if (imported.length === 0) {
+        showToast('No valid proxies found in file', 'warning');
+        return;
+      }
       const currentProxies = getProxies();
       setProxies([...currentProxies, ...imported]);
       await chrome.storage.local.set({ proxies: getProxies() });
@@ -717,10 +775,32 @@ function exportProxies() {
 }
 
 async function clearAllData() {
-  if (confirm('Clear all extension data? This cannot be undone.')) {
-    await chrome.storage.local.clear();
-    location.reload();
-  }
+  const dialog = document.createElement('div');
+  dialog.className = 'confirm-dialog';
+  dialog.innerHTML = `
+    <div class="confirm-dialog-content">
+      <h3>Clear All Data</h3>
+      <p>Clear all extension data? This cannot be undone.</p>
+      <div class="confirm-dialog-actions">
+        <button class="btn btn-secondary" id="confirmCancel">Cancel</button>
+        <button class="btn btn-danger" id="confirmClear">Clear All</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+
+  return new Promise((resolve) => {
+    document.getElementById('confirmCancel').addEventListener('click', () => {
+      dialog.remove();
+      resolve(false);
+    });
+    document.getElementById('confirmClear').addEventListener('click', async () => {
+      dialog.remove();
+      await chrome.storage.local.clear();
+      location.reload();
+      resolve(true);
+    });
+  });
 }
 
 // Site rules functions
@@ -752,7 +832,7 @@ function showAddSiteRuleDialog() {
         <label>Proxy Country</label>
         <select id="ruleCountry">
           ${[...new Set(currentProxies.map(p => p.country))].sort().map(c => 
-            `<option value="${c}">${getFlag(c)} ${c}</option>`
+            `<option value="${escapeHtml(c)}">${getFlag(c)} ${escapeHtml(c)}</option>`
           ).join('')}
         </select>
       </div>
@@ -860,6 +940,115 @@ function handleSiteRuleAction(e) {
       renderSiteRules();
     }
   }
+}
+
+// Bulk action functions
+async function deleteSelectedProxies() {
+  // Note: We can't actually delete proxies from the source, but we can blacklist them
+  const selectedCheckboxes = document.querySelectorAll('.proxy-select-checkbox:checked');
+  if (selectedCheckboxes.length === 0) return;
+  
+  const settings = getSettings();
+  const countryBlacklist = settings.countryBlacklist || [];
+  
+  // Get selected proxy countries
+  const selectedCountries = Array.from(selectedCheckboxes)
+    .map(checkbox => {
+      const item = checkbox.closest('.proxy-item');
+      return item ? item.querySelector('.proxy-details span').textContent.trim() : null;
+    })
+    .filter(country => country !== null);
+  
+  // Add to blacklist
+  const newBlacklist = [...new Set([...countryBlacklist, ...selectedCountries])];
+  settings.countryBlacklist = newBlacklist;
+  
+  try {
+    await chrome.storage.local.set({ settings });
+    await loadProxies(true); // Reload proxies with new blacklist
+    showToast(`Added ${selectedCountries.length} countries to blacklist`, 'info');
+  } catch (error) {
+    console.error('Error updating blacklist:', error);
+    showToast('Failed to update blacklist', 'error');
+  }
+  
+  // Clear selection
+  updateSelectionState();
+}
+
+async function exportSelectedProxies() {
+  const selectedCheckboxes = document.querySelectorAll('.proxy-select-checkbox:checked');
+  if (selectedCheckboxes.length === 0) return;
+  
+  // Get selected proxy data
+  const selectedProxies = Array.from(selectedCheckboxes)
+    .map(checkbox => {
+      const item = checkbox.closest('.proxy-item');
+      if (!item) return null;
+      
+      const flagEl = item.querySelector('.proxy-flag');
+      const ipPortEl = item.querySelector('.proxy-ip span:nth-child(2)');
+      const countryEl = item.querySelector('.proxy-details span');
+      const typeEl = item.querySelector('.proxy-type');
+      const speedEl = item.querySelector('.proxy-speed');
+      
+      return {
+        ipPort: ipPortEl ? ipPortEl.textContent : '',
+        country: countryEl ? countryEl.textContent : '',
+        type: typeEl ? typeEl.textContent : '',
+        speed: speedEl ? speedEl.textContent.replace('⚡ ', '') : '',
+        flag: flagEl ? flagEl.textContent : ''
+      };
+    })
+    .filter(proxy => proxy !== null);
+  
+  if (selectedProxies.length === 0) {
+    showToast('No valid proxies selected', 'warning');
+    return;
+  }
+  
+  // Create CSV content
+  const csvHeaders = ['Flag', 'Country', 'Type', 'IP:Port', 'Speed (ms)'];
+  const csvRows = selectedProxies.map(proxy => [
+    proxy.flag,
+    proxy.country,
+    proxy.type,
+    proxy.ipPort,
+    proxy.speed
+  ]);
+  
+  const csvContent = [
+    csvHeaders.join(','),
+    ...csvRows.map(row => row.map(field => `"${field.replace(/"/g, '""')}"`).join(','))
+  ].join('\n');
+  
+  // Create and download file
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const filename = `peasyproxy_selected_proxies_${new Date().toISOString().slice(0,10)}.csv`;
+  
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  showToast(`Exported ${selectedProxies.length} proxies to ${filename}`, 'success');
+}
+
+function toggleSelectAll(e) {
+  const isChecked = e.target.checked;
+  const checkboxes = document.querySelectorAll('.proxy-select-checkbox');
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = isChecked;
+    const item = checkbox.closest('.proxy-item');
+    if (item) {
+      item.classList.toggle('selected', isChecked);
+    }
+  });
+  updateSelectionState();
 }
 
 function toggleBlacklistPanel() {

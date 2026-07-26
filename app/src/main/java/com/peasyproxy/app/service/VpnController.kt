@@ -25,9 +25,10 @@ class VpnController @Inject constructor(
     private val _connectionConfig = MutableStateFlow<ConnectionConfig?>(null)
     val connectionConfig: StateFlow<ConnectionConfig?> = _connectionConfig.asStateFlow()
 
+    @Volatile
     private var currentProxy: Proxy? = null
 
-    suspend fun connect(proxy: Proxy, config: ConnectionConfig? = null): Boolean = withContext(Dispatchers.IO) {
+    suspend fun connect(proxy: Proxy, config: ConnectionConfig? = null, testTarget: String = "httpbin.org", testPort: Int = 443): Boolean = withContext(Dispatchers.IO) {
         try {
             disconnect()
 
@@ -41,13 +42,13 @@ class VpnController @Inject constructor(
 
             val success = when (proxy.protocol) {
                 ProxyProtocol.HTTP, ProxyProtocol.HTTPS -> {
-                    httpTunnelHandler.connect(proxy, "www.google.com", 443)
+                    httpTunnelHandler.connect(proxy, testTarget, testPort)
                 }
                 ProxyProtocol.SOCKS5 -> {
-                    socks5Handler.connect(proxy, "www.google.com", 443)
+                    socks5Handler.connect(proxy, testTarget, testPort)
                 }
                 ProxyProtocol.SOCKS4 -> {
-                    socks4Handler.connect(proxy, "www.google.com", 443)
+                    socks4Handler.connect(proxy, testTarget, testPort)
                 }
             }
 

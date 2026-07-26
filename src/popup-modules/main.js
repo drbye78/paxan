@@ -9,7 +9,6 @@ import {
   getSettings,
   setSettings,
   getConnectionQuality,
-  getIpInfo,
   getOnboardingState,
   setOnboardingState,
   getProxies,
@@ -73,6 +72,9 @@ import {
   startConnectionTimer
 } from './popup.connection.js';
 
+import { setLanguage } from '../popup/i18n.js';
+import { initOnboarding } from './popup.onboarding.js';
+
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
@@ -93,9 +95,7 @@ async function init() {
     // 3. Apply saved language
     const settings = getSettings();
     if (settings.language) {
-      if (typeof setLanguage === 'function') {
-        setLanguage(settings.language);
-      }
+      setLanguage(settings.language);
     }
     
     // 4. Update UI with loaded state
@@ -129,9 +129,7 @@ async function init() {
     const onboardingState = getOnboardingState();
     if (!onboardingState.completed) {
       console.log('📚 Showing onboarding...');
-      if (typeof showOnboarding === 'function') {
-        showOnboarding();
-      }
+      initOnboarding();
     }
     
     // 10. Start connection timer if already connected

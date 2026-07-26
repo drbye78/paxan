@@ -138,7 +138,7 @@ describe('Reputation Engine', () => {
       await engine.recordTest(proxy, false, null);
       
       const result = await engine.getReputation('192.168.1.1:8080');
-      expect(result.uptime).toBeGreaterThan(0);
+      expect(result.successRate).toBeGreaterThan(0);
     });
 
     test('should return 0 for empty history', async () => {

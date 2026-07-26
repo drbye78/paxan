@@ -1,9 +1,8 @@
 package com.peasyproxy.app.data.repository
 
 import android.content.Context
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.*
-import androidx.datastore.preferences.preferencesDataStore
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.peasyproxy.app.domain.model.AppRoutingConfig
 import com.peasyproxy.app.domain.model.AppSettings
 import com.peasyproxy.app.domain.model.AutoRotateInterval
@@ -11,467 +10,439 @@ import com.peasyproxy.app.domain.model.DarkMode
 import com.peasyproxy.app.domain.model.DnsConfig
 import com.peasyproxy.app.domain.model.NotificationPreferences
 import com.peasyproxy.app.domain.model.RotationStrategy
+import com.tencent.mmkv.MMKV
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
-import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
-
 @Singleton
 class SettingsRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val gson: Gson
 ) {
-    private object PreferencesKeys {
-        val AUTO_CONNECT_ON_START = booleanPreferencesKey("auto_connect_on_start")
-        val AUTO_RECONNECT = booleanPreferencesKey("auto_reconnect")
-        val FAILOVER_ENABLED = booleanPreferencesKey("failover_enabled")
-        val KILL_SWITCH_ENABLED = booleanPreferencesKey("kill_switch_enabled")
-        val AUTO_ROTATE_ENABLED = booleanPreferencesKey("auto_rotate_enabled")
-        val AUTO_ROTATE_INTERVAL = intPreferencesKey("auto_rotate_interval")
-        val ROTATION_STRATEGY = stringPreferencesKey("rotation_strategy")
-        val CONNECTION_TIMEOUT = intPreferencesKey("connection_timeout")
-        val HEALTH_CHECK_INTERVAL = intPreferencesKey("health_check_interval")
-        val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
-        val ERROR_ALERTS_ENABLED = booleanPreferencesKey("error_alerts_enabled")
-        val DARK_MODE = stringPreferencesKey("dark_mode")
-        val SELECTED_TEST_ENDPOINTS = stringPreferencesKey("selected_test_endpoints")
-        val LAST_SELECTED_PROXY_ID = stringPreferencesKey("last_selected_proxy_id")
-        val VPN_ENABLED = booleanPreferencesKey("vpn_enabled")
-        val ALLOW_BYPASS = booleanPreferencesKey("allow_bypass")
-        
-        // DNS Config
-        val CUSTOM_DNS_ENABLED = booleanPreferencesKey("custom_dns_enabled")
-        val PRIMARY_DNS = stringPreferencesKey("primary_dns")
-        val SECONDARY_DNS = stringPreferencesKey("secondary_dns")
-        
-        // App Routing
-        val INCLUDED_APPS = stringPreferencesKey("included_apps")
-        val EXCLUDED_APPS = stringPreferencesKey("excluded_apps")
-        val IS_INCLUDE_MODE = booleanPreferencesKey("is_include_mode")
-        
-        // Notification Preferences
-        val CONNECTION_NOTIFICATIONS = booleanPreferencesKey("connection_notifications")
-        val ERROR_ALERTS = booleanPreferencesKey("error_alerts")
-        val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
-        val VIBRATION_ENABLED = booleanPreferencesKey("vibration_enabled")
-        val SOUND_URI = stringPreferencesKey("sound_uri")
-        val VIBRATION_PATTERN = stringPreferencesKey("vibration_pattern")
 
-        // Language
-        val LANGUAGE = stringPreferencesKey("language")
-
-        // Split Tunnel
-        val SPLIT_TUNNEL_MODE = stringPreferencesKey("split_tunnel_mode")
+    init {
+        MMKV.initialize(context)
     }
 
-    private val _dnsConfigFlow = context.dataStore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
-        }
-        .map { preferences ->
-            DnsConfig(
-                customDnsEnabled = preferences[PreferencesKeys.CUSTOM_DNS_ENABLED] ?: false,
-                primaryDns = preferences[PreferencesKeys.PRIMARY_DNS] ?: "8.8.8.8",
-                secondaryDns = preferences[PreferencesKeys.SECONDARY_DNS] ?: "8.8.4.4"
-            )
-        }
-
-    val dnsConfigFlow: Flow<DnsConfig> = _dnsConfigFlow
-
-    private val _appRoutingFlow = context.dataStore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
-        }
-        .map { preferences ->
-            AppRoutingConfig(
-                includedApps = preferences[PreferencesKeys.INCLUDED_APPS]
-                    ?.split(",")
-                    ?.filter { it.isNotBlank() }
-                    ?.toSet() ?: emptySet(),
-                excludedApps = preferences[PreferencesKeys.EXCLUDED_APPS]
-                    ?.split(",")
-                    ?.filter { it.isNotBlank() }
-                    ?.toSet() ?: emptySet(),
-                isIncludeMode = preferences[PreferencesKeys.IS_INCLUDE_MODE] ?: true,
-                allowBypass = preferences[PreferencesKeys.ALLOW_BYPASS] ?: false
-            )
-        }
-
-    val appRoutingFlow: Flow<AppRoutingConfig> = _appRoutingFlow
-
-    private val _notificationPreferencesFlow = context.dataStore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
-        }
-        .map { preferences ->
-            NotificationPreferences(
-                connectionNotifications = preferences[PreferencesKeys.CONNECTION_NOTIFICATIONS] ?: true,
-                errorAlerts = preferences[PreferencesKeys.ERROR_ALERTS] ?: true,
-                soundEnabled = preferences[PreferencesKeys.SOUND_ENABLED] ?: true,
-                vibrationEnabled = preferences[PreferencesKeys.VIBRATION_ENABLED] ?: true,
-                soundUri = preferences[PreferencesKeys.SOUND_URI],
-                vibrationPattern = preferences[PreferencesKeys.VIBRATION_PATTERN]
-                    ?.split(",")
-                    ?.map { it.toLong() }
-                    ?.toLongArray() ?: longArrayOf(0, 250, 250, 250)
-            )
-        }
-
-    val notificationPreferencesFlow: Flow<NotificationPreferences> = _notificationPreferencesFlow
-
-    private val _languageFlow = context.dataStore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
-        }
-        .map { preferences ->
-            preferences[PreferencesKeys.LANGUAGE] ?: "en"
-        }
-
-    val languageFlow: Flow<String> = _languageFlow
-
-    private val _splitTunnelModeFlow = context.dataStore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
-        }
-        .map { preferences ->
-            try {
-                com.peasyproxy.app.domain.model.SplitTunnelMode.valueOf(
-                    preferences[PreferencesKeys.SPLIT_TUNNEL_MODE] ?: "DISABLED"
-                )
-            } catch (e: Exception) {
-                com.peasyproxy.app.domain.model.SplitTunnelMode.DISABLED
-            }
-        }
-
-    val splitTunnelModeFlow: Flow<com.peasyproxy.app.domain.model.SplitTunnelMode> = _splitTunnelModeFlow
-
-    val settingsFlow: Flow<AppSettings> = context.dataStore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
-        }
-        .map { preferences ->
-            mapToSettings(preferences)
-        }
-
-    suspend fun updateAutoConnectOnStart(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.AUTO_CONNECT_ON_START] = enabled
-        }
+    private val mmkv: MMKV by lazy {
+        MMKV.mmkvWithID("peasyproxy_settings", MMKV.MULTI_PROCESS_MODE)
     }
 
-    suspend fun updateAutoReconnect(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.AUTO_RECONNECT] = enabled
-        }
-    }
+    // =========================================================================
+    // Main settings flow (replaces DataStore-based Flow)
+    // =========================================================================
 
-    suspend fun updateFailoverEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.FAILOVER_ENABLED] = enabled
-        }
-    }
+    private val _settingsFlow = MutableStateFlow(loadSettings())
+    val settingsFlow: StateFlow<AppSettings> = _settingsFlow.asStateFlow()
 
-    suspend fun updateKillSwitchEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.KILL_SWITCH_ENABLED] = enabled
-        }
-    }
-
-    suspend fun updateAutoRotateEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.AUTO_ROTATE_ENABLED] = enabled
-        }
-    }
-
-    suspend fun updateAutoRotateInterval(interval: AutoRotateInterval) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.AUTO_ROTATE_INTERVAL] = interval.minutes
-        }
-    }
-
-    suspend fun updateRotationStrategy(strategy: RotationStrategy) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.ROTATION_STRATEGY] = strategy.name
-        }
-    }
-
-    suspend fun updateConnectionTimeout(timeout: Int) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.CONNECTION_TIMEOUT] = timeout
-        }
-    }
-
-    suspend fun updateHealthCheckInterval(interval: Int) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.HEALTH_CHECK_INTERVAL] = interval
-        }
-    }
-
-    suspend fun updateNotificationsEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.NOTIFICATIONS_ENABLED] = enabled
-        }
-    }
-
-    suspend fun updateErrorAlertsEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.ERROR_ALERTS_ENABLED] = enabled
-        }
-    }
-
-    suspend fun updateDarkMode(mode: DarkMode) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.DARK_MODE] = mode.name
-        }
-    }
-
-    suspend fun updateSelectedTestEndpoints(endpoints: List<String>) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.SELECTED_TEST_ENDPOINTS] = endpoints.joinToString(",")
-        }
-    }
-
-    suspend fun updateLastSelectedProxyId(proxyId: String?) {
-        context.dataStore.edit { preferences ->
-            if (proxyId != null) {
-                preferences[PreferencesKeys.LAST_SELECTED_PROXY_ID] = proxyId
-            } else {
-                preferences.remove(PreferencesKeys.LAST_SELECTED_PROXY_ID)
-            }
-        }
-    }
-
-    suspend fun updateVpnEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.VPN_ENABLED] = enabled
-        }
-    }
-
-    suspend fun updateAllowBypass(allow: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.ALLOW_BYPASS] = allow
-        }
-    }
-
-    suspend fun updateDnsConfig(config: DnsConfig) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.CUSTOM_DNS_ENABLED] = config.customDnsEnabled
-            preferences[PreferencesKeys.PRIMARY_DNS] = config.primaryDns
-            preferences[PreferencesKeys.SECONDARY_DNS] = config.secondaryDns
-        }
-    }
-
-    suspend fun updateCustomDnsEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.CUSTOM_DNS_ENABLED] = enabled
-        }
-    }
-
-    suspend fun updatePrimaryDns(dns: String) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.PRIMARY_DNS] = dns
-        }
-    }
-
-    suspend fun updateSecondaryDns(dns: String) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.SECONDARY_DNS] = dns
-        }
-    }
-
-    suspend fun updateAppRoutingConfig(config: AppRoutingConfig) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.INCLUDED_APPS] = config.includedApps.joinToString(",")
-            preferences[PreferencesKeys.EXCLUDED_APPS] = config.excludedApps.joinToString(",")
-            preferences[PreferencesKeys.IS_INCLUDE_MODE] = config.isIncludeMode
-        }
-    }
-
-    suspend fun addIncludedApp(packageName: String) {
-        context.dataStore.edit { preferences ->
-            val current = preferences[PreferencesKeys.INCLUDED_APPS]
-                ?.split(",")
-                ?.filter { it.isNotBlank() }
-                ?.toMutableSet() ?: mutableSetOf()
-            current.add(packageName)
-            preferences[PreferencesKeys.INCLUDED_APPS] = current.joinToString(",")
-        }
-    }
-
-    suspend fun removeIncludedApp(packageName: String) {
-        context.dataStore.edit { preferences ->
-            val current = preferences[PreferencesKeys.INCLUDED_APPS]
-                ?.split(",")
-                ?.filter { it.isNotBlank() }
-                ?.toMutableSet() ?: mutableSetOf()
-            current.remove(packageName)
-            preferences[PreferencesKeys.INCLUDED_APPS] = current.joinToString(",")
-        }
-    }
-
-    suspend fun addExcludedApp(packageName: String) {
-        context.dataStore.edit { preferences ->
-            val current = preferences[PreferencesKeys.EXCLUDED_APPS]
-                ?.split(",")
-                ?.filter { it.isNotBlank() }
-                ?.toMutableSet() ?: mutableSetOf()
-            current.add(packageName)
-            preferences[PreferencesKeys.EXCLUDED_APPS] = current.joinToString(",")
-        }
-    }
-
-    suspend fun removeExcludedApp(packageName: String) {
-        context.dataStore.edit { preferences ->
-            val current = preferences[PreferencesKeys.EXCLUDED_APPS]
-                ?.split(",")
-                ?.filter { it.isNotBlank() }
-                ?.toMutableSet() ?: mutableSetOf()
-            current.remove(packageName)
-            preferences[PreferencesKeys.EXCLUDED_APPS] = current.joinToString(",")
-        }
-    }
-
-    suspend fun updateIncludeMode(isIncludeMode: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.IS_INCLUDE_MODE] = isIncludeMode
-        }
-    }
-
-    suspend fun updateSettings(settings: AppSettings) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.AUTO_CONNECT_ON_START] = settings.autoConnectOnStart
-            preferences[PreferencesKeys.AUTO_RECONNECT] = settings.autoReconnect
-            preferences[PreferencesKeys.FAILOVER_ENABLED] = settings.failoverEnabled
-            preferences[PreferencesKeys.KILL_SWITCH_ENABLED] = settings.killSwitchEnabled
-            preferences[PreferencesKeys.AUTO_ROTATE_ENABLED] = settings.autoRotateEnabled
-            preferences[PreferencesKeys.AUTO_ROTATE_INTERVAL] = settings.autoRotateIntervalMinutes
-            preferences[PreferencesKeys.ROTATION_STRATEGY] = settings.rotationStrategy.name
-            preferences[PreferencesKeys.CONNECTION_TIMEOUT] = settings.connectionTimeout
-            preferences[PreferencesKeys.HEALTH_CHECK_INTERVAL] = settings.healthCheckIntervalSeconds
-            preferences[PreferencesKeys.NOTIFICATIONS_ENABLED] = settings.notificationsEnabled
-            preferences[PreferencesKeys.ERROR_ALERTS_ENABLED] = settings.errorAlertsEnabled
-            preferences[PreferencesKeys.DARK_MODE] = settings.darkMode.name
-            preferences[PreferencesKeys.SELECTED_TEST_ENDPOINTS] = settings.selectedTestEndpoints.joinToString(",")
-        }
-    }
-
-    private fun mapToSettings(preferences: Preferences): AppSettings {
+    private fun loadSettings(): AppSettings {
         return AppSettings(
-            autoConnectOnStart = preferences[PreferencesKeys.AUTO_CONNECT_ON_START] ?: false,
-            autoReconnect = preferences[PreferencesKeys.AUTO_RECONNECT] ?: true,
-            failoverEnabled = preferences[PreferencesKeys.FAILOVER_ENABLED] ?: true,
-            killSwitchEnabled = preferences[PreferencesKeys.KILL_SWITCH_ENABLED] ?: false,
-            autoRotateEnabled = preferences[PreferencesKeys.AUTO_ROTATE_ENABLED] ?: false,
-            autoRotateIntervalMinutes = preferences[PreferencesKeys.AUTO_ROTATE_INTERVAL] ?: 15,
+            autoConnectOnStart = mmkv.decodeBool("auto_connect_on_start", false),
+            autoReconnect = mmkv.decodeBool("auto_reconnect", true),
+            failoverEnabled = mmkv.decodeBool("failover_enabled", true),
+            killSwitchEnabled = mmkv.decodeBool("kill_switch_enabled", false),
+            autoRotateEnabled = mmkv.decodeBool("auto_rotate_enabled", false),
+            autoRotateIntervalMinutes = mmkv.decodeInt("auto_rotate_interval", 15),
             rotationStrategy = try {
-                RotationStrategy.valueOf(preferences[PreferencesKeys.ROTATION_STRATEGY] ?: "FASTEST")
+                RotationStrategy.valueOf(mmkv.decodeString("rotation_strategy") ?: "FASTEST")
             } catch (e: Exception) {
                 RotationStrategy.FASTEST
             },
-            connectionTimeout = preferences[PreferencesKeys.CONNECTION_TIMEOUT] ?: 5000,
-            healthCheckIntervalSeconds = preferences[PreferencesKeys.HEALTH_CHECK_INTERVAL] ?: 30,
-            notificationsEnabled = preferences[PreferencesKeys.NOTIFICATIONS_ENABLED] ?: true,
-            errorAlertsEnabled = preferences[PreferencesKeys.ERROR_ALERTS_ENABLED] ?: true,
+            connectionTimeout = mmkv.decodeInt("connection_timeout", 5000),
+            healthCheckIntervalSeconds = mmkv.decodeInt("health_check_interval", 30),
+            notificationsEnabled = mmkv.decodeBool("notifications_enabled", true),
+            errorAlertsEnabled = mmkv.decodeBool("error_alerts_enabled", true),
             darkMode = try {
-                DarkMode.valueOf(preferences[PreferencesKeys.DARK_MODE] ?: "SYSTEM")
+                DarkMode.valueOf(mmkv.decodeString("dark_mode") ?: "SYSTEM")
             } catch (e: Exception) {
                 DarkMode.SYSTEM
             },
-            selectedTestEndpoints = preferences[PreferencesKeys.SELECTED_TEST_ENDPOINTS]
-                ?.split(",")
-                ?.filter { it.isNotBlank() }
-                ?: AppSettings.DEFAULT_TEST_ENDPOINTS
+            selectedTestEndpoints = decodeStringList(mmkv.decodeString("selected_test_endpoints"))
+                .ifEmpty { AppSettings.DEFAULT_TEST_ENDPOINTS },
+            customDnsEnabled = mmkv.decodeBool("custom_dns_enabled", false),
+            primaryDns = mmkv.decodeString("primary_dns") ?: "8.8.8.8",
+            secondaryDns = mmkv.decodeString("secondary_dns") ?: "8.8.4.4",
+            vpnEnabled = mmkv.decodeBool("vpn_enabled", false)
         )
     }
 
-    suspend fun updateNotificationPreferences(prefs: NotificationPreferences) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.CONNECTION_NOTIFICATIONS] = prefs.connectionNotifications
-            preferences[PreferencesKeys.ERROR_ALERTS] = prefs.errorAlerts
-            preferences[PreferencesKeys.SOUND_ENABLED] = prefs.soundEnabled
-            preferences[PreferencesKeys.VIBRATION_ENABLED] = prefs.vibrationEnabled
-            prefs.soundUri?.let { preferences[PreferencesKeys.SOUND_URI] = it }
-            preferences[PreferencesKeys.VIBRATION_PATTERN] = prefs.vibrationPattern.joinToString(",")
+    private fun emitSettings() {
+        _settingsFlow.value = loadSettings()
+    }
+
+    // =========================================================================
+    // DNS config flow — derived from main settings flow
+    // =========================================================================
+
+    val dnsConfigFlow: Flow<DnsConfig> = _settingsFlow.map { settings ->
+        DnsConfig(
+            customDnsEnabled = settings.customDnsEnabled,
+            primaryDns = settings.primaryDns,
+            secondaryDns = settings.secondaryDns
+        )
+    }
+
+    // =========================================================================
+    // App routing flow
+    // =========================================================================
+
+    private val _appRoutingFlow = MutableStateFlow(loadAppRoutingConfig())
+    val appRoutingFlow: StateFlow<AppRoutingConfig> = _appRoutingFlow.asStateFlow()
+
+    private fun loadAppRoutingConfig(): AppRoutingConfig {
+        val isIncludeMode = mmkv.decodeBool("is_include_mode", true)
+        return AppRoutingConfig(
+            mode = if (isIncludeMode) AppRoutingConfig.Mode.INCLUDE else AppRoutingConfig.Mode.EXCLUDE,
+            includedApps = decodeStringList(mmkv.decodeString("included_apps")).toSet(),
+            excludedApps = decodeStringList(mmkv.decodeString("excluded_apps")).toSet(),
+            allowBypass = mmkv.decodeBool("allow_bypass", false)
+        )
+    }
+
+    private fun emitAppRouting() {
+        _appRoutingFlow.value = loadAppRoutingConfig()
+    }
+
+    // =========================================================================
+    // Notification preferences flow
+    // =========================================================================
+
+    private val _notificationPreferencesFlow = MutableStateFlow(loadNotificationPreferences())
+    val notificationPreferencesFlow: StateFlow<NotificationPreferences> = _notificationPreferencesFlow.asStateFlow()
+
+    private fun loadNotificationPreferences(): NotificationPreferences {
+        return NotificationPreferences(
+            connectionNotifications = mmkv.decodeBool("connection_notifications", true),
+            errorAlerts = mmkv.decodeBool("error_alerts", true),
+            soundEnabled = mmkv.decodeBool("sound_enabled", true),
+            vibrationEnabled = mmkv.decodeBool("vibration_enabled", true),
+            soundUri = mmkv.decodeString("sound_uri"),
+            vibrationPattern = decodeLongList(mmkv.decodeString("vibration_pattern"))
+                ?: listOf(0, 250, 250, 250)
+        )
+    }
+
+    private fun emitNotificationPreferences() {
+        _notificationPreferencesFlow.value = loadNotificationPreferences()
+    }
+
+    // =========================================================================
+    // Language flow
+    // =========================================================================
+
+    private val _languageFlow = MutableStateFlow(loadLanguage())
+    val languageFlow: StateFlow<String> = _languageFlow.asStateFlow()
+
+    private fun loadLanguage(): String {
+        return mmkv.decodeString("language") ?: "en"
+    }
+
+    // =========================================================================
+    // Split tunnel mode flow
+    // =========================================================================
+
+    private val _splitTunnelModeFlow = MutableStateFlow(loadSplitTunnelMode())
+    val splitTunnelModeFlow: StateFlow<com.peasyproxy.app.domain.model.SplitTunnelMode> = _splitTunnelModeFlow.asStateFlow()
+
+    private fun loadSplitTunnelMode(): com.peasyproxy.app.domain.model.SplitTunnelMode {
+        return try {
+            com.peasyproxy.app.domain.model.SplitTunnelMode.valueOf(
+                mmkv.decodeString("split_tunnel_mode") ?: "DISABLED"
+            )
+        } catch (e: Exception) {
+            com.peasyproxy.app.domain.model.SplitTunnelMode.DISABLED
         }
     }
 
-    suspend fun updateConnectionNotifications(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.CONNECTION_NOTIFICATIONS] = enabled
+    // =========================================================================
+    // Serialization helpers (Issue #27: JSON replaces fragile comma-separated)
+    // =========================================================================
+
+    private fun encodeStringList(list: Iterable<String>): String {
+        return gson.toJson(list.toList())
+    }
+
+    private fun decodeStringList(encoded: String?): List<String> {
+        if (encoded.isNullOrBlank()) return emptyList()
+        return try {
+            gson.fromJson(encoded, object : TypeToken<List<String>>() {}.type)
+        } catch (e: Exception) {
+            emptyList()
         }
     }
 
-    suspend fun updateErrorAlerts(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.ERROR_ALERTS] = enabled
+    private fun encodeLongList(list: List<Long>): String {
+        return gson.toJson(list)
+    }
+
+    private fun decodeLongList(encoded: String?): List<Long>? {
+        if (encoded.isNullOrBlank()) return null
+        return try {
+            gson.fromJson(encoded, object : TypeToken<List<Long>>() {}.type)
+        } catch (e: Exception) {
+            null
         }
     }
 
-    suspend fun updateSoundEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.SOUND_ENABLED] = enabled
+    // =========================================================================
+    // Settings update methods
+    // =========================================================================
+
+    fun updateAutoConnectOnStart(enabled: Boolean) {
+        mmkv.encode("auto_connect_on_start", enabled)
+        emitSettings()
+    }
+
+    fun updateAutoReconnect(enabled: Boolean) {
+        mmkv.encode("auto_reconnect", enabled)
+        emitSettings()
+    }
+
+    fun updateFailoverEnabled(enabled: Boolean) {
+        mmkv.encode("failover_enabled", enabled)
+        emitSettings()
+    }
+
+    fun updateKillSwitchEnabled(enabled: Boolean) {
+        mmkv.encode("kill_switch_enabled", enabled)
+        emitSettings()
+    }
+
+    fun updateAutoRotateEnabled(enabled: Boolean) {
+        mmkv.encode("auto_rotate_enabled", enabled)
+        emitSettings()
+    }
+
+    fun updateAutoRotateInterval(interval: AutoRotateInterval) {
+        mmkv.encode("auto_rotate_interval", interval.minutes)
+        emitSettings()
+    }
+
+    fun updateRotationStrategy(strategy: RotationStrategy) {
+        mmkv.encode("rotation_strategy", strategy.name)
+        emitSettings()
+    }
+
+    fun updateConnectionTimeout(timeout: Int) {
+        mmkv.encode("connection_timeout", timeout)
+        emitSettings()
+    }
+
+    fun updateHealthCheckInterval(interval: Int) {
+        mmkv.encode("health_check_interval", interval)
+        emitSettings()
+    }
+
+    fun updateNotificationsEnabled(enabled: Boolean) {
+        mmkv.encode("notifications_enabled", enabled)
+        emitSettings()
+    }
+
+    fun updateErrorAlertsEnabled(enabled: Boolean) {
+        mmkv.encode("error_alerts_enabled", enabled)
+        emitSettings()
+    }
+
+    fun updateDarkMode(mode: DarkMode) {
+        mmkv.encode("dark_mode", mode.name)
+        emitSettings()
+    }
+
+    fun updateSelectedTestEndpoints(endpoints: List<String>) {
+        mmkv.encode("selected_test_endpoints", encodeStringList(endpoints))
+        emitSettings()
+    }
+
+    fun updateLastSelectedProxyId(proxyId: String?) {
+        if (proxyId != null) {
+            mmkv.encode("last_selected_proxy_id", proxyId)
+        } else {
+            mmkv.removeValueForKey("last_selected_proxy_id")
         }
     }
 
-    suspend fun updateVibrationEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.VIBRATION_ENABLED] = enabled
-        }
+    fun getLastSelectedProxyId(): String? {
+        return mmkv.decodeString("last_selected_proxy_id", null)
     }
 
-    suspend fun updateSoundUri(uri: String?) {
-        context.dataStore.edit { preferences ->
-            if (uri != null) {
-                preferences[PreferencesKeys.SOUND_URI] = uri
-            } else {
-                preferences.remove(PreferencesKeys.SOUND_URI)
-            }
-        }
+    fun updateVpnEnabled(enabled: Boolean) {
+        mmkv.encode("vpn_enabled", enabled)
+        emitSettings()
     }
 
-    suspend fun updateVibrationPattern(pattern: LongArray) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.VIBRATION_PATTERN] = pattern.joinToString(",")
-        }
+    fun updateAllowBypass(allow: Boolean) {
+        mmkv.encode("allow_bypass", allow)
+        emitAppRouting()
     }
 
-    suspend fun updateLanguage(language: String) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.LANGUAGE] = language
-        }
+    // =========================================================================
+    // DNS config update methods
+    // =========================================================================
+
+    fun updateDnsConfig(config: DnsConfig) {
+        mmkv.encode("custom_dns_enabled", config.customDnsEnabled)
+        mmkv.encode("primary_dns", config.primaryDns)
+        mmkv.encode("secondary_dns", config.secondaryDns)
+        emitSettings()
     }
 
-    suspend fun updateSplitTunnelMode(mode: com.peasyproxy.app.domain.model.SplitTunnelMode) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.SPLIT_TUNNEL_MODE] = mode.name
+    fun updateCustomDnsEnabled(enabled: Boolean) {
+        mmkv.encode("custom_dns_enabled", enabled)
+        emitSettings()
+    }
+
+    fun updatePrimaryDns(dns: String) {
+        mmkv.encode("primary_dns", dns)
+        emitSettings()
+    }
+
+    fun updateSecondaryDns(dns: String) {
+        mmkv.encode("secondary_dns", dns)
+        emitSettings()
+    }
+
+    // =========================================================================
+    // App routing update methods (Issue #27: JSON serialization)
+    // =========================================================================
+
+    fun updateAppRoutingConfig(config: AppRoutingConfig) {
+        mmkv.encode("included_apps", encodeStringList(config.includedApps))
+        mmkv.encode("excluded_apps", encodeStringList(config.excludedApps))
+        mmkv.encode("is_include_mode", config.isIncludeMode)
+        emitAppRouting()
+    }
+
+    fun addIncludedApp(packageName: String) {
+        val current = decodeStringList(mmkv.decodeString("included_apps")).toMutableList()
+        if (!current.contains(packageName)) {
+            current.add(packageName)
         }
+        mmkv.encode("included_apps", encodeStringList(current))
+        emitAppRouting()
+    }
+
+    fun removeIncludedApp(packageName: String) {
+        val current = decodeStringList(mmkv.decodeString("included_apps")).toMutableList()
+        current.remove(packageName)
+        mmkv.encode("included_apps", encodeStringList(current))
+        emitAppRouting()
+    }
+
+    fun addExcludedApp(packageName: String) {
+        val current = decodeStringList(mmkv.decodeString("excluded_apps")).toMutableList()
+        if (!current.contains(packageName)) {
+            current.add(packageName)
+        }
+        mmkv.encode("excluded_apps", encodeStringList(current))
+        emitAppRouting()
+    }
+
+    fun removeExcludedApp(packageName: String) {
+        val current = decodeStringList(mmkv.decodeString("excluded_apps")).toMutableList()
+        current.remove(packageName)
+        mmkv.encode("excluded_apps", encodeStringList(current))
+        emitAppRouting()
+    }
+
+    fun updateIncludeMode(isIncludeMode: Boolean) {
+        mmkv.encode("is_include_mode", isIncludeMode)
+        emitAppRouting()
+    }
+
+    fun updateSettings(settings: AppSettings) {
+        mmkv.encode("auto_connect_on_start", settings.autoConnectOnStart)
+        mmkv.encode("auto_reconnect", settings.autoReconnect)
+        mmkv.encode("failover_enabled", settings.failoverEnabled)
+        mmkv.encode("kill_switch_enabled", settings.killSwitchEnabled)
+        mmkv.encode("vpn_enabled", settings.vpnEnabled)
+        mmkv.encode("auto_rotate_enabled", settings.autoRotateEnabled)
+        mmkv.encode("auto_rotate_interval", settings.autoRotateIntervalMinutes)
+        mmkv.encode("rotation_strategy", settings.rotationStrategy.name)
+        mmkv.encode("connection_timeout", settings.connectionTimeout)
+        mmkv.encode("health_check_interval", settings.healthCheckIntervalSeconds)
+        mmkv.encode("notifications_enabled", settings.notificationsEnabled)
+        mmkv.encode("error_alerts_enabled", settings.errorAlertsEnabled)
+        mmkv.encode("dark_mode", settings.darkMode.name)
+        mmkv.encode("selected_test_endpoints", encodeStringList(settings.selectedTestEndpoints))
+        mmkv.encode("custom_dns_enabled", settings.customDnsEnabled)
+        mmkv.encode("primary_dns", settings.primaryDns)
+        mmkv.encode("secondary_dns", settings.secondaryDns)
+        emitSettings()
+    }
+
+    // =========================================================================
+    // Notification preferences update methods
+    // =========================================================================
+
+    fun updateNotificationPreferences(prefs: NotificationPreferences) {
+        mmkv.encode("connection_notifications", prefs.connectionNotifications)
+        mmkv.encode("error_alerts", prefs.errorAlerts)
+        mmkv.encode("sound_enabled", prefs.soundEnabled)
+        mmkv.encode("vibration_enabled", prefs.vibrationEnabled)
+        if (prefs.soundUri != null) {
+            mmkv.encode("sound_uri", prefs.soundUri)
+        } else {
+            mmkv.removeValueForKey("sound_uri")
+        }
+        mmkv.encode("vibration_pattern", encodeLongList(prefs.vibrationPattern))
+        emitNotificationPreferences()
+    }
+
+    fun updateConnectionNotifications(enabled: Boolean) {
+        mmkv.encode("connection_notifications", enabled)
+        emitNotificationPreferences()
+    }
+
+    fun updateErrorAlerts(enabled: Boolean) {
+        mmkv.encode("error_alerts", enabled)
+        emitNotificationPreferences()
+    }
+
+    fun updateSoundEnabled(enabled: Boolean) {
+        mmkv.encode("sound_enabled", enabled)
+        emitNotificationPreferences()
+    }
+
+    fun updateVibrationEnabled(enabled: Boolean) {
+        mmkv.encode("vibration_enabled", enabled)
+        emitNotificationPreferences()
+    }
+
+    fun updateSoundUri(uri: String?) {
+        if (uri != null) {
+            mmkv.encode("sound_uri", uri)
+        } else {
+            mmkv.removeValueForKey("sound_uri")
+        }
+        emitNotificationPreferences()
+    }
+
+    fun updateVibrationPattern(pattern: List<Long>) {
+        mmkv.encode("vibration_pattern", encodeLongList(pattern))
+        emitNotificationPreferences()
+    }
+
+    // =========================================================================
+    // Language
+    // =========================================================================
+
+    fun updateLanguage(language: String) {
+        mmkv.encode("language", language)
+        _languageFlow.value = language
+    }
+
+    // =========================================================================
+    // Split tunnel mode
+    // =========================================================================
+
+    fun updateSplitTunnelMode(mode: com.peasyproxy.app.domain.model.SplitTunnelMode) {
+        mmkv.encode("split_tunnel_mode", mode.name)
+        _splitTunnelModeFlow.value = mode
     }
 }

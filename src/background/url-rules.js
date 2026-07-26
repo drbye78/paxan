@@ -1,7 +1,8 @@
 // PeasyProxy - URL Rules Module
 // Implements proxy whitelist/blacklist by URL patterns
 
-const { THRESHOLDS } = require('../popup/constants.js');
+import { THRESHOLDS } from '../popup/constants.js';
+import { isRegexSafe, escapeRegex, wildcardToRegex, uniqueId } from '../shared/utils.js';
 
 // ============================================================================
 // RULE TYPES
@@ -55,29 +56,29 @@ function matchUrl(url, pattern, ruleType) {
   }
 }
 
-// Wildcard matching
+/**
+ * Wildcard matching using wildcardToRegex from shared utils.
+ * Only * is treated as a wildcard; all other special regex chars are escaped.
+ */
 function matchWildcard(str, pattern) {
   if (!str || !pattern) return false;
-  
-  // Convert wildcard pattern to regex
-  let regex = pattern
-    .replace(/\./g, '\\.')
-    .replace(/\*/g, '.*')
-    .replace(/\?/g, '.');
-  
-  regex = `^${regex}$`;
-  
   try {
-    return new RegExp(regex, 'i').test(str);
+    const regex = wildcardToRegex(pattern);
+    return regex.test(str);
   } catch {
     return false;
   }
 }
 
-// Regex matching
+/**
+ * Regex matching with ReDoS protection via isRegexSafe.
+ * Unsafe or overly complex patterns are rejected (returns false).
+ */
 function matchRegex(str, pattern) {
+  if (!isRegexSafe(pattern)) return false;
   try {
-    return new RegExp(pattern, 'i').test(str);
+    const regex = new RegExp(pattern, 'i');
+    return regex.test(str);
   } catch {
     return false;
   }
@@ -102,13 +103,14 @@ async function addUrlRule(rule) {
       };
     }
 
-    // Check for duplicate
-    const existing = urlRules.find(r => 
+    // Check for duplicate — include action in comparison
+    const isDuplicate = urlRules.some(r => 
       r.pattern === rule.pattern && 
-      r.type === (rule.type || RULE_TYPES.EXACT)
+      r.type === (rule.type || RULE_TYPES.EXACT) && 
+      r.action === (rule.action || RULE_ACTIONS.WHITELIST)
     );
     
-    if (existing) {
+    if (isDuplicate) {
       return {
         success: false,
         error: 'Rule already exists'
@@ -116,7 +118,7 @@ async function addUrlRule(rule) {
     }
 
     const newRule = {
-      id: `rule-${Date.now()}`,
+      id: uniqueId('rule'),
       pattern: rule.pattern,
       type: rule.type || RULE_TYPES.EXACT,
       action: rule.action,
@@ -389,7 +391,10 @@ async function exportRules() {
   }
 }
 
-// Import rules
+/**
+ * Import rules with duplicate detection including action in comparison.
+ * Uses uniqueId() for cryptographically-strong ID generation (no collision).
+ */
 async function importRules(rules, options = {}) {
   try {
     const { urlRules = [] } = await chrome.storage.local.get([RULES_KEY]);
@@ -398,16 +403,18 @@ async function importRules(rules, options = {}) {
     let importedCount = 0;
     
     if (merge) {
-      // Merge with existing rules
+      // Merge with existing rules — include action in duplicate check
       for (const rule of rules) {
         const exists = urlRules.some(r => 
-          r.pattern === rule.pattern && r.type === rule.type
+          r.pattern === rule.pattern && 
+          r.type === (rule.type || RULE_TYPES.EXACT) && 
+          r.action === (rule.action || RULE_ACTIONS.WHITELIST)
         );
         
         if (!exists) {
           urlRules.push({
             ...rule,
-            id: rule.id || `rule-${Date.now()}-${importedCount}`,
+            id: rule.id || uniqueId('rule'),
             createdAt: rule.createdAt || Date.now(),
             updatedAt: Date.now()
           });
@@ -420,7 +427,7 @@ async function importRules(rules, options = {}) {
       rules.forEach((rule, index) => {
         urlRules.push({
           ...rule,
-          id: rule.id || `rule-${Date.now()}-${index}`,
+          id: rule.id || uniqueId('rule'),
           createdAt: rule.createdAt || Date.now(),
           updatedAt: Date.now()
         });
@@ -486,35 +493,22 @@ async function getRuleStats() {
 // EXPORTS
 // ============================================================================
 
-module.exports = {
-  // Constants
+export {
   RULE_TYPES,
   RULE_ACTIONS,
-  
-  // Matching
   matchUrl,
   matchWildcard,
   matchRegex,
-  
-  // Rule manager
   addUrlRule,
   getUrlRule,
   listUrlRules,
   updateUrlRule,
   deleteUrlRule,
-  
-  // Rule application
   applyRulesToUrl,
   getProxyForUrl,
-  
-  // Testing
   testUrlAgainstRules,
   testPattern,
-  
-  // Import/Export
   exportRules,
   importRules,
-  
-  // Statistics
   getRuleStats
 };

@@ -126,10 +126,10 @@ fun LatencyIndicator(
     }
 
     val color = when {
-        latency < 100 -> Color(0xFF4CAF50)
-        latency < 300 -> Color(0xFF8BC34A)
-        latency < 1000 -> Color(0xFFFFC107)
-        else -> Color(0xFFF44336)
+        latency < 100 -> MaterialTheme.colorScheme.primary
+        latency < 300 -> MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+        latency < 1000 -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.error
     }
 
     Row(
@@ -158,9 +158,9 @@ fun TrustBadge(
     modifier: Modifier = Modifier
 ) {
     val (color, text) = when (trustLevel) {
-        TrustLevel.TRUSTED -> Color(0xFF4CAF50) to "Trusted"
-        TrustLevel.UNVERIFIED -> Color(0xFFFFC107) to "Unverified"
-        TrustLevel.RISKY -> Color(0xFFF44336) to "Risky"
+        TrustLevel.TRUSTED -> MaterialTheme.colorScheme.primary to "Trusted"
+        TrustLevel.UNVERIFIED -> MaterialTheme.colorScheme.tertiary to "Unverified"
+        TrustLevel.RISKY -> MaterialTheme.colorScheme.error to "Risky"
     }
 
     Surface(
@@ -180,9 +180,9 @@ fun TrustBadge(
 @Composable
 fun getTrustLevelColor(trustLevel: TrustLevel): Color {
     return when (trustLevel) {
-        TrustLevel.TRUSTED -> Color(0xFF4CAF50)
-        TrustLevel.UNVERIFIED -> Color(0xFFFFC107)
-        TrustLevel.RISKY -> Color(0xFFF44336)
+        TrustLevel.TRUSTED -> MaterialTheme.colorScheme.primary
+        TrustLevel.UNVERIFIED -> MaterialTheme.colorScheme.tertiary
+        TrustLevel.RISKY -> MaterialTheme.colorScheme.error
     }
 }
 

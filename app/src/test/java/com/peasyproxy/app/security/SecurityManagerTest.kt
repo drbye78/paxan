@@ -162,8 +162,8 @@ class SecurityManagerTest {
         val passphrase2 = securityManager.getDatabasePassphrase()
         
         // Then
-        assertEquals(passphrase1, passphrase2)
-        assertTrue(passphrase1.isNotEmpty())
+        assertArrayEquals(passphrase1, passphrase2)
+        assertEquals(32, passphrase1.size)
     }
 
     @Test

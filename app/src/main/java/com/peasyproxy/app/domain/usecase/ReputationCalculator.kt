@@ -1,6 +1,7 @@
 package com.peasyproxy.app.domain.usecase
 
 import com.peasyproxy.app.domain.model.Proxy
+import com.peasyproxy.app.domain.model.ProxyProtocol
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -8,8 +9,8 @@ import javax.inject.Singleton
 class ReputationCalculator @Inject constructor() {
     
     companion object {
-        private const val SPEED_WEIGHT = 0.40f
-        private const val RELIABILITY_WEIGHT = 0.35f
+        private const val SPEED_WEIGHT = 0.35f
+        private const val RELIABILITY_WEIGHT = 0.30f
         private const val TRUST_WEIGHT = 0.25f
         private const val FRESHNESS_WEIGHT = 0.10f
 
@@ -61,9 +62,9 @@ class ReputationCalculator @Inject constructor() {
         }
 
         when (proxy.protocol) {
-            com.peasyproxy.app.domain.model.ProxyProtocol.HTTPS -> score += 10f
-            com.peasyproxy.app.domain.model.ProxyProtocol.SOCKS5 -> score += 5f
-            com.peasyproxy.app.domain.model.ProxyProtocol.SOCKS4 -> score += 5f
+            ProxyProtocol.HTTPS -> score += 10f
+            ProxyProtocol.SOCKS5 -> score += 5f
+            ProxyProtocol.SOCKS4 -> score += 5f
             else -> {}
         }
 

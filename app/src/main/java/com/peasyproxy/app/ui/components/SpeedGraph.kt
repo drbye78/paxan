@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -24,14 +26,15 @@ fun SpeedGraph(
     maxSpeed: Long = 10_000_000L, // 10 MB/s default max
     modifier: Modifier = Modifier
 ) {
-    val downloadColor = Color(0xFF2196F3)
-    val uploadColor = Color(0xFFFF9800)
-    val gridColor = Color(0xFFE0E0E0)
+    val downloadColor = MaterialTheme.colorScheme.primary
+    val uploadColor = MaterialTheme.colorScheme.tertiary
+    val gridColor = MaterialTheme.colorScheme.outline
     
-    val downloadPoints = remember { mutableStateListOf(0f) }
-    val uploadPoints = remember { mutableStateListOf(0f) }
+    var frameCounter by remember { mutableIntStateOf(0) }
+    val downloadPoints = remember { mutableListOf(0f) }
+    val uploadPoints = remember { mutableListOf(0f) }
     
-    // Update points every second
+    // Update points every speed change
     LaunchedEffect(uploadSpeed, downloadSpeed) {
         val downloadRatio = (downloadSpeed.toFloat() / maxSpeed).coerceIn(0f, 1f)
         val uploadRatio = (uploadSpeed.toFloat() / maxSpeed).coerceIn(0f, 1f)
@@ -45,6 +48,8 @@ fun SpeedGraph(
         
         downloadPoints.add(downloadRatio)
         uploadPoints.add(uploadRatio)
+        
+        frameCounter++ // trigger single recomposition after batch update
     }
 
     Column(modifier = modifier) {
@@ -66,67 +71,69 @@ fun SpeedGraph(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(100.dp)
-        ) {
-            val width = size.width
-            val height = size.height
-            
-            // Draw grid lines
-            for (i in 0..4) {
-                val y = height * i / 4
-                drawLine(
-                    color = gridColor,
-                    start = Offset(0f, y),
-                    end = Offset(width, y),
-                    strokeWidth = 1f
-                )
-            }
-            
-            // Draw download line
-            if (downloadPoints.size > 1) {
-                val downloadPath = Path()
-                val stepX = width / (downloadPoints.size - 1).coerceAtLeast(1)
+        key(frameCounter) {
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp)
+            ) {
+                val width = size.width
+                val height = size.height
                 
-                downloadPoints.forEachIndexed { index, ratio ->
-                    val x = index * stepX
-                    val y = height * (1 - ratio)
-                    if (index == 0) {
-                        downloadPath.moveTo(x, y)
-                    } else {
-                        downloadPath.lineTo(x, y)
-                    }
+                // Draw grid lines
+                for (i in 0..4) {
+                    val y = height * i / 4
+                    drawLine(
+                        color = gridColor,
+                        start = Offset(0f, y),
+                        end = Offset(width, y),
+                        strokeWidth = 1f
+                    )
                 }
                 
-                drawPath(
-                    path = downloadPath,
-                    color = downloadColor,
-                    style = Stroke(width = 3f, cap = StrokeCap.Round)
-                )
-            }
-            
-            // Draw upload line
-            if (uploadPoints.size > 1) {
-                val uploadPath = Path()
-                val stepX = width / (uploadPoints.size - 1).coerceAtLeast(1)
-                
-                uploadPoints.forEachIndexed { index, ratio ->
-                    val x = index * stepX
-                    val y = height * (1 - ratio)
-                    if (index == 0) {
-                        uploadPath.moveTo(x, y)
-                    } else {
-                        uploadPath.lineTo(x, y)
+                // Draw download line
+                if (downloadPoints.size > 1) {
+                    val downloadPath = Path()
+                    val stepX = width / (downloadPoints.size - 1).coerceAtLeast(1)
+                    
+                    downloadPoints.forEachIndexed { index, ratio ->
+                        val x = index * stepX
+                        val y = height * (1 - ratio)
+                        if (index == 0) {
+                            downloadPath.moveTo(x, y)
+                        } else {
+                            downloadPath.lineTo(x, y)
+                        }
                     }
+                    
+                    drawPath(
+                        path = downloadPath,
+                        color = downloadColor,
+                        style = Stroke(width = 3f, cap = StrokeCap.Round)
+                    )
                 }
                 
-                drawPath(
-                    path = uploadPath,
-                    color = uploadColor,
-                    style = Stroke(width = 3f, cap = StrokeCap.Round)
-                )
+                // Draw upload line
+                if (uploadPoints.size > 1) {
+                    val uploadPath = Path()
+                    val stepX = width / (uploadPoints.size - 1).coerceAtLeast(1)
+                    
+                    uploadPoints.forEachIndexed { index, ratio ->
+                        val x = index * stepX
+                        val y = height * (1 - ratio)
+                        if (index == 0) {
+                            uploadPath.moveTo(x, y)
+                        } else {
+                            uploadPath.lineTo(x, y)
+                        }
+                    }
+                    
+                    drawPath(
+                        path = uploadPath,
+                        color = uploadColor,
+                        style = Stroke(width = 3f, cap = StrokeCap.Round)
+                    )
+                }
             }
         }
         
@@ -192,11 +199,11 @@ fun ConnectionQualityIndicator(
     modifier: Modifier = Modifier
 ) {
     val (color, label) = when (quality) {
-        ConnectionQuality.EXCELLENT -> Color(0xFF4CAF50) to "Excellent"
-        ConnectionQuality.GOOD -> Color(0xFF8BC34A) to "Good"
-        ConnectionQuality.FAIR -> Color(0xFFFFC107) to "Fair"
-        ConnectionQuality.POOR -> Color(0xFFF44336) to "Poor"
-        ConnectionQuality.DISCONNECTED -> Color(0xFF9E9E9E) to "Disconnected"
+        ConnectionQuality.EXCELLENT -> MaterialTheme.colorScheme.primary to "Excellent"
+        ConnectionQuality.GOOD -> MaterialTheme.colorScheme.primary.copy(alpha = 0.7f) to "Good"
+        ConnectionQuality.FAIR -> MaterialTheme.colorScheme.tertiary to "Fair"
+        ConnectionQuality.POOR -> MaterialTheme.colorScheme.error to "Poor"
+        ConnectionQuality.DISCONNECTED -> MaterialTheme.colorScheme.onSurfaceVariant to "Disconnected"
     }
 
     Row(

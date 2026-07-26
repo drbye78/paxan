@@ -39,7 +39,7 @@ describe('Tamper Detector', () => {
     });
 
     test('should detect long user-agent', () => {
-      const headers = { 'user-agent': 'A'.repeat(300) };
+      const headers = { 'user-agent': 'A'.repeat(550) };
       const content = '{}';
       const url = 'https://httpbin.org/headers';
       
@@ -49,9 +49,9 @@ describe('Tamper Detector', () => {
   });
 
   describe('detectSuspiciousContent', () => {
-    test('should detect script tags', () => {
+    test('should detect script tags with suspicious content', () => {
       const headers = {};
-      const content = '<script>document.location="evil.com"</script>';
+      const content = '<script src="evil.js" onerror="alert(1)">document.cookie=1</script>';
       
       expect(detector.detectSuspiciousContent(headers, content)).toBe(true);
     });

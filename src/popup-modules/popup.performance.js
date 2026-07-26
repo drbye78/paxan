@@ -1,7 +1,7 @@
 // PeasyProxy - Performance Optimization Module
 // Handles lazy loading, caching, debouncing, and performance improvements
 
-const { THRESHOLDS } = require('../popup/constants.js');
+import { THRESHOLDS } from '../popup/constants.js';
 
 // ============================================================================
 // LAZY LOADING
@@ -471,35 +471,22 @@ function cleanupUnusedReferences() {
 // EXPORTS
 // ============================================================================
 
-module.exports = {
-  // Lazy loading
+export {
   lazyLoadFlags,
   VIRTUAL_SCROLL_CONFIG,
-  
-  // Caching
   MemoryCache,
   IndexedDBCache,
   memoryCache,
   indexedDBCache,
-  
-  // Debouncing & Throttling
   debounce,
   throttle,
   rafThrottle,
-  
-  // Batch operations
   DOMBatcher,
   StorageBatcher,
-  
-  // Performance monitoring
   PerformanceMonitor,
-  
-  // Optimized operations
   createMemoizedFilter,
   createMemoizedSort,
   chunkOperation,
-  
-  // Memory optimization
   WeakCache,
   cleanupUnusedReferences
 };

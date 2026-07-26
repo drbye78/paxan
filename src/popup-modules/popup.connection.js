@@ -22,7 +22,13 @@ import {
   getProxies,
   addToRecentlyUsed,
   saveAllState,
-  getSiteRules
+  getSiteRules,
+  getMonitoringActive,
+  setMonitoringActive,
+  getLastDisconnectedProxy,
+  setLastDisconnectedProxy,
+  getDisconnectTimeout,
+  setDisconnectTimeout
 } from './popup.state.js';
 
 import {
@@ -47,21 +53,19 @@ import {
 
 
 // Global variables
-let monitoringActive = false;
-let lastDisconnectedProxy = null;
-let disconnectTimeout = null;
 let timerInterval = null;
+let autoRotationTimerId = null;
 
 // ============================================================================
 // PROXY CONNECTION
 // ============================================================================
 
 async function connectToProxy(proxy, event) {
-  const proxyItem = event.target.closest('.proxy-item') || event.target;
-  proxyItem?.classList.add('connecting');
+  const proxyItem = event?.target?.closest?.('.proxy-item') || event?.target || null;
+  if (proxyItem?.classList) proxyItem.classList.add('connecting');
   
   // Find the connect button
-  const connectBtn = event.target.querySelector?.('.connect-btn') || event.target;
+  const connectBtn = event?.target?.querySelector?.('.connect-btn') || event?.target || null;
   if (connectBtn && connectBtn.textContent) {
     connectBtn.textContent = '🧪 Testing...';
   }
@@ -165,7 +169,7 @@ async function connectToProxy(proxy, event) {
 async function disconnectProxy() {
   try {
     // Save for undo
-    lastDisconnectedProxy = getCurrentProxy();
+    setLastDisconnectedProxy(getCurrentProxy());
     
     await chrome.runtime.sendMessage({ action: 'clearProxy' });
     await chrome.runtime.sendMessage({ action: 'stopMonitoring' });
@@ -183,18 +187,19 @@ async function disconnectProxy() {
     // Show undo toast
     showToast('Disconnected', 'info', () => {
       // Undo callback - clear timeout and reconnect
+      const disconnectTimeout = getDisconnectTimeout();
       if (disconnectTimeout) {
         clearTimeout(disconnectTimeout);
-        disconnectTimeout = null;
+        setDisconnectTimeout(null);
       }
       reconnectToLastProxy();
     });
     
     // Auto-clear after 5 seconds
-    disconnectTimeout = setTimeout(() => {
-      lastDisconnectedProxy = null;
-      disconnectTimeout = null;
-    }, 5000);
+    setDisconnectTimeout(setTimeout(() => {
+      setLastDisconnectedProxy(null);
+      setDisconnectTimeout(null);
+    }, 5000));
     
   } catch (error) {
     showToast('Disconnect failed', 'error');
@@ -202,10 +207,11 @@ async function disconnectProxy() {
 }
 
 async function reconnectToLastProxy() {
+  const lastDisconnectedProxy = getLastDisconnectedProxy();
   if (!lastDisconnectedProxy) return;
   
   const proxy = lastDisconnectedProxy;
-  lastDisconnectedProxy = null;
+  setLastDisconnectedProxy(null);
   
   try {
     await chrome.runtime.sendMessage({ action: 'setProxy', proxy });
@@ -232,16 +238,16 @@ async function reconnectToLastProxy() {
 
 function startMonitoring() {
   const currentProxy = getCurrentProxy();
-  if (currentProxy && !monitoringActive) {
+  if (currentProxy && !getMonitoringActive()) {
     chrome.runtime.sendMessage({ action: 'startMonitoring', proxy: currentProxy });
-    monitoringActive = true;
+    setMonitoringActive(true);
   }
 }
 
 function stopMonitoring() {
-  if (monitoringActive) {
+  if (getMonitoringActive()) {
     chrome.runtime.sendMessage({ action: 'stopMonitoring' });
-    monitoringActive = false;
+    setMonitoringActive(false);
   }
 }
 
@@ -303,14 +309,19 @@ async function checkIpAddresses() {
   try {
     // Check real IP (without proxy)
     const realIpPromise = (async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
       try {
         const response = await fetch('https://api.ipify.org?format=json', {
           method: 'GET',
-          cache: 'no-store'
+          cache: 'no-store',
+          signal: controller.signal
         });
+        clearTimeout(timeoutId);
         const data = await response.json();
         return data.ip;
       } catch (error) {
+        clearTimeout(timeoutId);
         return 'Unable to detect';
       }
     })();
@@ -322,29 +333,17 @@ async function checkIpAddresses() {
         return 'Not connected';
       }
       try {
-        const testConfig = {
-          mode: 'fixed_servers',
-          rules: {
-            singleProxy: {
-              scheme: currentProxy.type === 'SOCKS5' ? 'socks5' : 'http',
-              host: currentProxy.ip,
-              port: currentProxy.port
-            },
-            bypassList: ['localhost', '127.0.0.1']
-          }
-        };
-        
-        await chrome.proxy.settings.set({ value: testConfig, scope: 'regular' });
-        
-        const response = await fetch('https://api.ipify.org?format=json', {
-          method: 'GET',
-          cache: 'no-store'
+        // Use the background service worker to test through proxy instead of
+        // modifying chrome.proxy.settings directly (which disrupts the active connection)
+        const result = await chrome.runtime.sendMessage({
+          action: 'testProxyThroughProxy',
+          proxy: currentProxy,
+          url: 'https://api.ipify.org?format=json'
         });
-        
-        await chrome.proxy.settings.clear({ scope: 'regular' });
-        
-        const data = await response.json();
-        return data.ip;
+        if (result && result.success && result.ip) {
+          return result.ip;
+        }
+        return 'Proxy blocked';
       } catch (error) {
         return 'Proxy blocked';
       }
@@ -513,9 +512,9 @@ async function toggleAutoRotation() {
 
 function startAutoRotation() {
   const autoRotation = getAutoRotation();
-  if (autoRotation.timer) clearInterval(autoRotation.timer);
+  if (autoRotationTimerId) clearInterval(autoRotationTimerId);
   
-  autoRotation.timer = setInterval(async () => {
+  autoRotationTimerId = setInterval(async () => {
     const currentProxy = getCurrentProxy();
     if (!currentProxy || !autoRotation.enabled) return;
     
@@ -555,10 +554,9 @@ function startAutoRotation() {
 }
 
 function stopAutoRotation() {
-  const autoRotation = getAutoRotation();
-  if (autoRotation.timer) {
-    clearInterval(autoRotation.timer);
-    autoRotation.timer = null;
+  if (autoRotationTimerId) {
+    clearInterval(autoRotationTimerId);
+    autoRotationTimerId = null;
   }
 }
 
@@ -578,40 +576,99 @@ async function updateRotationInterval(e) {
 // MESSAGE HANDLERS
 // ============================================================================
 
-function handleProxyDegraded(message) {
+async function handleProxyDegraded(message) {
   const { proxy, latency, success, monitoringTime } = message;
   
   if (!success) {
     showToast(`⚠️ Proxy ${proxy.ipPort} stopped working`, 'warning');
     
-    // Auto-failover if enabled
     const settings = getSettings();
     if (settings.autoFailover) {
-      chrome.runtime.sendMessage({ action: 'getNextFailoverProxy' })
-        .then(result => {
-          if (result.proxy) {
-            showToast('Auto-failover: Trying ' + result.proxy.country, 'info');
-            const currentProxy = getCurrentProxy();
-            if (currentProxy) {
-              connectToProxy(result.proxy, { target: document.body });
-            }
-          }
-        })
-        .catch(error => {
-          showToast('Auto-failover failed: ' + error.message, 'error');
-        });
+      const lastFailover = await getLastFailoverTime();
+      const timeSinceLastFailover = Date.now() - lastFailover;
+      
+      if (timeSinceLastFailover < 10000) {
+        console.log('Auto-failover skipped: Too recent', timeSinceLastFailover);
+        return;
+      }
+      
+      const MAX_FAILOVER_RETRIES = 3;
+      attemptFailover(proxy, MAX_FAILOVER_RETRIES);
     }
   } else if (latency > 500) {
-    showToast(`⚠️ High latency (${latency}ms)`, 'warning');
+    showToast(`⚠️ High latency (${latency}ms) on ${proxy.country}`, 'warning');
   }
   
-  // Log degradation event
   console.log('Proxy degradation detected:', {
     proxy: proxy.ipPort,
     latency: latency,
     success: success,
     monitoringTime: monitoringTime
   });
+}
+
+async function attemptFailover(failedProxy, retriesRemaining) {
+  if (retriesRemaining <= 0) {
+    showToast('Auto-failover: No backup proxies available', 'warning');
+    chrome.runtime.sendMessage({ action: 'resetFailover' });
+    return;
+  }
+  
+  try {
+    const result = await chrome.runtime.sendMessage({ action: 'getNextFailoverProxy' });
+    if (!result.proxy) {
+      showToast('Auto-failover: No backup proxies available', 'warning');
+      chrome.runtime.sendMessage({ action: 'resetFailover' });
+      return;
+    }
+    
+    const currentProxy = getCurrentProxy();
+    if (!currentProxy || currentProxy.ipPort !== failedProxy.ipPort) {
+      return; // Already switched to a different proxy
+    }
+    
+    // Test the failover proxy before connecting
+    const testResult = await chrome.runtime.sendMessage({ 
+      action: 'testProxy', 
+      proxy: result.proxy,
+      keepProxy: false 
+    });
+    
+    if (testResult.success) {
+      showToast(`Auto-failover: Switching to ${result.proxy.country} (${result.proxy.speedMs}ms)`, 'info');
+      setLastFailoverTime(Date.now());
+      await connectToProxy(result.proxy, { target: document.body });
+      
+      const currentProxies = getProxies();
+      chrome.runtime.sendMessage({ 
+        action: 'setFailoverProxies', 
+        proxies: currentProxies, 
+        currentProxy: result.proxy 
+      });
+    } else {
+      showToast(`Auto-failover: Backup proxy ${result.proxy.country} failed test`, 'warning');
+      await attemptFailover(failedProxy, retriesRemaining - 1);
+    }
+  } catch (error) {
+    showToast('Auto-failover failed: ' + error.message, 'error');
+    console.error('Auto-failover error:', error);
+  }
+}
+
+// Helper function to track last failover time (chrome.storage-based, SW-safe)
+async function getLastFailoverTime() {
+  try {
+    const { lastFailoverTime } = await chrome.storage.local.get(['lastFailoverTime']);
+    return lastFailoverTime || 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function setLastFailoverTime(timestamp) {
+  try {
+    await chrome.storage.local.set({ lastFailoverTime: timestamp });
+  } catch { /* ignore */ }
 }
 
 function handleSecurityAlert(message) {
@@ -686,14 +743,14 @@ function startSpeedGraph() {
   const speedGraphCanvas = document.getElementById('speedGraph');
   const speedGraphSection = document.getElementById('speedGraphSection');
   const currentLatencyEl = document.getElementById('currentLatency');
-  const currentProxy = getCurrentProxy();
   
-  if (!speedGraphCanvas || !currentProxy) return;
+  if (!speedGraphCanvas) return;
   
   speedData = [];
   if (speedGraphSection) speedGraphSection.style.display = 'block';
   
   speedGraphInterval = setInterval(async () => {
+    const currentProxy = getCurrentProxy();
     if (!currentProxy) {
       stopSpeedGraph();
       return;

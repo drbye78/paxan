@@ -14,11 +14,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.peasyproxy.app.ui.screens.home.formatBytes
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatisticsScreen(
-    viewModel: StatisticsViewModel = hiltViewModel()
+    viewModel: StatisticsViewModel = hiltViewModel(),
+    onNavigateToDetail: () -> Unit = {}
 ) {
     val statistics by viewModel.statistics.collectAsStateWithLifecycle()
     val topProxies by viewModel.topProxies.collectAsStateWithLifecycle()
@@ -26,7 +28,12 @@ fun StatisticsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Statistics") }
+                title = { Text("Statistics") },
+                actions = {
+                    TextButton(onClick = onNavigateToDetail) {
+                        Text("Details")
+                    }
+                }
             )
         }
     ) { paddingValues ->
@@ -52,7 +59,7 @@ fun StatisticsScreen(
                     modifier = Modifier.weight(1f),
                     icon = Icons.Default.TrendingUp,
                     title = "Success Rate",
-                    value = "${statistics.successRate.toInt()}%"
+                    value = "${statistics.successRate.roundToInt()}%"
                 )
             }
 

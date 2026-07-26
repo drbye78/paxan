@@ -1,5 +1,8 @@
 package com.peasyproxy.app.domain.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class SplitTunnelConfig(
     val mode: SplitTunnelMode = SplitTunnelMode.DISABLED,
     val includedApps: Set<String> = emptySet(),
@@ -26,6 +29,7 @@ enum class AppCategory(val displayName: String) {
     CUSTOM("Custom")
 }
 
+@Immutable
 data class ProxyLocation(
     val proxyId: String,
     val host: String,
@@ -37,6 +41,7 @@ data class ProxyLocation(
     val isActive: Boolean = false
 )
 
+@Immutable
 data class AppBundle(
     val name: String,
     val packages: Set<String>
@@ -83,7 +88,7 @@ data class AppBundle(
             setOf(
                 "com.chase.sig.android",
                 "com.bankofamerica.bac",
-                "com.wells Fargo.mobile",
+                "com.wf.wellsfargomobile",
                 "com.citi.mobile",
                 "com.usbank.mobile"
             )

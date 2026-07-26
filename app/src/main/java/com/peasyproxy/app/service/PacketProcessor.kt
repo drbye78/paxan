@@ -62,16 +62,17 @@ class PacketProcessor @Inject constructor() {
         mtu: Int
     ): ByteArray? = withContext(Dispatchers.IO) {
         try {
-            val inputStream = java.io.FileInputStream(fileDescriptor)
-            val packet = ByteArray(mtu)
-            val bytesRead = inputStream.read(packet)
+            java.io.FileInputStream(fileDescriptor).use { inputStream ->
+                val packet = ByteArray(mtu)
+                val bytesRead = inputStream.read(packet)
 
-            if (bytesRead > 0) {
-                _bytesSent.value += bytesRead
-                _packetsSent.value++
-                packet.copyOf(bytesRead)
-            } else {
-                null
+                if (bytesRead > 0) {
+                    _bytesSent.value += bytesRead
+                    _packetsSent.value++
+                    packet.copyOf(bytesRead)
+                } else {
+                    null
+                }
             }
         } catch (e: Exception) {
             null
@@ -83,9 +84,10 @@ class PacketProcessor @Inject constructor() {
         packet: ByteArray
     ): Boolean = withContext(Dispatchers.IO) {
         try {
-            val outputStream = java.io.FileOutputStream(fileDescriptor)
-            outputStream.write(packet)
-            outputStream.flush()
+            java.io.FileOutputStream(fileDescriptor).use { outputStream ->
+                outputStream.write(packet)
+                outputStream.flush()
+            }
             _bytesReceived.value += packet.size
             _packetsReceived.value++
             true
@@ -141,10 +143,7 @@ object PacketParser {
                 destBytes.joinToString(".") { (it.toInt() and 0xFF).toString() }
             }
             6 -> {
-                val destBytes = packet.sliceArray(24..39)
-                destBytes.joinToString(":") { 
-                    String.format("%02x%02x", it, destBytes[destBytes.indexOf(it) + 1].also { })
-                }
+                return parseIpv6Address(packet, 24)
             }
             else -> null
         }
@@ -161,11 +160,19 @@ object PacketParser {
                 srcBytes.joinToString(".") { (it.toInt() and 0xFF).toString() }
             }
             6 -> {
-                val srcBytes = packet.sliceArray(8..23)
-                srcBytes.joinToString(":") { String.format("%02x%02x", it, 0) }
+                return parseIpv6Address(packet, 8)
             }
             else -> null
         }
+    }
+
+    private fun parseIpv6Address(packet: ByteArray, offset: Int): String {
+        val groups = (0 until 8).map { i ->
+            val hi = packet[offset + i * 2].toInt() and 0xFF
+            val lo = packet[offset + i * 2 + 1].toInt() and 0xFF
+            String.format("%02x%02x", hi, lo)
+        }
+        return groups.joinToString(":")
     }
 
     fun getProtocol(packet: ByteArray): Int? {

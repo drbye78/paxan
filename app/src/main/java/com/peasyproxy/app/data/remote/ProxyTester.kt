@@ -1,18 +1,21 @@
 package com.peasyproxy.app.data.remote
 
+import com.peasyproxy.app.data.repository.SettingsRepository
 import com.peasyproxy.app.domain.model.Proxy
 import com.peasyproxy.app.domain.model.ProxyTestResult
 import com.peasyproxy.app.domain.model.ProxyProtocol
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import okhttp3.Authenticator
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
+import java.net.Authenticator as JavaAuthenticator
 import java.net.InetSocketAddress
+import java.net.PasswordAuthentication
 import java.net.Proxy as JavaProxy
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -20,18 +23,29 @@ import javax.inject.Singleton
 
 @Singleton
 class ProxyTester @Inject constructor(
-    private val okHttpClient: OkHttpClient
+    private val okHttpClient: OkHttpClient,
+    private val settingsRepository: SettingsRepository
 ) {
-    private val testEndpoints = listOf(
+
+    companion object {
+        private val socksAuthLock = Any()
+    }
+
+    private val defaultTestEndpoints = listOf(
         "https://www.google.com",
         "https://httpbin.org/ip",
         "https://connectivitycheck.gstatic.com/generate_204"
     )
 
+    private suspend fun getTestEndpoints(): List<String> {
+        val settings = settingsRepository.settingsFlow.first()
+        return settings.selectedTestEndpoints.ifEmpty { defaultTestEndpoints }
+    }
+
     private val testTimeout = 5000L
 
     suspend fun testProxy(proxy: Proxy, endpoint: String? = null): ProxyTestResult = withContext(Dispatchers.IO) {
-        val testUrl = endpoint ?: testEndpoints.first()
+        val testUrl = endpoint ?: getTestEndpoints().first()
         
         try {
             val startTime = System.currentTimeMillis()
@@ -59,7 +73,45 @@ class ProxyTester @Inject constructor(
     }
 
     private fun testWithHttpConnect(proxy: Proxy, url: String): Result<String> {
-        return try {
+        val isSocks = proxy.protocol in listOf(ProxyProtocol.SOCKS4, ProxyProtocol.SOCKS5)
+
+        return if (isSocks && !proxy.username.isNullOrEmpty()) {
+            synchronized(socksAuthLock) {
+                val previousAuthenticator = JavaAuthenticator.getDefault()
+                try {
+                    JavaAuthenticator.setDefault(object : JavaAuthenticator() {
+                        override fun getPasswordAuthentication(): PasswordAuthentication {
+                            return PasswordAuthentication(proxy.username, proxy.password?.toCharArray() ?: charArrayOf())
+                        }
+                    })
+
+                    val javaProxy = JavaProxy(JavaProxy.Type.SOCKS, InetSocketAddress(proxy.host, proxy.port))
+
+                    val clientBuilder = okHttpClient.newBuilder()
+                        .connectTimeout(testTimeout, TimeUnit.MILLISECONDS)
+                        .readTimeout(testTimeout, TimeUnit.MILLISECONDS)
+                        .writeTimeout(testTimeout, TimeUnit.MILLISECONDS)
+                        .proxy(javaProxy)
+
+                    val request = Request.Builder()
+                        .url(url)
+                        .header("User-Agent", "Mozilla/5.0")
+                        .build()
+
+                    val response = clientBuilder.build().newCall(request).execute()
+
+                    if (response.isSuccessful || response.code == 204) {
+                        Result.success(response.body?.string() ?: "")
+                    } else {
+                        Result.failure(IOException("HTTP ${response.code}"))
+                    }
+                } catch (e: Exception) {
+                    Result.failure(e)
+                } finally {
+                    JavaAuthenticator.setDefault(previousAuthenticator)
+                }
+            }
+        } else {
             val javaProxy = when (proxy.protocol) {
                 ProxyProtocol.SOCKS4, ProxyProtocol.SOCKS5 -> {
                     JavaProxy(JavaProxy.Type.SOCKS, InetSocketAddress(proxy.host, proxy.port))
@@ -75,7 +127,7 @@ class ProxyTester @Inject constructor(
                 .writeTimeout(testTimeout, TimeUnit.MILLISECONDS)
                 .proxy(javaProxy)
 
-            if (!proxy.username.isNullOrEmpty() && !proxy.password.isNullOrEmpty()) {
+            if (!isSocks && !proxy.username.isNullOrEmpty() && !proxy.password.isNullOrEmpty()) {
                 clientBuilder.proxyAuthenticator { _, response ->
                     response.request.newBuilder()
                         .header("Proxy-Authorization", Credentials.basic(proxy.username, proxy.password))
@@ -88,15 +140,17 @@ class ProxyTester @Inject constructor(
                 .header("User-Agent", "Mozilla/5.0")
                 .build()
 
-            val response = clientBuilder.build().newCall(request).execute()
-            
-            if (response.isSuccessful || response.code == 204) {
-                Result.success(response.body?.string() ?: "")
-            } else {
-                Result.failure(IOException("HTTP ${response.code}"))
+            try {
+                val response = clientBuilder.build().newCall(request).execute()
+
+                if (response.isSuccessful || response.code == 204) {
+                    Result.success(response.body?.string() ?: "")
+                } else {
+                    Result.failure(IOException("HTTP ${response.code}"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
             }
-        } catch (e: Exception) {
-            Result.failure(e)
         }
     }
 
@@ -114,7 +168,7 @@ class ProxyTester @Inject constructor(
     }
 
     suspend fun testMultipleEndpoints(proxy: Proxy): ProxyTestResult = withContext(Dispatchers.IO) {
-        for (endpoint in testEndpoints) {
+        for (endpoint in getTestEndpoints()) {
             val result = testProxy(proxy, endpoint)
             if (result.isReachable) {
                 return@withContext result

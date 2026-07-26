@@ -555,22 +555,22 @@ jobs:
         node-version: '18'
         
     - name: Install dependencies
-      run: npm install
+      run: pnpm install
       
     - name: Run unit tests
-      run: npm run test:unit
+      run: pnpm run test:unit
       
     - name: Run integration tests
-      run: npm run test:integration
+      run: pnpm run test:integration
       
     - name: Run performance tests
-      run: npm run test:performance
+      run: pnpm run test:performance
       
     - name: Run security tests
-      run: npm run test:security
+      run: pnpm run test:security
       
     - name: Run accessibility tests
-      run: npm run test:accessibility
+      run: pnpm run test:accessibility
 
   e2e:
     runs-on: ubuntu-latest
@@ -587,7 +587,7 @@ jobs:
       run: npx playwright install
       
     - name: Run E2E tests
-      run: npm run test:e2e
+      run: pnpm run test:e2e
       
     - name: Upload test results
       uses: actions/upload-artifact@v3
@@ -614,7 +614,7 @@ jobs:
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint src/ tests/",
-    "security:audit": "npm audit",
+    "security:audit": "pnpm audit",
     "performance:audit": "lighthouse-ci autorun"
   }
 }
@@ -656,18 +656,18 @@ module.exports = {
 
 ```bash
 # Run all tests
-npm test
+pnpm test
 
 # Run specific test categories
-npm run test:unit
-npm run test:integration
-npm run test:e2e
+pnpm run test:unit
+pnpm run test:integration
+pnpm run test:e2e
 
 # Run with coverage
-npm run test:coverage
+pnpm run test:coverage
 
 # Watch mode for development
-npm run test:watch
+pnpm run test:watch
 ```
 
 ### CI/CD Pipeline

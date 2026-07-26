@@ -158,12 +158,7 @@ fun SettingsScreen(
                 )
             }
 
-            SettingsSection(title = "Network") {
-                NavigationSetting(
-                    title = "DNS Settings",
-                    description = "Configure custom DNS servers",
-                    onClick = onNavigateToDnsSettings
-                )
+            SettingsSection(title = "Data & Tools") {
                 
                 NavigationSetting(
                     title = "Import/Export",

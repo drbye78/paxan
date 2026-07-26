@@ -84,7 +84,14 @@ class ProxyRepository @Inject constructor(
             proxyDao.updateProxyHealth(
                 id = proxy.id,
                 latency = result.latency,
-                reliability = if (result.isReachable) 100f else 0f,
+                reliability = 100f,
+                lastChecked = System.currentTimeMillis()
+            )
+        } else {
+            proxyDao.updateProxyHealth(
+                id = proxy.id,
+                latency = result.latency,
+                reliability = 0f,
                 lastChecked = System.currentTimeMillis()
             )
         }
@@ -205,7 +212,9 @@ class ProxyRepository @Inject constructor(
             trustScore = trustScore,
             lastChecked = lastChecked,
             isFavorite = isFavorite,
-            responseTime = responseTime
+            responseTime = responseTime,
+            useCount = useCount,
+            lastUsed = lastUsed
         )
     }
 
@@ -228,7 +237,9 @@ class ProxyRepository @Inject constructor(
             trustScore = trustScore,
             lastChecked = lastChecked,
             isFavorite = isFavorite,
-            responseTime = responseTime
+            responseTime = responseTime,
+            useCount = useCount,
+            lastUsed = lastUsed
         )
     }
 }

@@ -3,6 +3,7 @@
 const mockChrome = {
   runtime: {
     sendMessage: jest.fn(),
+    getURL: jest.fn((path) => `chrome-extension://test-id/${path}`),
     onMessage: {
       addListener: jest.fn(),
       removeListener: jest.fn()
@@ -39,6 +40,12 @@ const mockChrome = {
       set: jest.fn(),
       clear: jest.fn(),
       remove: jest.fn(),
+    },
+    session: {
+      get: jest.fn(),
+      set: jest.fn(),
+      remove: jest.fn(),
+      clear: jest.fn(),
     }
   },
   
@@ -69,10 +76,6 @@ const mockChrome = {
     onClosed: {
       addListener: jest.fn(),
     }
-  },
-  
-  extension: {
-    getURL: jest.fn((path) => `chrome-extension://test-id/${path}`),
   }
 };
 

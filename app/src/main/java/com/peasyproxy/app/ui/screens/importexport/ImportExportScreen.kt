@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,8 +46,9 @@ fun ImportExportScreen(
     }
 
     LaunchedEffect(importStatus) {
-        if (importStatus is ImportStatus.Success) {
-            // Show success and reset
+        if (importStatus is ImportStatus.Success || importStatus is ImportStatus.Error) {
+            delay(3000)
+            viewModel.resetImportStatus()
         }
     }
 

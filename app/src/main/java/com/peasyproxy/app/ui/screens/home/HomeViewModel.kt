@@ -90,6 +90,12 @@ class HomeViewModel @Inject constructor(
                             errorMessage = state.message
                         )
                     }
+                    is VpnState.Unstable -> {
+                        _connectionInfo.value = _connectionInfo.value.copy(
+                            state = ConnectionState.UNSTABLE,
+                            errorMessage = state.message
+                        )
+                    }
                     else -> {}
                 }
             }
@@ -125,11 +131,7 @@ class HomeViewModel @Inject constructor(
                 
                 context.startForegroundService(intent)
                 
-                _connectionInfo.value = _connectionInfo.value.copy(
-                    state = ConnectionState.CONNECTED,
-                    currentProxy = proxy,
-                    connectedSince = System.currentTimeMillis()
-                )
+                // State is driven by vpnStateRepository.state flow in init {}
                 
                 settingsRepository.updateLastSelectedProxyId(proxy.id)
                 
@@ -145,15 +147,13 @@ class HomeViewModel @Inject constructor(
 
     fun disconnect() {
         viewModelScope.launch {
-            _connectionInfo.value = _connectionInfo.value.copy(state = ConnectionState.DISCONNECTING)
-            
             try {
                 val intent = Intent(context, VpnService::class.java).apply {
                     action = VpnService.ACTION_DISCONNECT
                 }
                 context.startService(intent)
                 
-                _connectionInfo.value = ConnectionInfo(state = ConnectionState.DISCONNECTED)
+                // State is driven by vpnStateRepository.state flow in init {}
             } catch (e: Exception) {
                 _errorMessage.value = e.message
             }
@@ -171,6 +171,8 @@ class HomeViewModel @Inject constructor(
                 if (bestProxy != null) {
                     _selectedProxy.value = bestProxy
                     connect()
+                    // Wait for connection to settle before clearing loading
+                    vpnStateRepository.state.first { it is VpnState.Connected || it is VpnState.Error }
                 } else {
                     _errorMessage.value = "No proxies available"
                 }

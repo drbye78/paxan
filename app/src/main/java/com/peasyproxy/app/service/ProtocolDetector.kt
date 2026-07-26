@@ -24,7 +24,7 @@ class ProtocolDetector @Inject constructor(
         val supportsSocks4: Boolean = false,
         val supportsSocks5: Boolean = false,
         val latency: Long = 0,
-        val bestProtocol: ProxyProtocol = ProxyProtocol.HTTP
+        val bestProtocol: ProxyProtocol? = null
     )
 
     suspend fun detectCapabilities(proxy: Proxy, timeoutMs: Int = 5000): ProtocolCapabilities = withContext(Dispatchers.IO) {
@@ -97,23 +97,25 @@ class ProtocolDetector @Inject constructor(
                 .proxy(javaProxy)
                 .build()
 
-            val url = if (protocol == ProxyProtocol.HTTPS) "https://www.google.com" else "http://www.google.com"
-            val request = Request.Builder()
-                .url(url)
-                .head()
-                .build()
+            client.use { testClient ->
+                val url = if (protocol == ProxyProtocol.HTTPS) "https://www.google.com" else "http://www.google.com"
+                val request = Request.Builder()
+                    .url(url)
+                    .head()
+                    .build()
 
-            val response = client.newCall(request).execute()
-            val latency = System.currentTimeMillis() - startTime
-            
-            response.close()
-            
-            ProtocolTestResult(
-                protocol = protocol,
-                success = response.isSuccessful || response.code == 405, // 405 = method not allowed but proxy works
-                latency = latency,
-                error = null
-            )
+                val response = testClient.newCall(request).execute()
+                val latency = System.currentTimeMillis() - startTime
+                
+                response.close()
+                
+                ProtocolTestResult(
+                    protocol = protocol,
+                    success = response.isSuccessful || response.code == 405, // 405 = method not allowed but proxy works
+                    latency = latency,
+                    error = null
+                )
+            }
         } catch (e: Exception) {
             ProtocolTestResult(
                 protocol = protocol,
@@ -204,7 +206,7 @@ class ProtocolDetector @Inject constructor(
         }
     }
 
-    fun getBestProtocol(capabilities: ProtocolCapabilities): ProxyProtocol {
+    fun getBestProtocol(capabilities: ProtocolCapabilities): ProxyProtocol? {
         return capabilities.bestProtocol
     }
 

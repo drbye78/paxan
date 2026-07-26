@@ -2,13 +2,17 @@ package com.peasyproxy.app.security
 
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyInfo
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import java.security.KeyFactory
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
+import javax.crypto.Mac
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 /**
  * Security manager for encrypting sensitive data using Android Keystore.
@@ -137,27 +141,58 @@ class SecurityManager(private val context: Context) {
     }
     
     /**
-     * Generates a deterministic database passphrase from the master key.
-     * This ensures the same passphrase is used across app restarts.
+     * Generates a deterministic database passphrase from the master key
+     * using HKDF-SHA256. This ensures the same passphrase is used across
+     * app restarts without relying on non-deterministic AES/GCM encryption.
      */
-    fun getDatabasePassphrase(): String {
-        return try {
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            cipher.init(Cipher.ENCRYPT_MODE, getMasterKey())
-            
-            // Encrypt a fixed string to generate consistent passphrase
-            val fixedString = "peasyproxy_db_passphrase_seed_v1"
-            val encrypted = cipher.doFinal(fixedString.toByteArray(Charsets.UTF_8))
-            
-            // Use first 32 bytes as passphrase (SQLCipher requires 32-byte key)
-            Base64.encodeToString(encrypted.take(32).toByteArray(), Base64.NO_WRAP)
-        } catch (e: Exception) {
-            // Fallback to a generated key stored in SharedPreferences
-            // This is less secure but allows the app to function
-            generateFallbackPassphrase()
-        }
+    fun getDatabasePassphrase(): ByteArray {
+        return deriveHkdfKey(
+            masterKey = getMasterKey(),
+            salt = "peasyproxy_db_v1".toByteArray(),
+            info = "sqlcipher_key".toByteArray(),
+            keyLength = 32
+        )
     }
-    
+
+    /**
+     * Derives a key using HKDF-SHA256 (RFC 5869).
+     *
+     * @param masterKey The input keying material (master key from Keystore)
+     * @param salt Optional salt value (non-secret)
+     * @param info Optional context and application specific information
+     * @param keyLength Desired output key length in bytes
+     * @return Derived key of the requested length
+     */
+    private fun deriveHkdfKey(
+        masterKey: SecretKey,
+        salt: ByteArray,
+        info: ByteArray,
+        keyLength: Int
+    ): ByteArray {
+        // HKDF-Extract: PRK = HMAC-SHA256(salt, masterKey)
+        val mac = Mac.getInstance("HmacSHA256")
+        mac.init(SecretKeySpec(salt, "HmacSHA256"))
+        val prk = mac.doFinal(masterKey.encoded)
+
+        // HKDF-Expand: T = HMAC-SHA256(PRK, T_prev || info || counter)
+        val okm = ByteArray(keyLength)
+        var t = ByteArray(0)
+        var counter = 1
+        var offset = 0
+        while (offset < keyLength) {
+            mac.init(SecretKeySpec(prk, "HmacSHA256"))
+            mac.update(t)
+            mac.update(info)
+            mac.update(counter.toByte())
+            t = mac.doFinal()
+            val copyLen = minOf(t.size, keyLength - offset)
+            System.arraycopy(t, 0, okm, offset, copyLen)
+            offset += copyLen
+            counter++
+        }
+        return okm
+    }
+
     private fun generateFallbackPassphrase(): String {
         val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
         val existingKey = prefs.getString("fallback_passphrase", null)
@@ -207,10 +242,19 @@ class SecurityManager(private val context: Context) {
     }
     
     /**
-     * Checks if hardware-backed keystore is available.
+     * Checks if hardware-backed keystore is available by querying
+     * actual KeyInfo from the Keystore entry.
      */
     fun isHardwareBacked(): Boolean {
-        return true
+        return try {
+            val entry = keyStore.getEntry(masterKeyName, null)
+            val secretKey = (entry as KeyStore.SecretKeyEntry).secretKey
+            val factory = KeyFactory.getInstance(secretKey.algorithm, "AndroidKeyStore")
+            val keyInfo = factory.getKeySpec(secretKey, KeyInfo::class.java)
+            keyInfo.isInsideSecureHardware
+        } catch (e: Exception) {
+            false
+        }
     }
     
     /**

@@ -1,5 +1,7 @@
 package com.peasyproxy.app.domain.model
 
+import androidx.compose.runtime.Immutable
+
 enum class ProxyProtocol {
     HTTP,
     HTTPS,
@@ -7,6 +9,7 @@ enum class ProxyProtocol {
     SOCKS5
 }
 
+@Immutable
 data class Proxy(
     val id: String,
     val host: String,
@@ -21,8 +24,17 @@ data class Proxy(
     val trustScore: Int = 0,
     val lastChecked: Long = 0,
     val isFavorite: Boolean = false,
-    val responseTime: Long = 0
+    val responseTime: Long = 0,
+    val useCount: Int = 0,
+    val lastUsed: Long? = null
 ) {
+    init {
+        require(port in 1..65535) { "Port must be 1-65535, was $port" }
+        require(latency >= 0) { "Latency must be non-negative" }
+        require(reliability in 0f..100f) { "Reliability must be 0-100" }
+        require(trustScore in 0..100) { "Trust score must be 0-100" }
+    }
+
     val displayName: String
         get() = "$host:$port"
 
@@ -44,10 +56,12 @@ enum class ConnectionState {
     DISCONNECTED,
     CONNECTING,
     CONNECTED,
+    UNSTABLE,
     DISCONNECTING,
     ERROR
 }
 
+@Immutable
 data class ConnectionInfo(
     val state: ConnectionState = ConnectionState.DISCONNECTED,
     val currentProxy: Proxy? = null,
@@ -57,6 +71,7 @@ data class ConnectionInfo(
     val errorMessage: String? = null
 )
 
+@Immutable
 data class ProxyTestResult(
     val proxy: Proxy,
     val isReachable: Boolean,
@@ -64,6 +79,7 @@ data class ProxyTestResult(
     val errorMessage: String? = null
 )
 
+@Immutable
 data class HealthStatus(
     val isHealthy: Boolean,
     val latency: Long,
@@ -71,11 +87,11 @@ data class HealthStatus(
     val failureCount: Int = 0
 )
 
+@Immutable
 data class Statistics(
     val totalConnections: Int = 0,
     val totalDataReceived: Long = 0,
     val totalDataSent: Long = 0,
     val averageLatency: Long = 0,
-    val successRate: Float = 0f,
-    val topProxies: List<Proxy> = emptyList()
+    val successRate: Float = 0f
 )

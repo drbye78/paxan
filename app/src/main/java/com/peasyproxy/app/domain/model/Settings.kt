@@ -1,10 +1,14 @@
 package com.peasyproxy.app.domain.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class AppSettings(
     val autoConnectOnStart: Boolean = false,
     val autoReconnect: Boolean = true,
     val failoverEnabled: Boolean = true,
     val killSwitchEnabled: Boolean = false,
+    val vpnEnabled: Boolean = false,
     val autoRotateEnabled: Boolean = false,
     val autoRotateIntervalMinutes: Int = 15,
     val rotationStrategy: RotationStrategy = RotationStrategy.FASTEST,
@@ -13,7 +17,10 @@ data class AppSettings(
     val notificationsEnabled: Boolean = true,
     val errorAlertsEnabled: Boolean = true,
     val darkMode: DarkMode = DarkMode.SYSTEM,
-    val selectedTestEndpoints: List<String> = DEFAULT_TEST_ENDPOINTS
+    val selectedTestEndpoints: List<String> = DEFAULT_TEST_ENDPOINTS,
+    val customDnsEnabled: Boolean = false,
+    val primaryDns: String = "8.8.8.8",
+    val secondaryDns: String = "8.8.4.4"
 ) {
     companion object {
         val DEFAULT_TEST_ENDPOINTS = listOf(

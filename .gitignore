@@ -33,6 +33,7 @@ desktop.ini
 
 # Logs
 *.log
+pnpm-debug.log*
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -57,9 +58,15 @@ dist/
 build/
 out/
 
-# Package Locks (optional - uncomment if you don't want to commit locks)
+# Build artifacts
+popup.js
+
+# Package locks — pnpm-lock.yaml is committed for reproducible installs
 # package-lock.json
 # yarn.lock
+
+# Deepwork internal state
+.slim/deepwork/
 
 # Chrome Profile Data (if testing with profile)
 ChromeProfile/

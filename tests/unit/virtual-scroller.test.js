@@ -12,6 +12,11 @@ describe('VirtualScroller', () => {
       </div>
     `;
     container = document.getElementById('scrollContainer');
+
+    // JSDOM doesn't implement layout, so clientHeight/scrollTop are always 0.
+    // Mock them so virtualization logic works correctly in tests.
+    Object.defineProperty(container, 'clientHeight', { value: 500, configurable: true });
+    Object.defineProperty(container, 'scrollTop', { value: 0, writable: true, configurable: true });
   });
 
   afterEach(() => {
@@ -160,7 +165,7 @@ describe('VirtualScroller', () => {
       
       scroller.scrollToBottom();
       
-      expect(container.scrollTop).toBe(7200);
+      expect(container.scrollTop).toBe(6700);
     });
   });
 

@@ -75,7 +75,7 @@ class BatteryOptimizationHelper @Inject constructor(
                 }
                 manufacturer.contains("samsung") -> {
                     Intent().setClassName(
-                        "com.samsung.android.lool",
+                        "com.samsung.android.sm",
                         "com.samsung.android.sm.ui.battery.BatteryActivity"
                     )
                 }

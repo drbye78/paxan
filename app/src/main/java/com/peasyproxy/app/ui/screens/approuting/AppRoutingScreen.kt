@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.peasyproxy.app.domain.model.SplitTunnelMode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,13 +30,11 @@ fun AppRoutingScreen(
     val installedApps by viewModel.installedApps.collectAsStateWithLifecycle()
     val mode by viewModel.mode.collectAsStateWithLifecycle()
 
-    val packageManager = context.packageManager
-    val apps = remember {
-        packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-    }
-
-    LaunchedEffect(apps) {
-        viewModel.loadInstalledApps(apps)
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            val apps = context.packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+            viewModel.loadInstalledApps(apps)
+        }
     }
 
     Scaffold(

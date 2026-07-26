@@ -4,10 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -29,6 +31,7 @@ import com.peasyproxy.app.ui.screens.settings.AdvancedSettingsScreen
 import com.peasyproxy.app.ui.screens.settings.NotificationSettingsScreen
 import com.peasyproxy.app.ui.screens.settings.LanguageSettingsScreen
 import com.peasyproxy.app.ui.screens.statistics.StatisticsScreen
+import com.peasyproxy.app.ui.screens.statistics.StatisticsDetailScreen
 import com.peasyproxy.app.ui.theme.PeasyProxyTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -45,11 +48,17 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val settings by settingsRepository.settingsFlow.collectAsStateWithLifecycle(
-                initialValue = com.peasyproxy.app.domain.model.AppSettings()
+                initialValue = null
             )
 
-            PeasyProxyTheme(darkMode = settings.darkMode) {
-                MainScreen()
+            if (settings == null) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                PeasyProxyTheme(darkMode = settings!!.darkMode) {
+                    MainScreen()
+                }
             }
         }
     }
@@ -122,7 +131,14 @@ fun MainScreen() {
                 )
             }
             composable(Screen.Statistics.route) {
-                StatisticsScreen()
+                StatisticsScreen(
+                    onNavigateToDetail = { navController.navigate(Screen.StatisticsDetail.route) }
+                )
+            }
+            composable(Screen.StatisticsDetail.route) {
+                StatisticsDetailScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
             composable(Screen.AppRouting.route) {
                 AppRoutingScreen(

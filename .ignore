@@ -1,0 +1,15 @@
+!popup.js
+[/]*.zip
+[/]*.crx
+[/]*.pem
+.gradle/
+app/build/
+build/
+*.iml
+.idea/
+node_modules/
+.vscode/
+dist/
+coverage/
+!.slim/deepwork/
+!.slim/deepwork/**

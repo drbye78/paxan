@@ -1,7 +1,8 @@
 // PeasyProxy - Onboarding Module
 // Implements interactive tutorial and feature discovery
 
-const { THRESHOLDS } = require('../popup/constants.js');
+import { escapeHtml } from '../shared/utils.js';
+import { THRESHOLDS } from '../popup/constants.js';
 
 // ============================================================================
 // ONBOARDING STATE
@@ -412,7 +413,7 @@ function showFeatureTooltip(element, message, duration = 5000) {
   tooltip.className = 'feature-tooltip';
   tooltip.innerHTML = `
     <div class="tooltip-content">
-      <span class="tooltip-message">${message}</span>
+      <span class="tooltip-message">${escapeHtml(message)}</span>
       <button class="tooltip-close">×</button>
     </div>
   `;
@@ -447,8 +448,8 @@ function showFeatureAnnouncement(feature, description) {
     <div class="announcement-content">
       <div class="announcement-icon">✨</div>
       <div class="announcement-text">
-        <strong>${feature}</strong>
-        <p>${description}</p>
+        <strong>${escapeHtml(feature)}</strong>
+        <p>${escapeHtml(description)}</p>
       </div>
       <button class="announcement-dismiss">×</button>
     </div>
@@ -566,18 +567,97 @@ function removeHighlight() {
   });
 }
 
+// Show a specific onboarding step
+function showOnboardingStep(stepIndex) {
+  if (stepIndex >= 0 && stepIndex < ONBOARDING_STEPS.length) {
+    onboardingState.currentStep = stepIndex;
+    onboardingState.skipped = false;
+    saveOnboardingState();
+    
+    // Remove any existing onboarding modal
+    hideOnboarding();
+    
+    // Create and show new onboarding modal
+    const step = ONBOARDING_STEPS[stepIndex];
+    const totalSteps = ONBOARDING_STEPS.length;
+    const modalHTML = renderOnboardingModal(step, stepIndex, totalSteps);
+    
+    // Create modal element
+    const modal = document.createElement('div');
+    modal.innerHTML = modalHTML;
+    document.body.appendChild(modal.firstChild);
+    
+    // Set up event listeners for the modal
+    setupOnboardingModalListeners();
+    
+    // Highlight the target element if specified
+    if (step.highlight) {
+      highlightElement(step.highlight);
+    }
+    
+    return step;
+  }
+  return null;
+}
+
+// Hide onboarding (remove from DOM)
+function hideOnboarding() {
+  const modal = document.getElementById('onboardingModal');
+  if (modal) {
+    modal.remove();
+  }
+  removeHighlight();
+}
+
+// Set up event listeners for onboarding modal
+function setupOnboardingModalListeners() {
+  const modal = document.getElementById('onboardingModal');
+  if (!modal) return;
+  
+  const skipBtn = modal.querySelector('#onboardingSkip');
+  const prevBtn = modal.querySelector('#onboardingPrev');
+  const nextBtn = modal.querySelector('#onboardingNext');
+  
+  if (skipBtn) {
+    skipBtn.addEventListener('click', async () => {
+      await skipOnboarding();
+      hideOnboarding();
+    });
+  }
+  
+  if (prevBtn) {
+    prevBtn.addEventListener('click', async () => {
+      const result = await previousStep();
+      if (result.success) {
+        hideOnboarding();
+        showOnboardingStep(onboardingState.currentStep);
+      }
+    });
+  }
+  
+  if (nextBtn) {
+    nextBtn.addEventListener('click', async () => {
+      const result = await nextStep();
+      if (result.success) {
+        if (result.isLast) {
+          await completeOnboarding();
+          hideOnboarding();
+        } else {
+          hideOnboarding();
+          showOnboardingStep(onboardingState.currentStep);
+        }
+      }
+    });
+  }
+}
+
 // ============================================================================
 // EXPORTS
 // ============================================================================
 
-module.exports = {
-  // Constants
+export {
   ONBOARDING_STEPS,
-  
-  // State
   onboardingState,
-  
-  // Manager
   initOnboarding,
   shouldShowOnboarding,
   startOnboarding,
@@ -588,15 +668,11 @@ module.exports = {
   skipOnboarding,
   completeOnboarding,
   resetOnboarding,
-  
-  // Feature discovery
   showFeatureTooltip,
   showFeatureAnnouncement,
-  
-  // Quick start
   generateQuickStartGuide,
-  
-  // UI helpers
+  showOnboardingStep,
+  hideOnboarding,
   renderOnboardingModal,
   highlightElement,
   removeHighlight

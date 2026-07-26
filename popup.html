@@ -8,56 +8,56 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <!-- Skip link for keyboard users -->
-  <a href="#proxyList" class="skip-link">Skip to proxy list</a>
-  
-  <div class="container" role="application" aria-label="PeasyProxy Proxy Manager">
-    <!-- Security Warning Banner -->
-    <div class="security-warning" id="securityWarning" role="alert" aria-live="polite">
-      <svg class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-        <line x1="12" y1="9" x2="12" y2="13"/>
-        <line x1="12" y1="17" x2="12.01" y2="17"/>
-      </svg>
-      <span class="warning-text">
-        <strong>⚠️ Security Notice:</strong> Free proxies can intercept traffic. Do not use for banking or sensitive logins. Use HTTPS sites only.
-      </span>
-      <button class="warning-dismiss" id="warningDismiss" aria-label="Dismiss security warning">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <line x1="18" y1="6" x2="6" y2="18"/>
-          <line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
-      </button>
-    </div>
+   <!-- Skip link for keyboard users -->
+   <a href="#proxyList" class="skip-link">Skip to proxy list</a>
+   
+   <div class="container" role="application" aria-label="PeasyProxy Proxy Manager">
+     <!-- Security Warning Banner -->
+     <div class="security-warning" id="securityWarning" role="alert" aria-live="polite">
+       <svg class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+         <line x1="12" y1="9" x2="12" y2="13"/>
+         <line x1="12" y1="17" x2="12.01" y2="17"/>
+       </svg>
+       <span class="warning-text">
+         <strong>⚠️ Security Notice:</strong> Free proxies can intercept traffic. Do not use for banking or sensitive logins. Use HTTPS sites only.
+       </span>
+       <button class="warning-dismiss" id="warningDismiss" aria-label="Dismiss security warning">
+         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+           <line x1="18" y1="6" x2="6" y2="18"/>
+           <line x1="6" y1="6" x2="18" y2="18"/>
+         </svg>
+       </button>
+     </div>
 
-    <!-- Smart Header -->
-    <header class="header" role="banner">
-      <div class="header-left">
-        <div class="logo" role="img" aria-label="PeasyProxy Logo">
-          <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
-          <span class="logo-text">PeasyProxy</span>
-          <span class="logo-badge">Proxy Manager</span>
-        </div>
-      </div>
-      <div class="header-right" role="navigation" aria-label="Header actions">
-        <!-- Overflow menu button -->
-        <button class="icon-btn" id="overflowBtn" title="More actions" aria-label="More actions" aria-haspopup="true">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <circle cx="12" cy="12" r="1"/>
-            <circle cx="12" cy="5" r="1"/>
-            <circle cx="12" cy="19" r="1"/>
-          </svg>
-        </button>
-        <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Open settings">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">>
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-        </button>
-      </div>
-    </header>
+     <!-- Smart Header -->
+     <header class="header" role="banner">
+       <div class="header-left">
+         <div class="logo" role="img" aria-label="PeasyProxy Logo">
+           <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+           </svg>
+           <span class="logo-text">PeasyProxy</span>
+           <span class="logo-badge">Proxy Manager</span>
+         </div>
+       </div>
+       <div class="header-right" role="navigation" aria-label="Header actions">
+         <!-- Overflow menu button -->
+         <button class="icon-btn" id="overflowBtn" title="More actions" aria-label="More actions" aria-haspopup="true">
+           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+             <circle cx="12" cy="12" r="1"/>
+             <circle cx="12" cy="5" r="1"/>
+             <circle cx="12" cy="19" r="1"/>
+           </svg>
+         </button>
+         <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Open settings">
+           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+             <circle cx="12" cy="12" r="3"/>
+             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+           </svg>
+         </button>
+       </div>
+     </header>
 
     <!-- Overflow Menu (Task 3) -->
     <div class="overflow-menu" id="overflowMenu" style="display: none;">
@@ -87,113 +87,152 @@
       </button>
     </div>
 
-    <!-- Unified Connection Card (Task 1) with Progressive Disclosure (Task 2) -->
-    <div class="connection-card" id="connectionCard">
-      <!-- Main Status (always visible) -->
-      <div class="connection-main">
-        <div class="connection-status-line">
-          <div class="status-badge" id="statusBadge">
-            <span class="status-dot"></span>
-            <span class="status-text">Disconnected</span>
-          </div>
-          <div class="connection-timer" id="connectionTimer" style="display: none;">
-            <svg class="timer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <polyline points="12 6 12 12 16 14"/>
-            </svg>
-            <span class="timer-value">00:00</span>
-          </div>
+<!-- Unified Connection Card with Enhanced Visual Hierarchy -->
+<div class="connection-card" id="connectionCard">
+  <!-- Primary Action Section (Always Visible) -->
+  <div class="connection-primary">
+    <div class="connection-status">
+      <div class="status-badge" id="statusBadge">
+        <span class="status-dot"></span>
+        <span class="status-text">Disconnected</span>
+      </div>
+      <div class="connection-action">
+        <button class="fab-mini" id="fabMini" title="Connect/Disconnect">
+          <svg class="fab-icon fab-connect" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/>
+          </svg>
+          <svg class="fab-icon fab-disconnect" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+            <path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Connection Info (Visible when connected) -->
+    <div class="connection-info" id="connectionInfo" style="display: none;">
+      <div class="current-proxy-display">
+        <span class="proxy-flag" id="proxyFlag"></span>
+        <span class="proxy-address" id="proxyAddress">-</span>
+        <span class="proxy-country" id="proxyCountry"></span>
+      </div>
+      
+      <div class="connection-meta">
+        <div class="connection-timer" id="connectionTimer">
+          <svg class="timer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span class="timer-value">00:00</span>
         </div>
-        
-        <div class="current-proxy-display" id="currentProxyDisplay" style="display: none;">
-          <span class="proxy-flag" id="proxyFlag"></span>
-          <span class="proxy-address" id="proxyAddress">-</span>
-          <span class="proxy-country" id="proxyCountry"></span>
-        </div>
-
-        <div class="connection-quality-inline" id="connectionQualityInline" style="display: none;">
+        <div class="connection-quality-inline">
           <span class="quality-badge excellent" id="qualityBadge">Excellent</span>
           <span class="quality-stats" id="qualityStats">45ms</span>
         </div>
       </div>
+    </div>
+  </div>
 
-      <!-- Collapsible Details (Task 2) -->
-      <button class="details-toggle" id="detailsToggle">
-        <span>Details</span>
-        <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
-      </button>
-
-      <div class="connection-details" id="connectionDetails" data-expanded="false" style="display: none;">
-        <!-- Status Indicators -->
-        <div class="status-indicators">
-          <div class="indicator" id="healthIndicator">
-            <svg class="indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-            </svg>
-            <span class="indicator-text">Offline</span>
-          </div>
-          <div class="indicator" id="securityIndicator">
-            <svg class="indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
-            <span class="indicator-text">Secure</span>
-          </div>
-          <div class="indicator" id="failoverIndicator" style="display: none;">
-            <svg class="indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M23 4v6h-6M1 20v-6h6"/>
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-            </svg>
-            <span class="indicator-text">Auto-Failover</span>
-          </div>
-          <div class="indicator" id="dnsIndicator" title="DNS Leak Protection">
-            <svg class="indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="2" y1="12" x2="22" y2="12"/>
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-            </svg>
-            <span class="indicator-text">DNS: On</span>
-          </div>
-          <div class="indicator" id="webrtcIndicator" title="WebRTC Protection">
-            <svg class="indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="23 7 16 12 23 17 23 7"/>
-              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-            </svg>
-            <span class="indicator-text">WebRTC: On</span>
-          </div>
+  <!-- Secondary Information Section -->
+  <div class="connection-secondary">
+    <!-- IP Detector -->
+    <div class="ip-detector-section" id="ipDetectorSection">
+      <div class="ip-detector-header">
+        <span>IP Address Check</span>
+        <button class="btn btn-ghost btn-sm" id="ipCheckBtn">Check IPs</button>
+      </div>
+      <div class="ip-detector-content" id="ipDetectorContent" style="display: none;">
+        <div class="ip-row">
+          <span class="ip-label">Real IP:</span>
+          <span class="ip-value" id="ipRealValue">--</span>
         </div>
-
-        <!-- IP Detector (collapsible) -->
-        <div class="ip-detector-section" id="ipDetectorSection">
-          <div class="ip-detector-header">
-            <span>IP Address Check</span>
-            <button class="btn btn-ghost btn-sm" id="ipCheckBtn">Check IPs</button>
-          </div>
-          <div class="ip-detector-content" id="ipDetectorContent" style="display: none;">
-            <div class="ip-row">
-              <span class="ip-label">Real IP:</span>
-              <span class="ip-value" id="ipRealValue">--</span>
-            </div>
-            <div class="ip-row">
-              <span class="ip-label">Proxy IP:</span>
-              <span class="ip-value" id="ipProxyValue">--</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Speed Graph -->
-        <div class="speed-graph-section" id="speedGraphSection" style="display: none;">
-          <div class="speed-graph-header">
-            <span>Latency</span>
-            <span class="latency-value" id="currentLatency">--ms</span>
-          </div>
-          <canvas id="speedGraph" width="340" height="40"></canvas>
+        <div class="ip-row">
+          <span class="ip-label">Proxy IP:</span>
+          <span class="ip-value" id="ipProxyValue">--</span>
         </div>
       </div>
     </div>
 
+<!-- Speed Graph -->
+<div class="speed-graph-section" id="speedGraphSection" style="display: none;">
+  <div class="speed-graph-header">
+    <span>Latency</span>
+    <span class="latency-value" id="currentLatency">--ms</span>
+  </div>
+  <div class="speed-graph-controls">
+    <select id="speedGraphRange" class="dropdown dropdown-sm">
+      <option value="1h">1 Hour</option>
+      <option value="6h" selected>6 Hours</option>
+      <option value="24h">24 Hours</option>
+      <option value="7d">7 Days</option>
+    </select>
+  </div>
+  <canvas id="speedGraph" width="340" height="50"></canvas>
+  <div class="speed-graph-legend">
+    <div class="legend-item">
+      <span class="legend-color" style="background: #2ed573;"></span>
+      <span>Good (< 100ms)</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-color" style="background: #64ffda;"></span>
+      <span>Fair (100-300ms)</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-color" style="background: #ffa502;"></span>
+      <span>Poor (> 300ms)</span>
+    </div>
+  </div>
+</div>
+  </div>
+
+  <!-- Collapsible Details Section -->
+  <button class="details-toggle" id="detailsToggle" aria-expanded="false">
+    <span>Details</span>
+    <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  </button>
+
+  <div class="connection-details" id="connectionDetails" data-expanded="false" style="display: none;">
+    <!-- Status Indicators -->
+    <div class="status-indicators">
+      <div class="indicator" id="healthIndicator">
+        <svg class="indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+        <span class="indicator-text">Offline</span>
+      </div>
+      <div class="indicator" id="securityIndicator">
+        <svg class="indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <span class="indicator-text">Secure</span>
+      </div>
+      <div class="indicator" id="failoverIndicator" style="display: none;">
+        <svg class="indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6M1 20v-6h6"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        <span class="indicator-text">Auto-Failover</span>
+      </div>
+      <div class="indicator" id="dnsIndicator" title="DNS Leak Protection">
+        <svg class="indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="2" y1="12" x2="22" y2="12"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        <span class="indicator-text">DNS: On</span>
+      </div>
+      <div class="indicator" id="webrtcIndicator" title="WebRTC Protection">
+        <svg class="indicator-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="23 7 16 12 23 17 23 7"/>
+          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+        </svg>
+        <span class="indicator-text">WebRTC: On</span>
+      </div>
+    </div>
+  </div>
+</div>
     <!-- Smart Filters Bar with Integrated Tabs -->
     <div class="smart-filters" role="search" aria-label="Proxy filters">
       <div class="search-wrapper">
@@ -222,7 +261,7 @@
 
     <!-- Quick Connect Section (collapsible) -->
     <section class="section" id="quickConnectSection">
-      <button class="section-toggle" id="quickConnectToggle">
+      <button class="section-toggle" id="quickConnectToggle" aria-expanded="false">
         <h3 class="section-title">Quick Connect</h3>
         <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="6 9 12 15 18 9"/>
@@ -236,10 +275,23 @@
       <!-- Live region for screen readers -->
       <div id="liveRegion" class="sr-only" aria-live="polite" aria-atomic="true"></div>
       
-      <div class="proxy-list-header">
-        <span id="listTitle">Available Proxies</span>
-        <span class="proxy-count" id="proxyCount" aria-label="Proxy count">0</span>
-      </div>
+<div class="proxy-list-header">
+  <div class="header-left">
+    <span id="listTitle">Available Proxies</span>
+  </div>
+  <div class="header-right">
+    <span class="proxy-count" id="proxyCount" aria-label="Proxy count">0</span>
+    <div class="bulk-actions" id="bulkActions" style="display: none; gap: 8px; align-items: center;">
+      <span id="selectedCount">0</span> selected
+      <button class="btn btn-sm btn-ghost" id="deleteSelectedBtn">Delete</button>
+      <button class="btn btn-sm btn-ghost" id="exportSelectedBtn">Export</button>
+    </div>
+  </div>
+  <div class="select-all-wrapper">
+    <input type="checkbox" id="selectAllCheckbox" class="select-all-checkbox" aria-label="Select all proxies">
+    <span>Select all</span>
+  </div>
+</div>
       
       <!-- Loading State (Task 7) -->
       <div class="loading" id="loading">
@@ -248,13 +300,22 @@
         <span class="loading-hint">Usually takes 2-3 seconds</span>
       </div>
       
-      <!-- Empty State -->
-      <div class="empty-state" id="emptyState" style="display: none;">
-        <div class="empty-icon">📭</div>
-        <h4>No proxies found</h4>
-        <p>Try adjusting your filters or refresh the list</p>
-        <button class="btn btn-primary" id="emptyRefreshBtn">Refresh</button>
-      </div>
+<!-- Empty State -->
+<div class="empty-state" id="emptyState" style="display: none;">
+  <div class="empty-icon">📭</div>
+  <h4>No proxies found</h4>
+  <p>Try adjusting your filters or refresh the list to see available proxies</p>
+  <div class="empty-suggestions">
+    <h5>Suggestions:</h5>
+    <ul>
+      <li>Check your internet connection</li>
+      <li>Try selecting different proxy types or countries</li>
+      <li>Disable any aggressive filters</li>
+      <li>Click "Refresh" to load the latest proxy list</li>
+    </ul>
+  </div>
+  <button class="btn btn-primary" id="emptyRefreshBtn">Refresh Proxy List</button>
+</div>
       
       <!-- Proxy Grid (Task 8) -->
       <div class="proxy-list" id="proxyList" role="list" aria-label="Proxy servers list"></div>
@@ -302,108 +363,118 @@
         </button>
       </div>
       <div class="panel-content">
-        <div class="setting-group">
-          <h3>Appearance</h3>
-          <div class="setting">
-            <div class="setting-info">
-              <span class="setting-label">Theme</span>
-            </div>
-            <select id="themeSelect" class="dropdown dropdown-sm">
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-              <option value="auto">System</option>
-            </select>
-          </div>
-          <div class="setting">
-            <div class="setting-info">
-              <span class="setting-label">Language</span>
-            </div>
-            <select id="languageSelect" class="dropdown dropdown-sm">
-              <option value="ru">Русский</option>
-              <option value="en">English</option>
-            </select>
-          </div>
-        </div>
+<div class="setting-group">
+  <h3>Appearance<span class="setting-description">Customize the look and feel of the extension</span></h3>
+  <div class="setting">
+    <div class="setting-info">
+      <span class="setting-label">Theme</span>
+      <span class="setting-desc">Choose between dark, light, or system theme</span>
+    </div>
+    <select id="themeSelect" class="dropdown dropdown-sm">
+      <option value="dark">Dark</option>
+      <option value="light">Light</option>
+      <option value="auto">System</option>
+    </select>
+  </div>
+  <div class="setting">
+    <div class="setting-info">
+      <span class="setting-label">Language</span>
+      <span class="setting-desc">Select the interface language</span>
+    </div>
+    <select id="languageSelect" class="dropdown dropdown-sm">
+      <option value="ru">Русский</option>
+      <option value="en">English</option>
+    </select>
+  </div>
+</div>
 
-        <div class="setting-group">
-          <h3>Connection</h3>
-          <div class="setting">
-            <div class="setting-info">
-              <span class="setting-label">Auto-Connect on Startup</span>
-            </div>
-            <div class="toggle" id="autoConnectToggle">
-              <div class="toggle-knob"></div>
-            </div>
-          </div>
-          <div class="setting">
-            <div class="setting-info">
-              <span class="setting-label">Auto-Failover</span>
-            </div>
-            <div class="toggle active" id="autoFailoverToggle">
-              <div class="toggle-knob"></div>
-            </div>
-          </div>
-          <div class="setting">
-            <div class="setting-info">
-              <span class="setting-label">Test Before Connect</span>
-            </div>
-            <div class="toggle active" id="testBeforeConnectToggle">
-              <div class="toggle-knob"></div>
-            </div>
-          </div>
-          <div class="setting">
-            <div class="setting-info">
-              <span class="setting-label">Auto-Refresh</span>
-            </div>
-            <select id="refreshInterval" class="dropdown dropdown-sm">
-              <option value="60000">1 min</option>
-              <option value="300000" selected>5 min</option>
-              <option value="600000">10 min</option>
-              <option value="0">Disabled</option>
-            </select>
-          </div>
-          <div class="setting">
-            <div class="setting-info">
-              <span class="setting-label">Proxy Source</span>
-            </div>
-            <select id="proxySource" class="dropdown dropdown-sm">
-              <option value="proxymania">ProxyMania</option>
-              <option value="proxyscrape">ProxyScrape</option>
-            </select>
-          </div>
-        </div>
+<div class="setting-group">
+  <h3>Connection<span class="setting-description">Manage how the extension connects and maintains proxy connections</span></h3>
+  <div class="setting">
+    <div class="setting-info">
+      <span class="setting-label">Auto-Connect on Startup</span>
+      <span class="setting-desc">Automatically connect to a proxy when the browser starts</span>
+    </div>
+    <div class="toggle" id="autoConnectToggle" role="switch" tabindex="0" aria-checked="false">
+      <div class="toggle-knob"></div>
+    </div>
+  </div>
+  <div class="setting">
+    <div class="setting-info">
+      <span class="setting-label">Auto-Failover</span>
+      <span class="setting-desc">Automatically switch to a backup proxy if the current one fails</span>
+    </div>
+    <div class="toggle active" id="autoFailoverToggle" role="switch" tabindex="0" aria-checked="true">
+      <div class="toggle-knob"></div>
+    </div>
+  </div>
+  <div class="setting">
+    <div class="setting-info">
+      <span class="setting-label">Test Before Connect</span>
+      <span class="setting-desc">Check proxy speed and reliability before connecting</span>
+    </div>
+    <div class="toggle active" id="testBeforeConnectToggle" role="switch" tabindex="0" aria-checked="true">
+      <div class="toggle-knob"></div>
+    </div>
+  </div>
+  <div class="setting">
+    <div class="setting-info">
+      <span class="setting-label">Auto-Refresh</span>
+      <span class="setting-desc">Periodically refresh the proxy list to ensure availability</span>
+    </div>
+    <select id="refreshInterval" class="dropdown dropdown-sm">
+      <option value="60000">1 min</option>
+      <option value="300000" selected>5 min</option>
+      <option value="600000">10 min</option>
+      <option value="0">Disabled</option>
+    </select>
+  </div>
+  <div class="setting">
+    <div class="setting-info">
+      <span class="setting-label">Proxy Source</span>
+      <span class="setting-desc">Choose which service to fetch proxies from</span>
+    </div>
+    <select id="proxySource" class="dropdown dropdown-sm">
+      <option value="proxymania">ProxyMania</option>
+      <option value="proxyscrape">ProxyScrape</option>
+    </select>
+  </div>
+</div>
 
-        <div class="setting-group">
-          <h3>Notifications</h3>
-          <div class="setting">
-            <div class="setting-info">
-              <span class="setting-label">Enable Notifications</span>
-            </div>
-            <div class="toggle active" id="notificationsToggle">
-              <div class="toggle-knob"></div>
-            </div>
-          </div>
-        </div>
+<div class="setting-group">
+  <h3>Notifications<span class="setting-description">Control how and when you receive alerts from the extension</span></h3>
+  <div class="setting">
+    <div class="setting-info">
+      <span class="setting-label">Enable Notifications</span>
+      <span class="setting-desc">Get notified about connection status, errors, and updates</span>
+    </div>
+    <div class="toggle active" id="notificationsToggle" role="switch" tabindex="0" aria-checked="true">
+      <div class="toggle-knob"></div>
+    </div>
+  </div>
+</div>
 
-        <div class="setting-group">
-          <h3>Security</h3>
-          <div class="setting">
-            <div class="setting-info">
-              <span class="setting-label">DNS Leak Protection</span>
-            </div>
-            <div class="toggle active" id="dnsLeakToggle">
-              <div class="toggle-knob"></div>
-            </div>
-          </div>
-          <div class="setting">
-            <div class="setting-info">
-              <span class="setting-label">WebRTC Protection</span>
-            </div>
-            <div class="toggle active" id="webRtcToggle">
-              <div class="toggle-knob"></div>
-            </div>
-          </div>
-        </div>
+<div class="setting-group">
+  <h3>Security<span class="setting-description">Enhance your privacy and security while using proxies</span></h3>
+  <div class="setting">
+    <div class="setting-info">
+      <span class="setting-label">DNS Leak Protection</span>
+      <span class="setting-desc">Prevent DNS requests from leaking your real IP address</span>
+    </div>
+    <div class="toggle active" id="dnsLeakToggle" role="switch" tabindex="0" aria-checked="true">
+      <div class="toggle-knob"></div>
+    </div>
+  </div>
+  <div class="setting">
+    <div class="setting-info">
+      <span class="setting-label">WebRTC Protection</span>
+      <span class="setting-desc">Block WebRTC leaks that could reveal your real IP address</span>
+    </div>
+    <div class="toggle active" id="webRtcToggle" role="switch" tabindex="0" aria-checked="true">
+      <div class="toggle-knob"></div>
+    </div>
+  </div>
+</div>
 
         <div class="setting-group">
           <h3>Advanced Features</h3>
@@ -422,7 +493,7 @@
               <span class="setting-label">Auto-Rotation</span>
               <span class="setting-desc">Automatically switch to fresh proxies</span>
             </div>
-            <div class="toggle" id="rotationToggle">
+            <div class="toggle" id="rotationToggle" role="switch" tabindex="0" aria-checked="false">
               <div class="toggle-knob"></div>
             </div>
           </div>
@@ -474,20 +545,56 @@
         </button>
       </div>
       <div class="panel-content">
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-value" id="statProxiesUsed">0</div>
-            <div class="stat-label">Proxies Used</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value" id="statConnectionTime">0h</div>
-            <div class="stat-label">Connected</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value" id="statSuccessRate">0%</div>
-            <div class="stat-label">Success Rate</div>
-          </div>
-        </div>
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon">🌐</div>
+    <div class="stat-content">
+      <div class="stat-value" id="statProxiesUsed">0</div>
+      <div class="stat-label">Proxies Used</div>
+      <div class="stat-desc">Total proxies tested and used</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">⏱️</div>
+    <div class="stat-content">
+      <div class="stat-value" id="statConnectionTime">0h</div>
+      <div class="stat-label">Connected</div>
+      <div class="stat-desc">Total connection time</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">✅</div>
+    <div class="stat-content">
+      <div class="stat-value" id="statSuccessRate">0%</div>
+      <div class="stat-label">Success Rate</div>
+      <div class="stat-desc">Successful connections</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">⚡</div>
+    <div class="stat-content">
+      <div class="stat-value" id="statAvgSpeed">0ms</div>
+      <div class="stat-label">Avg Speed</div>
+      <div class="stat-desc">Average proxy latency</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">📊</div>
+    <div class="stat-content">
+      <div class="stat-value" id="statDataTransferred">0 MB</div>
+      <div class="stat-label">Data Transferred</div>
+      <div class="stat-desc">Estimated data usage</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">🔒</div>
+    <div class="stat-content">
+      <div class="stat-value" id="statSecurityScore">0</div>
+      <div class="stat-label">Security</div>
+      <div class="stat-desc">Protection level</div>
+    </div>
+  </div>
+</div>
 
         <div class="stats-section">
           <h4>Top Countries</h4>
@@ -495,7 +602,7 @@
         </div>
 
         <div class="stats-section" id="suspiciousProxiesSection" style="display: none;">
-          <h4 style="color: #ff5252;">⚠️ Suspicious Proxies</h4>
+          <h4 style="color: var(--color-error);">⚠️ Suspicious Proxies</h4>
           <div id="suspiciousProxiesList" class="stats-list"></div>
         </div>
 

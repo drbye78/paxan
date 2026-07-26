@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import java.io.Closeable
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -31,7 +32,7 @@ import javax.inject.Singleton
 @Singleton
 class ConnectivityMonitor @Inject constructor(
     @ApplicationContext private val context: Context
-) {
+) : Closeable {
     private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     private val scope = CoroutineScope(SupervisorJob())
     
@@ -74,9 +75,6 @@ class ConnectivityMonitor @Inject constructor(
 
         val networkRequest = NetworkRequest.Builder()
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-            .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
             .build()
 
         connectivityManager.registerNetworkCallback(networkRequest, callback)
@@ -158,6 +156,10 @@ class ConnectivityMonitor @Inject constructor(
 
     companion object {
         private const val TAG = "ConnectivityMonitor"
+    }
+
+    override fun close() {
+        scope.cancel()
     }
 }
 

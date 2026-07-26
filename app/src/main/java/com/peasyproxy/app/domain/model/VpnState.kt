@@ -1,5 +1,7 @@
 package com.peasyproxy.app.domain.model
 
+import androidx.compose.runtime.Immutable
+
 /**
  * Sealed class representing all possible VPN states.
  * 
@@ -12,7 +14,9 @@ package com.peasyproxy.app.domain.model
  */
 sealed class VpnState {
     object Idle : VpnState()
+    @Immutable
     data class Connecting(val proxy: Proxy) : VpnState()
+    @Immutable
     data class Connected(
         val proxy: Proxy,
         val connectedSince: Long,
@@ -20,7 +24,10 @@ sealed class VpnState {
         val bytesSent: Long = 0L
     ) : VpnState()
     object Disconnecting : VpnState()
+    @Immutable
     data class Error(val message: String?) : VpnState()
+    @Immutable
+    data class Unstable(val message: String? = null) : VpnState()
     
     val isConnected: Boolean
         get() = this is Connected
@@ -39,6 +46,7 @@ sealed class VpnState {
         get() = (this as? Error)?.message
 }
 
+@Immutable
 data class ConnectionConfig(
     val proxy: Proxy,
     val dnsPrimary: String = "8.8.8.8",
@@ -49,7 +57,9 @@ data class ConnectionConfig(
 )
 
 sealed class ConnectionResult {
+    @Immutable
     data class Success(val config: ConnectionConfig) : ConnectionResult()
+    @Immutable
     data class Failure(val error: String, val exception: Throwable? = null) : ConnectionResult()
 }
 
@@ -61,6 +71,7 @@ enum class TunnelState {
     ERROR
 }
 
+@Immutable
 data class PacketInfo(
     val size: Int,
     val isOutgoing: Boolean,

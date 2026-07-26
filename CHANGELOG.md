@@ -220,5 +220,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial release of PeasyProxy Chrome extension
-- Basic proxy management functionality
-- ProxyMania integration for proxy list

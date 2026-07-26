@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extension_name__",
-  "version": "3.0.0",
+  "version": "3.0.18",
   "description": "__MSG_extension_description__",
-  "default_locale": "ru",
+  "default_locale": "en",
   "permissions": [
     "proxy",
     "storage",
@@ -18,7 +18,10 @@
     "https://api.proxyscrape.com/*",
     "https://httpbin.org/*",
     "https://www.google.com/*",
-    "https://connectivitycheck.gstatic.com/*"
+    "https://connectivitycheck.gstatic.com/*",
+    "https://dnsleaktest.com/*",
+    "https://whoer.net/*",
+    "https://api.ipify.org/*"
   ],
   "background": {
     "service_worker": "src/background/index.js",

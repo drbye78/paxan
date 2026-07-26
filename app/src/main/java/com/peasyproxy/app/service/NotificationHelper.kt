@@ -8,9 +8,6 @@ import android.content.Intent
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import com.peasyproxy.app.R
 import com.peasyproxy.app.domain.model.NotificationPreferences
@@ -112,7 +109,7 @@ class NotificationHelper @Inject constructor(
         }
 
         if (preferences.vibrationEnabled) {
-            builder.setVibrate(preferences.vibrationPattern)
+            builder.setVibrate(preferences.vibrationPattern.toLongArray())
         }
 
         notificationManager.notify(NOTIFICATION_ID_CONNECTION, builder.build())
@@ -144,31 +141,10 @@ class NotificationHelper @Inject constructor(
         }
 
         if (preferences.vibrationEnabled) {
-            vibrate(preferences.vibrationPattern)
+            builder.setVibrate(preferences.vibrationPattern.toLongArray())
         }
 
         notificationManager.notify(NOTIFICATION_ID_ERROR, builder.build())
-    }
-
-    private fun vibrate(pattern: LongArray) {
-        try {
-            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-                vibratorManager.defaultVibrator
-            } else {
-                @Suppress("DEPRECATION")
-                context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator.vibrate(pattern, -1)
-            }
-        } catch (e: Exception) {
-            // Ignore vibration errors
-        }
     }
 
     fun cancelConnectionNotification() {

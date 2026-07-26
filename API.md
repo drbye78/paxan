@@ -17,11 +17,12 @@ Complete API reference for the PeasyProxy Chrome extension.
 
 This extension uses Chrome's extension APIs for communication between components:
 
-- **popup.js** - UI layer (runs in popup context)
-- **src/background/index.js** - Service worker (runs in background context, ES modules)
+- **popup** - UI layer (bundled into popup.js from src/popup-modules/)
+- **src/background/index.js** - Service worker (native ES module)
+- **src/background/proxy-config-manager.js** - Single authority for chrome.proxy.settings
 - **src/core/** - Core modules (reputation engine)
 - **src/security/** - Security modules (tamper detection)
-- **src/popup/** - Popup modules (i18n, virtual scroller)
+- **src/shared/** - Shared utilities (escapeHtml, buildProxyConfig, etc.)
 
 Communication happens via `chrome.runtime.sendMessage()`.
 
@@ -56,7 +57,7 @@ chrome.runtime.sendMessage({
 
 Fetches the latest proxy list from configured source (PeasyProxy or ProxyScrape).
 
-**Direction:** popup.js → background.js (ES Module)
+**Direction:** popup → background SW
 
 **Request:**
 ```javascript
@@ -100,7 +101,7 @@ Fetches the latest proxy list from configured source (PeasyProxy or ProxyScrape)
 
 Gets all proxy reputation data from the reputation engine.
 
-**Direction:** popup.js → background.js
+**Direction:** popup → background
 
 **Request:**
 ```javascript
@@ -135,7 +136,7 @@ Gets all proxy reputation data from the reputation engine.
 
 Tests a proxy for tampering/MITM attacks.
 
-**Direction:** popup.js → background.js
+**Direction:** popup → background
 
 **Request:**
 ```javascript
@@ -160,7 +161,7 @@ Tests a proxy for tampering/MITM attacks.
 
 Gets reputation engine statistics.
 
-**Direction:** popup.js → background.js
+**Direction:** popup → background
 
 **Request:**
 ```javascript
@@ -185,7 +186,7 @@ Gets reputation engine statistics.
 
 Configures Chrome to use the specified proxy.
 
-**Direction:** popup.js → background.js
+**Direction:** popup → background
 
 **Request:**
 ```javascript
@@ -233,7 +234,7 @@ if (result.success) {
 
 Removes proxy configuration, restoring direct connection.
 
-**Direction:** popup.js → background.js
+**Direction:** popup → background
 
 **Request:**
 ```javascript
@@ -269,7 +270,7 @@ console.log('Proxy disconnected');
 
 Retrieves current proxy configuration from Chrome.
 
-**Direction:** popup.js → background.js
+**Direction:** popup → background
 
 **Request:**
 ```javascript
@@ -313,7 +314,7 @@ console.log(`Current mode: ${config.mode}`);
 
 Tests proxy health based on last verification time.
 
-**Direction:** popup.js → background.js
+**Direction:** popup → background
 
 **Request:**
 ```javascript
@@ -345,6 +346,46 @@ const test = await chrome.runtime.sendMessage({
 });
 console.log(`Proxy working: ${test.working}`);
 ```
+
+---
+
+## Proxy Chain API
+
+Proxy chaining lets users define ordered sequences of proxies for sequential testing.
+
+### createChain
+**Request:** `{ action: 'createChain', name: string, proxyIds: string[], options?: { protocol, timeout } }`
+**Response:** `{ success: true, chain: { id, name, proxies, protocol, timeout } }`
+
+### listChains
+**Request:** `{ action: 'listChains' }`
+**Response:** `{ success: true, chains: [{ id, name, proxyCount, protocol, enabled }] }`
+
+### getChain
+**Request:** `{ action: 'getChain', chainId: string }`
+**Response:** `{ success: true, chain: { id, name, proxies, protocol, ... } }`
+
+### updateChain
+**Request:** `{ action: 'updateChain', chainId: string, updates: Object }`
+**Response:** `{ success: true, chain: Object }`
+
+### deleteChain
+**Request:** `{ action: 'deleteChain', chainId: string }`
+**Response:** `{ success: true }`
+
+### testChain
+Tests each proxy in the chain sequentially using `proxyConfig.withTestConfig()`. Returns per-hop latency and cumulative totals.
+**Request:** `{ action: 'testChain', chainId: string }`
+**Response:** `{ success: true, hopTests: [{ hop, proxy, success, latency }], totalLatency, averageLatency }`
+
+### monitorChain
+Runs a full chain test and records the result in chain history (capped at 50 entries).
+**Request:** `{ action: 'monitorChain', chainId: string }`
+**Response:** `{ success: true, monitoring: { totalLatency, averageLatency, hopCount } }`
+
+### getChainStats
+**Request:** `{ action: 'getChainStats', chainId: string }`
+**Response:** `{ success: true, stats: { totalTests, averageLatency, successRate, lastTest } }`
 
 ---
 
@@ -785,7 +826,7 @@ async function fetchProxyScrape() {
 
 Extracts numeric speed from string.
 
-**Location:** background.js, popup.js
+**Location:** `src/background/proxy-fetcher.js`
 
 ```javascript
 function parseSpeed(speedStr) {
@@ -801,7 +842,7 @@ const speedMs = parseSpeed("45 ms");  // Returns: 45
 
 Determines proxy health status.
 
-**Location:** popup.js
+**Location:** `src/popup-modules/popup.proxy-list.js`
 
 ```javascript
 function getWorkingStatus(proxy) {
@@ -821,7 +862,7 @@ function getWorkingStatus(proxy) {
 
 Parses HTML to extract proxy list.
 
-**Location:** background.js
+**Location:** `src/background/proxy-fetcher.js`
 
 ```javascript
 function parseProxies(html) {
@@ -879,9 +920,9 @@ function parseProxies(html) {
 
 | Event | Listener | Purpose |
 |-------|----------|---------|
-| `chrome.runtime.onMessage` | background.js | Handle popup messages |
-| `chrome.runtime.onStartup` | background.js | Restore proxy on startup |
-| `chrome.runtime.onInstalled` | background.js | Handle install/update |
+| `chrome.runtime.onMessage` | `src/background/index.js` | Handle popup messages |
+| `chrome.runtime.onStartup` | `src/background/index.js` | Restore proxy on startup |
+| `chrome.runtime.onInstalled` | `src/background/index.js` | Handle install/update |
 
 ---
 

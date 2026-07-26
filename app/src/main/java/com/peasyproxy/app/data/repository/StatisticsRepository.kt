@@ -1,5 +1,6 @@
 package com.peasyproxy.app.data.repository
 
+import com.peasyproxy.app.data.local.PeasyProxyDatabase
 import com.peasyproxy.app.data.local.dao.ConnectionLogDao
 import com.peasyproxy.app.data.local.dao.StatisticsDao
 import com.peasyproxy.app.data.local.entity.ConnectionLogEntity
@@ -13,7 +14,8 @@ import javax.inject.Singleton
 @Singleton
 class StatisticsRepository @Inject constructor(
     private val statisticsDao: StatisticsDao,
-    private val connectionLogDao: ConnectionLogDao
+    private val connectionLogDao: ConnectionLogDao,
+    private val database: PeasyProxyDatabase
 ) {
     fun getStatistics(): Flow<Statistics> {
         return statisticsDao.getStatistics().map { entity ->
@@ -31,7 +33,7 @@ class StatisticsRepository @Inject constructor(
     suspend fun recordConnection(proxyId: String, proxyHost: String): Long {
         val timestamp = System.currentTimeMillis()
         
-        statisticsDao.incrementConnectionCount(timestamp)
+        statisticsDao.touchStatistics(timestamp)
         
         return connectionLogDao.insertLog(
             ConnectionLogEntity(
@@ -54,25 +56,27 @@ class StatisticsRepository @Inject constructor(
         wasSuccessful: Boolean,
         errorMessage: String?
     ) {
-        val timestamp = System.currentTimeMillis()
-        
-        connectionLogDao.updateLogCompletion(
-            id = logId,
-            disconnectedAt = timestamp,
-            bytesReceived = bytesReceived,
-            bytesSent = bytesSent,
-            wasSuccessful = wasSuccessful,
-            errorMessage = errorMessage
-        )
+        database.runInTransaction {
+            val timestamp = System.currentTimeMillis()
+            
+            connectionLogDao.updateLogCompletion(
+                id = logId,
+                disconnectedAt = timestamp,
+                bytesReceived = bytesReceived,
+                bytesSent = bytesSent,
+                wasSuccessful = wasSuccessful,
+                errorMessage = errorMessage
+            )
 
-        if (wasSuccessful) {
-            statisticsDao.incrementSuccessCount(timestamp)
-        } else {
-            statisticsDao.incrementFailureCount(timestamp)
+            if (wasSuccessful) {
+                statisticsDao.incrementSuccessCount(timestamp)
+            } else {
+                statisticsDao.incrementFailureCount(timestamp)
+            }
+
+            statisticsDao.addDataReceived(bytesReceived, timestamp)
+            statisticsDao.addDataSent(bytesSent, timestamp)
         }
-
-        statisticsDao.addDataReceived(bytesReceived, timestamp)
-        statisticsDao.addDataSent(bytesSent, timestamp)
     }
 
     suspend fun updateAverageLatency(latency: Long) {
@@ -90,7 +94,7 @@ class StatisticsRepository @Inject constructor(
         } else 0f
 
         return Statistics(
-            totalConnections = totalConnections,
+            totalConnections = successCount + failureCount,
             totalDataReceived = totalDataReceived,
             totalDataSent = totalDataSent,
             averageLatency = averageLatency,
