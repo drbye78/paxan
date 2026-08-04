@@ -217,7 +217,8 @@ class ReputationEngine {
     const maxAge = MAX_TEST_AGE_DAYS * 24 * 3600000;
 
     for (const [key, rep] of Object.entries(this.reputation)) {
-      if (now - rep.lastTested > maxAge) {
+      // Also remove entries where lastTested is null/undefined (they accumulate forever)
+      if (!rep.lastTested || (now - rep.lastTested > maxAge)) {
         delete this.reputation[key];
       }
     }

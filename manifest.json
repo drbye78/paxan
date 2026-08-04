@@ -10,7 +10,9 @@
     "tabs",
     "scripting",
     "alarms",
-    "notifications"
+    "notifications",
+    "webRequest",
+    "webRequestBlocking"
   ],
   "host_permissions": [
     "https://proxymania.su/*",

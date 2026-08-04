@@ -28,6 +28,55 @@ class VpnController @Inject constructor(
     @Volatile
     private var currentProxy: Proxy? = null
 
+    // Protocol handler interface for strategy dispatch
+    private interface ProtocolHandler {
+        suspend fun connect(proxy: Proxy, testTarget: String, testPort: Int): Boolean
+        suspend fun sendPacket(data: ByteArray): Boolean
+        suspend fun receivePacket(): ByteArray?
+        suspend fun disconnect()
+        fun clearBuffer()
+    }
+
+    private val handlers: Map<ProxyProtocol, ProtocolHandler> = mapOf(
+        ProxyProtocol.HTTP to object : ProtocolHandler {
+            override suspend fun connect(proxy: Proxy, testTarget: String, testPort: Int) =
+                httpTunnelHandler.connect(proxy, testTarget, testPort)
+            override suspend fun sendPacket(data: ByteArray) = httpTunnelHandler.sendPacket(data)
+            override suspend fun receivePacket() = httpTunnelHandler.receivePacket()
+            override suspend fun disconnect() { httpTunnelHandler.disconnect() }
+            override fun clearBuffer() { httpTunnelHandler.clearBuffer() }
+        },
+        ProxyProtocol.HTTPS to object : ProtocolHandler {
+            override suspend fun connect(proxy: Proxy, testTarget: String, testPort: Int) =
+                httpTunnelHandler.connect(proxy, testTarget, testPort)
+            override suspend fun sendPacket(data: ByteArray) = httpTunnelHandler.sendPacket(data)
+            override suspend fun receivePacket() = httpTunnelHandler.receivePacket()
+            override suspend fun disconnect() { httpTunnelHandler.disconnect() }
+            override fun clearBuffer() { httpTunnelHandler.clearBuffer() }
+        },
+        ProxyProtocol.SOCKS5 to object : ProtocolHandler {
+            override suspend fun connect(proxy: Proxy, testTarget: String, testPort: Int) =
+                socks5Handler.connect(proxy, testTarget, testPort)
+            override suspend fun sendPacket(data: ByteArray) = socks5Handler.sendPacket(data)
+            override suspend fun receivePacket() = socks5Handler.receivePacket()
+            override suspend fun disconnect() { socks5Handler.disconnect() }
+            override fun clearBuffer() { socks5Handler.clearBuffer() }
+        },
+        ProxyProtocol.SOCKS4 to object : ProtocolHandler {
+            override suspend fun connect(proxy: Proxy, testTarget: String, testPort: Int) =
+                socks4Handler.connect(proxy, testTarget, testPort)
+            override suspend fun sendPacket(data: ByteArray) = socks4Handler.sendPacket(data)
+            override suspend fun receivePacket() = socks4Handler.receivePacket()
+            override suspend fun disconnect() { socks4Handler.disconnect() }
+            override fun clearBuffer() { socks4Handler.clearBuffer() }
+        }
+    )
+
+    private fun handlerFor(proxy: Proxy): ProtocolHandler {
+        return handlers[proxy.protocol]
+            ?: throw IllegalArgumentException("Unsupported protocol: ${proxy.protocol}")
+    }
+
     suspend fun connect(proxy: Proxy, config: ConnectionConfig? = null, testTarget: String = "httpbin.org", testPort: Int = 443): Boolean = withContext(Dispatchers.IO) {
         try {
             disconnect()
@@ -40,17 +89,8 @@ class VpnController @Inject constructor(
             )
             _connectionConfig.value = connectionConfig
 
-            val success = when (proxy.protocol) {
-                ProxyProtocol.HTTP, ProxyProtocol.HTTPS -> {
-                    httpTunnelHandler.connect(proxy, testTarget, testPort)
-                }
-                ProxyProtocol.SOCKS5 -> {
-                    socks5Handler.connect(proxy, testTarget, testPort)
-                }
-                ProxyProtocol.SOCKS4 -> {
-                    socks4Handler.connect(proxy, testTarget, testPort)
-                }
-            }
+            val handler = handlerFor(proxy)
+            val success = handler.connect(proxy, testTarget, testPort)
 
             if (success) {
                 _isConnected.value = true
@@ -72,17 +112,7 @@ class VpnController @Inject constructor(
         val proxy = currentProxy ?: return false
 
         return try {
-            when (proxy.protocol) {
-                ProxyProtocol.HTTP, ProxyProtocol.HTTPS -> {
-                    httpTunnelHandler.sendPacket(data)
-                }
-                ProxyProtocol.SOCKS5 -> {
-                    socks5Handler.sendPacket(data)
-                }
-                ProxyProtocol.SOCKS4 -> {
-                    socks4Handler.sendPacket(data)
-                }
-            }
+            handlerFor(proxy).sendPacket(data)
         } catch (e: Exception) {
             _isConnected.value = false
             false
@@ -95,17 +125,7 @@ class VpnController @Inject constructor(
         val proxy = currentProxy ?: return null
 
         return try {
-            val data = when (proxy.protocol) {
-                ProxyProtocol.HTTP, ProxyProtocol.HTTPS -> {
-                    httpTunnelHandler.receivePacket()
-                }
-                ProxyProtocol.SOCKS5 -> {
-                    socks5Handler.receivePacket()
-                }
-                ProxyProtocol.SOCKS4 -> {
-                    socks4Handler.receivePacket()
-                }
-            }
+            val data = handlerFor(proxy).receivePacket()
 
             data?.let {
                 packetProcessor.enqueueIncomingPacket(it)
@@ -120,9 +140,7 @@ class VpnController @Inject constructor(
 
     suspend fun disconnect() = withContext(Dispatchers.IO) {
         try {
-            httpTunnelHandler.disconnect()
-            socks5Handler.disconnect()
-            socks4Handler.disconnect()
+            handlers.values.forEach { it.disconnect() }
         } catch (e: Exception) {
             Timber.e(e, "Error during disconnect")
         }
@@ -139,16 +157,8 @@ class VpnController @Inject constructor(
      */
     fun clearBuffers() {
         Timber.d("Clearing VPN controller buffers")
-        
-        // Clear packet processor buffers
         packetProcessor.clearBuffers()
-        
-        // Clear handler buffers
-        httpTunnelHandler.clearBuffer()
-        socks5Handler.clearBuffer()
-        socks4Handler.clearBuffer()
-        
-        // Reset connection state temporarily (will be restored on reconnect)
+        handlers.values.forEach { it.clearBuffer() }
         _isConnected.value = false
     }
 

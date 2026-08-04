@@ -16,7 +16,7 @@ import { compareVersions, isRegexSafe, safeRegexTest } from '../shared/utils.js'
 // Constants
 // ---------------------------------------------------------------------------
 
-const CURRENT_VERSION = '3.0.18';
+const CURRENT_VERSION = chrome.runtime.getManifest().version;
 const MESSAGE_TIMEOUT_MS = 30000; // timeout for pending message handlers
 
 // ---------------------------------------------------------------------------
@@ -136,6 +136,22 @@ async function storeErrorLog(error, proxy, timestamp) {
 // ---------------------------------------------------------------------------
 // Alarms
 // ---------------------------------------------------------------------------
+
+// Proxy authentication — respond with stored credentials
+chrome.webRequest.onAuthRequired.addListener(
+  (details, callbackFn) => {
+    chrome.storage.local.get(['proxyAuth'], (result) => {
+      const auth = result.proxyAuth;
+      if (auth && auth.username) {
+        callbackFn({ authCredentials: { username: auth.username, password: auth.password || '' } });
+      } else {
+        callbackFn({ cancel: false }); // no credentials, let Chrome show dialog
+      }
+    });
+  },
+  { urls: ['<all_urls>'] },
+  ['blocking']
+);
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'proxyMonitoring' || alarm.name === 'healthMonitoring') {

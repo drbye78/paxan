@@ -196,7 +196,6 @@ async function getDnsStats() {
 // Force DNS through proxy (implementation depends on proxy type)
 async function enableDnsProtection() {
   try {
-    // Store DNS protection setting
     await chrome.storage.local.set({
       dnsProtection: {
         enabled: true,
@@ -206,7 +205,19 @@ async function enableDnsProtection() {
       }
     });
     
-    return { success: true, message: 'DNS protection enabled' };
+    // Run immediate DNS test to establish baseline
+    let testResult = null;
+    try {
+      testResult = await testDnsLeak();
+    } catch { /* non-critical */ }
+    
+    return { 
+      success: true, 
+      message: testResult?.leaking 
+        ? 'DNS protection enabled — leak detected, consider using SOCKS5 proxy'
+        : 'DNS protection enabled',
+      testResult
+    };
   } catch (error) {
     console.error('Failed to enable DNS protection:', error);
     return { success: false, error: error.message };

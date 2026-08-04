@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import androidx.core.app.NotificationCompat
 import com.peasyproxy.app.R
+import com.peasyproxy.app.data.repository.ProxyRepository
 import com.peasyproxy.app.data.repository.SettingsRepository
 import com.peasyproxy.app.data.repository.VpnStateRepository
 import com.peasyproxy.app.domain.model.ConnectionConfig
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import timber.log.Timber
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.net.InetSocketAddress
@@ -49,11 +51,16 @@ class VpnService : VpnService() {
     @Inject
     lateinit var splitTunnelManager: SplitTunnelManager
 
+    @Inject
+    lateinit var proxyRepository: ProxyRepository
+
     private var vpnInterface: ParcelFileDescriptor? = null
     private var isRunning = false
     private var connectionJob: Job? = null
     private var packetProcessingJob: Job? = null
     private var healthPollingJob: Job? = null
+    private var failoverAttempt = 0
+    private val maxFailoverAttempts = 3
     
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -146,6 +153,8 @@ class VpnService : VpnService() {
                     if (!probeOk) {
                         throw Exception("Proxy connectivity probe failed")
                     }
+
+                    failoverAttempt = 0 // reset on successful connect
                     
                     _connectionInfo.value = _connectionInfo.value.copy(
                         state = ConnectionState.CONNECTED,
@@ -202,57 +211,45 @@ class VpnService : VpnService() {
 
     private suspend fun processPackets() {
         val vpnFd = vpnInterface?.fileDescriptor ?: return
-        
+
         FileInputStream(vpnFd).use { inputStream ->
             FileOutputStream(vpnFd).use { outputStream ->
-                while (isRunning && currentCoroutineContext().isActive) {
+                // Use two long-lived coroutines instead of spawning new ones per iteration
+                val readJob = serviceScope.launch(Dispatchers.IO) {
                     try {
-                        val readDispatcher = serviceScope.launch(Dispatchers.IO) {
-                            try {
-                                val packet = ByteArray(VPN_MTU)
-                                val bytesRead = inputStream.read(packet)
-                                
-                                if (bytesRead > 0) {
-                                    val packetData = packet.copyOf(bytesRead)
-                                    
-                                    if (PacketParser.isDnsPacket(packetData)) {
-                                        // Handle DNS packets
-                                    }
-                                    
-                                    vpnController.sendPacket(packetData)
-                                }
-                            } catch (e: Exception) {
-                                if (isRunning) {
-                                    handleConnectionError(e)
-                                }
+                        val packet = ByteArray(VPN_MTU)
+                        while (isRunning && isActive) {
+                            val bytesRead = inputStream.read(packet)
+                            if (bytesRead > 0) {
+                                val packetData = packet.copyOf(bytesRead)
+                                vpnController.sendPacket(packetData)
                             }
                         }
-                        
-                        val writeJob = serviceScope.launch(Dispatchers.IO) {
-                            try {
-                                val packet = vpnController.receivePacket()
-                                if (packet != null && packet.isNotEmpty()) {
-                                    outputStream.write(packet)
-                                    outputStream.flush()
-                                }
-                            } catch (e: Exception) {
-                                if (isRunning) {
-                                    handleConnectionError(e)
-                                }
-                            }
-                        }
-                        
-                        readDispatcher.join()
-                        writeJob.join()
-                        
-                        delay(10)
-                        
                     } catch (e: Exception) {
                         if (isRunning) {
                             handleConnectionError(e)
                         }
                     }
                 }
+
+                val writeJob = serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        while (isRunning && isActive) {
+                            val packet = vpnController.receivePacket()
+                            if (packet != null && packet.isNotEmpty()) {
+                                outputStream.write(packet)
+                                outputStream.flush()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        if (isRunning) {
+                            handleConnectionError(e)
+                        }
+                    }
+                }
+
+                readJob.join()
+                writeJob.join()
             }
         }
     }
@@ -330,7 +327,102 @@ class VpnService : VpnService() {
     }
 
     private suspend fun performFailover() {
-        // Implementation of failover logic would go here
+        failoverAttempt++
+        if (failoverAttempt > maxFailoverAttempts) {
+            Timber.w("Max failover attempts ($maxFailoverAttempts) reached, giving up")
+            _connectionInfo.value = _connectionInfo.value.copy(
+                state = ConnectionState.ERROR,
+                errorMessage = "Failover exhausted: tried $maxFailoverAttempts alternatives"
+            )
+            vpnStateRepository.setError("Failover exhausted")
+            stopVpn()
+            return
+        }
+
+        val failedProxy = vpnController.getCurrentProxy()
+        val currentInfo = _connectionInfo.value
+
+        _connectionInfo.value = currentInfo.copy(
+            state = ConnectionState.UNSTABLE,
+            errorMessage = "Attempting failover..."
+        )
+        vpnStateRepository.setUnstable("Failover in progress")
+
+        try {
+            // Disconnect from failed proxy
+            vpnController.disconnect()
+
+            // Get alternative proxies (favorites first, then trusted, then all)
+            val alternatives = mutableListOf<Proxy>()
+            try {
+                proxyRepository.getFavoriteProxies().first().let { favorites ->
+                    alternatives.addAll(favorites.filter { it.id != failedProxy?.id })
+                }
+            } catch (_: Exception) { /* fall through */ }
+
+            if (alternatives.isEmpty()) {
+                try {
+                    proxyRepository.getTrustedProxies().first().let { trusted ->
+                        alternatives.addAll(trusted.filter { it.id != failedProxy?.id })
+                    }
+                } catch (_: Exception) { /* fall through */ }
+            }
+
+            if (alternatives.isEmpty()) {
+                try {
+                    proxyRepository.getAllProxies().first().let { all ->
+                        alternatives.addAll(all.filter { it.id != failedProxy?.id })
+                    }
+                } catch (_: Exception) { /* fall through */ }
+            }
+
+            if (alternatives.isEmpty()) {
+                throw Exception("No alternative proxies available for failover")
+            }
+
+            // Pick the best alternative: prefer lower latency, higher trust
+            val bestAlternative = alternatives.maxByOrNull { it.trustScore * 1000 - it.latency }
+                ?: alternatives.first()
+
+            Timber.d("Failover: switching from ${failedProxy?.host} to ${bestAlternative.host}")
+
+            // Connect to new proxy
+            val config = ConnectionConfig(
+                proxy = bestAlternative,
+                dnsPrimary = "8.8.8.8",
+                dnsSecondary = "8.8.4.4",
+                routeAllTraffic = true
+            )
+
+            val connected = vpnController.connect(bestAlternative, config)
+
+            if (connected) {
+                val probeOk = probeProxyConnectivity(bestAlternative)
+                if (!probeOk) {
+                    // Recursive: try next alternative or give up
+                    performFailover()
+                    return
+                }
+
+                _connectionInfo.value = _connectionInfo.value.copy(
+                    state = ConnectionState.CONNECTED,
+                    currentProxy = bestAlternative,
+                    connectedSince = System.currentTimeMillis()
+                )
+                vpnStateRepository.setConnected(bestAlternative)
+            } else {
+                throw Exception("Failed to connect to failover proxy ${bestAlternative.host}")
+            }
+
+        } catch (e: Exception) {
+            Timber.e(e, "Failover failed")
+            _connectionInfo.value = _connectionInfo.value.copy(
+                state = ConnectionState.ERROR,
+                errorMessage = "Failover failed: ${e.message}"
+            )
+            vpnStateRepository.setError("Failover failed: ${e.message}")
+            stopVpn()
+        }
     }
 
     private fun stopVpn() {

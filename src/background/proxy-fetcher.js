@@ -1,5 +1,6 @@
 import { THRESHOLDS } from '../popup/constants.js';
 import { buildProxyConfig } from '../shared/utils.js';
+import { getCountryName } from '../shared/countries.js';
 import { proxyConfig } from './proxy-config-manager.js';
 
 const MAX_PAGES = 5;
@@ -185,24 +186,6 @@ function parsePeasyProxy(html) {
   }
   
   return proxyItems;
-}
-
-function getCountryName(code) {
-  const countryMap = {
-    'US': 'United States', 'GB': 'United Kingdom', 'DE': 'Germany', 'FR': 'France',
-    'JP': 'Japan', 'CN': 'China', 'BR': 'Brazil', 'CA': 'Canada', 'AU': 'Australia',
-    'RU': 'Russia', 'IN': 'India', 'KR': 'South Korea', 'NL': 'Netherlands',
-    'ES': 'Spain', 'IT': 'Italy', 'PL': 'Poland', 'SG': 'Singapore', 'HK': 'Hong Kong',
-    'TW': 'Taiwan', 'ID': 'Indonesia', 'TH': 'Thailand', 'VN': 'Vietnam', 'PH': 'Philippines',
-    'MY': 'Malaysia', 'AR': 'Argentina', 'MX': 'Mexico', 'UA': 'Ukraine', 'TR': 'Turkey',
-    'ZA': 'South Africa', 'SE': 'Sweden', 'NO': 'Norway', 'CH': 'Switzerland', 'AT': 'Austria',
-    'BE': 'Belgium', 'PT': 'Portugal', 'GR': 'Greece', 'CZ': 'Czech Republic', 'RO': 'Romania',
-    'HU': 'Hungary', 'BG': 'Bulgaria', 'IE': 'Ireland', 'NZ': 'New Zealand', 'PK': 'Pakistan',
-    'BD': 'Bangladesh', 'IR': 'Iran', 'IL': 'Israel', 'AE': 'UAE', 'SA': 'Saudi Arabia',
-    'EG': 'Egypt', 'NG': 'Nigeria', 'KE': 'Kenya', 'CL': 'Chile', 'CO': 'Colombia',
-    'PE': 'Peru', 'VE': 'Venezuela', 'EC': 'Ecuador', 'UY': 'Uruguay', 'CR': 'Costa Rica'
-  };
-  return countryMap[code?.toUpperCase()] || code || 'Unknown';
 }
 
 function normalizeProxyType(typeStr) {

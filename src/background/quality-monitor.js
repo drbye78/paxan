@@ -7,6 +7,7 @@ import { buildProxyConfig } from '../shared/utils.js';
 
 const QUALITY_MONITOR_ALARM = 'qualityMonitoring';
 const QUALITY_METRICS_STORAGE_KEY = 'qualityMonitorMetrics';
+const QUALITY_HISTORY_STORAGE_KEY = 'qualityMonitorHistory';
 
 // ============================================================================
 // QUALITY METRICS
@@ -324,6 +325,11 @@ async function startQualityMonitoring(proxy, intervalMinutes = 0.5) {
 
     qualityMonitor.updateMetrics(metrics);
 
+    // Persist initial history
+    try {
+      await chrome.storage.local.set({ [QUALITY_HISTORY_STORAGE_KEY]: qualityMonitor.history });
+    } catch {}
+
     // Also persist to storage for SW restart resilience
     await chrome.storage.local.set({ [QUALITY_METRICS_STORAGE_KEY]: qualityMonitor.getMetrics() });
 
@@ -344,6 +350,7 @@ async function startQualityMonitoring(proxy, intervalMinutes = 0.5) {
 function stopQualityMonitoring() {
   chrome.alarms.clear(QUALITY_MONITOR_ALARM);
   qualityMonitor.reset();
+  chrome.storage.local.remove([QUALITY_HISTORY_STORAGE_KEY]).catch(() => {});
   return { success: true };
 }
 
@@ -381,6 +388,21 @@ async function handleQualityAlarm() {
 
     // Update in-memory singleton for this session
     qualityMonitor.updateMetrics(metrics);
+
+    // Restore history from storage if in-memory is empty (SW restart)
+    if (qualityMonitor.history.length === 0) {
+      try {
+        const stored = await chrome.storage.local.get([QUALITY_HISTORY_STORAGE_KEY]);
+        if (stored[QUALITY_HISTORY_STORAGE_KEY]) {
+          qualityMonitor.history = stored[QUALITY_HISTORY_STORAGE_KEY];
+        }
+      } catch {}
+    }
+
+    // Persist history so it survives SW restarts
+    try {
+      await chrome.storage.local.set({ [QUALITY_HISTORY_STORAGE_KEY]: qualityMonitor.history });
+    } catch {}
 
     // Persist to storage so metrics survive service worker restarts
     await chrome.storage.local.set({ [QUALITY_METRICS_STORAGE_KEY]: qualityMonitor.getMetrics() });
@@ -453,6 +475,7 @@ export {
   // Constants
   QUALITY_LEVELS,
   QUALITY_MONITOR_ALARM,
+  QUALITY_HISTORY_STORAGE_KEY,
   
   // Monitor
   QualityMonitor,

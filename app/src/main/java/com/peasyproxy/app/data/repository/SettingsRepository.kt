@@ -191,68 +191,65 @@ class SettingsRepository @Inject constructor(
     }
 
     // =========================================================================
+    // Generic MMKV write + emit helper
+    // =========================================================================
+
+    private inline fun <reified T> updateField(
+        key: String,
+        value: T,
+        emit: () -> Unit
+    ) {
+        when (value) {
+            is Boolean -> mmkv.encode(key, value)
+            is Int -> mmkv.encode(key, value)
+            is Long -> mmkv.encode(key, value)
+            is Float -> mmkv.encode(key, value)
+            is Double -> mmkv.encode(key, value)
+            is String -> mmkv.encode(key, value)
+            else -> mmkv.encode(key, gson.toJson(value))
+        }
+        emit()
+    }
+
+    // =========================================================================
     // Settings update methods
     // =========================================================================
 
-    fun updateAutoConnectOnStart(enabled: Boolean) {
-        mmkv.encode("auto_connect_on_start", enabled)
-        emitSettings()
-    }
+    fun updateAutoConnectOnStart(enabled: Boolean) =
+        updateField("auto_connect_on_start", enabled) { emitSettings() }
 
-    fun updateAutoReconnect(enabled: Boolean) {
-        mmkv.encode("auto_reconnect", enabled)
-        emitSettings()
-    }
+    fun updateAutoReconnect(enabled: Boolean) =
+        updateField("auto_reconnect", enabled) { emitSettings() }
 
-    fun updateFailoverEnabled(enabled: Boolean) {
-        mmkv.encode("failover_enabled", enabled)
-        emitSettings()
-    }
+    fun updateFailoverEnabled(enabled: Boolean) =
+        updateField("failover_enabled", enabled) { emitSettings() }
 
-    fun updateKillSwitchEnabled(enabled: Boolean) {
-        mmkv.encode("kill_switch_enabled", enabled)
-        emitSettings()
-    }
+    fun updateKillSwitchEnabled(enabled: Boolean) =
+        updateField("kill_switch_enabled", enabled) { emitSettings() }
 
-    fun updateAutoRotateEnabled(enabled: Boolean) {
-        mmkv.encode("auto_rotate_enabled", enabled)
-        emitSettings()
-    }
+    fun updateAutoRotateEnabled(enabled: Boolean) =
+        updateField("auto_rotate_enabled", enabled) { emitSettings() }
 
-    fun updateAutoRotateInterval(interval: AutoRotateInterval) {
-        mmkv.encode("auto_rotate_interval", interval.minutes)
-        emitSettings()
-    }
+    fun updateAutoRotateInterval(interval: AutoRotateInterval) =
+        updateField("auto_rotate_interval", interval.minutes) { emitSettings() }
 
-    fun updateRotationStrategy(strategy: RotationStrategy) {
-        mmkv.encode("rotation_strategy", strategy.name)
-        emitSettings()
-    }
+    fun updateRotationStrategy(strategy: RotationStrategy) =
+        updateField("rotation_strategy", strategy.name) { emitSettings() }
 
-    fun updateConnectionTimeout(timeout: Int) {
-        mmkv.encode("connection_timeout", timeout)
-        emitSettings()
-    }
+    fun updateConnectionTimeout(timeout: Int) =
+        updateField("connection_timeout", timeout) { emitSettings() }
 
-    fun updateHealthCheckInterval(interval: Int) {
-        mmkv.encode("health_check_interval", interval)
-        emitSettings()
-    }
+    fun updateHealthCheckInterval(interval: Int) =
+        updateField("health_check_interval", interval) { emitSettings() }
 
-    fun updateNotificationsEnabled(enabled: Boolean) {
-        mmkv.encode("notifications_enabled", enabled)
-        emitSettings()
-    }
+    fun updateNotificationsEnabled(enabled: Boolean) =
+        updateField("notifications_enabled", enabled) { emitSettings() }
 
-    fun updateErrorAlertsEnabled(enabled: Boolean) {
-        mmkv.encode("error_alerts_enabled", enabled)
-        emitSettings()
-    }
+    fun updateErrorAlertsEnabled(enabled: Boolean) =
+        updateField("error_alerts_enabled", enabled) { emitSettings() }
 
-    fun updateDarkMode(mode: DarkMode) {
-        mmkv.encode("dark_mode", mode.name)
-        emitSettings()
-    }
+    fun updateDarkMode(mode: DarkMode) =
+        updateField("dark_mode", mode.name) { emitSettings() }
 
     fun updateSelectedTestEndpoints(endpoints: List<String>) {
         mmkv.encode("selected_test_endpoints", encodeStringList(endpoints))
@@ -271,10 +268,8 @@ class SettingsRepository @Inject constructor(
         return mmkv.decodeString("last_selected_proxy_id", null)
     }
 
-    fun updateVpnEnabled(enabled: Boolean) {
-        mmkv.encode("vpn_enabled", enabled)
-        emitSettings()
-    }
+    fun updateVpnEnabled(enabled: Boolean) =
+        updateField("vpn_enabled", enabled) { emitSettings() }
 
     fun updateAllowBypass(allow: Boolean) {
         mmkv.encode("allow_bypass", allow)
@@ -286,26 +281,19 @@ class SettingsRepository @Inject constructor(
     // =========================================================================
 
     fun updateDnsConfig(config: DnsConfig) {
-        mmkv.encode("custom_dns_enabled", config.customDnsEnabled)
-        mmkv.encode("primary_dns", config.primaryDns)
-        mmkv.encode("secondary_dns", config.secondaryDns)
-        emitSettings()
+        updateField("custom_dns_enabled", config.customDnsEnabled) { }
+        updateField("primary_dns", config.primaryDns) { }
+        updateField("secondary_dns", config.secondaryDns) { emitSettings() }
     }
 
-    fun updateCustomDnsEnabled(enabled: Boolean) {
-        mmkv.encode("custom_dns_enabled", enabled)
-        emitSettings()
-    }
+    fun updateCustomDnsEnabled(enabled: Boolean) =
+        updateField("custom_dns_enabled", enabled) { emitSettings() }
 
-    fun updatePrimaryDns(dns: String) {
-        mmkv.encode("primary_dns", dns)
-        emitSettings()
-    }
+    fun updatePrimaryDns(dns: String) =
+        updateField("primary_dns", dns) { emitSettings() }
 
-    fun updateSecondaryDns(dns: String) {
-        mmkv.encode("secondary_dns", dns)
-        emitSettings()
-    }
+    fun updateSecondaryDns(dns: String) =
+        updateField("secondary_dns", dns) { emitSettings() }
 
     // =========================================================================
     // App routing update methods (Issue #27: JSON serialization)
@@ -356,23 +344,23 @@ class SettingsRepository @Inject constructor(
     }
 
     fun updateSettings(settings: AppSettings) {
-        mmkv.encode("auto_connect_on_start", settings.autoConnectOnStart)
-        mmkv.encode("auto_reconnect", settings.autoReconnect)
-        mmkv.encode("failover_enabled", settings.failoverEnabled)
-        mmkv.encode("kill_switch_enabled", settings.killSwitchEnabled)
-        mmkv.encode("vpn_enabled", settings.vpnEnabled)
-        mmkv.encode("auto_rotate_enabled", settings.autoRotateEnabled)
-        mmkv.encode("auto_rotate_interval", settings.autoRotateIntervalMinutes)
-        mmkv.encode("rotation_strategy", settings.rotationStrategy.name)
-        mmkv.encode("connection_timeout", settings.connectionTimeout)
-        mmkv.encode("health_check_interval", settings.healthCheckIntervalSeconds)
-        mmkv.encode("notifications_enabled", settings.notificationsEnabled)
-        mmkv.encode("error_alerts_enabled", settings.errorAlertsEnabled)
-        mmkv.encode("dark_mode", settings.darkMode.name)
-        mmkv.encode("selected_test_endpoints", encodeStringList(settings.selectedTestEndpoints))
-        mmkv.encode("custom_dns_enabled", settings.customDnsEnabled)
-        mmkv.encode("primary_dns", settings.primaryDns)
-        mmkv.encode("secondary_dns", settings.secondaryDns)
+        updateField("auto_connect_on_start", settings.autoConnectOnStart) { }
+        updateField("auto_reconnect", settings.autoReconnect) { }
+        updateField("failover_enabled", settings.failoverEnabled) { }
+        updateField("kill_switch_enabled", settings.killSwitchEnabled) { }
+        updateField("vpn_enabled", settings.vpnEnabled) { }
+        updateField("auto_rotate_enabled", settings.autoRotateEnabled) { }
+        updateField("auto_rotate_interval", settings.autoRotateIntervalMinutes) { }
+        updateField("rotation_strategy", settings.rotationStrategy.name) { }
+        updateField("connection_timeout", settings.connectionTimeout) { }
+        updateField("health_check_interval", settings.healthCheckIntervalSeconds) { }
+        updateField("notifications_enabled", settings.notificationsEnabled) { }
+        updateField("error_alerts_enabled", settings.errorAlertsEnabled) { }
+        updateField("dark_mode", settings.darkMode.name) { }
+        updateField("selected_test_endpoints", encodeStringList(settings.selectedTestEndpoints)) { }
+        updateField("custom_dns_enabled", settings.customDnsEnabled) { }
+        updateField("primary_dns", settings.primaryDns) { }
+        updateField("secondary_dns", settings.secondaryDns) { }
         emitSettings()
     }
 
@@ -381,38 +369,30 @@ class SettingsRepository @Inject constructor(
     // =========================================================================
 
     fun updateNotificationPreferences(prefs: NotificationPreferences) {
-        mmkv.encode("connection_notifications", prefs.connectionNotifications)
-        mmkv.encode("error_alerts", prefs.errorAlerts)
-        mmkv.encode("sound_enabled", prefs.soundEnabled)
-        mmkv.encode("vibration_enabled", prefs.vibrationEnabled)
+        updateField("connection_notifications", prefs.connectionNotifications) { }
+        updateField("error_alerts", prefs.errorAlerts) { }
+        updateField("sound_enabled", prefs.soundEnabled) { }
+        updateField("vibration_enabled", prefs.vibrationEnabled) { }
         if (prefs.soundUri != null) {
             mmkv.encode("sound_uri", prefs.soundUri)
         } else {
             mmkv.removeValueForKey("sound_uri")
         }
-        mmkv.encode("vibration_pattern", encodeLongList(prefs.vibrationPattern))
+        updateField("vibration_pattern", encodeLongList(prefs.vibrationPattern)) { }
         emitNotificationPreferences()
     }
 
-    fun updateConnectionNotifications(enabled: Boolean) {
-        mmkv.encode("connection_notifications", enabled)
-        emitNotificationPreferences()
-    }
+    fun updateConnectionNotifications(enabled: Boolean) =
+        updateField("connection_notifications", enabled) { emitNotificationPreferences() }
 
-    fun updateErrorAlerts(enabled: Boolean) {
-        mmkv.encode("error_alerts", enabled)
-        emitNotificationPreferences()
-    }
+    fun updateErrorAlerts(enabled: Boolean) =
+        updateField("error_alerts", enabled) { emitNotificationPreferences() }
 
-    fun updateSoundEnabled(enabled: Boolean) {
-        mmkv.encode("sound_enabled", enabled)
-        emitNotificationPreferences()
-    }
+    fun updateSoundEnabled(enabled: Boolean) =
+        updateField("sound_enabled", enabled) { emitNotificationPreferences() }
 
-    fun updateVibrationEnabled(enabled: Boolean) {
-        mmkv.encode("vibration_enabled", enabled)
-        emitNotificationPreferences()
-    }
+    fun updateVibrationEnabled(enabled: Boolean) =
+        updateField("vibration_enabled", enabled) { emitNotificationPreferences() }
 
     fun updateSoundUri(uri: String?) {
         if (uri != null) {
