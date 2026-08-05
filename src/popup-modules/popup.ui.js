@@ -2,6 +2,7 @@
 // Handles all UI rendering and updates
 
 import { escapeHtml } from '../shared/utils.js';
+import { QUALITY_THRESHOLDS } from '../popup/constants.js';
 
 import {
   getCurrentProxy,
@@ -306,10 +307,10 @@ function updateConnectionQuality(latency, packetLoss = 0) {
 }
 
 function calculateConnectionQuality(latency, packetLoss) {
-  if (!latency || packetLoss > 50) return 'poor';
-  if (latency <= 100 && packetLoss <= 1) return 'excellent';
-  if (latency <= 300 && packetLoss <= 5) return 'good';
-  if (latency <= 500 && packetLoss <= 10) return 'fair';
+  if (!latency || packetLoss > QUALITY_THRESHOLDS.FAIR_PACKET_LOSS) return 'poor';
+  if (latency <= QUALITY_THRESHOLDS.EXCELLENT_LATENCY && packetLoss <= QUALITY_THRESHOLDS.EXCELLENT_PACKET_LOSS) return 'excellent';
+  if (latency <= QUALITY_THRESHOLDS.GOOD_LATENCY && packetLoss <= QUALITY_THRESHOLDS.GOOD_PACKET_LOSS) return 'good';
+  if (latency <= QUALITY_THRESHOLDS.FAIR_LATENCY && packetLoss <= QUALITY_THRESHOLDS.FAIR_PACKET_LOSS) return 'fair';
   return 'poor';
 }
 
@@ -569,7 +570,7 @@ async function updateStatsDisplay() {
                 ${flag} ${escapeHtml(ipPort)}
               </div>
               <div style="font-size: 10px; color: var(--text-secondary);">
-                ${country} • Success: ${stats.successRate}% • Avg: ${stats.avgLatency || 0}ms
+                ${escapeHtml(country)} • Success: ${stats.successRate}% • Avg: ${stats.avgLatency || 0}ms
               </div>
             </div>
             <div style="font-size: 9px; color: var(--text-muted); text-align: right;">

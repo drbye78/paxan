@@ -171,7 +171,7 @@ class TamperDetector {
     for (const result of results) {
       if (result.error) continue; // skip failed fetches
 
-      if (this._checkSingle(result.headers, result.content, result.url)) {
+      if (this._checkSingle(result.headers, result.content, result.url, result.status)) {
         return { tampered: true };
       }
     }
@@ -180,8 +180,24 @@ class TamperDetector {
 
   /**
    * Check a single response for tampering indicators.
+   * @param {Object} headers - response headers
+   * @param {string} content - response body
+   * @param {string} url - endpoint URL
+   * @param {number} [status=0] - HTTP status code
    */
-  _checkSingle(headers, content, url) {
+  _checkSingle(headers, content, url, status = 0) {
+    // Baseline comparison takes priority when available
+    if (url && this.baselines[url]) {
+      const baselineResult = this._compareToBaseline(
+        { content, headers, status, url },
+        this.baselines[url]
+      );
+      if (baselineResult.suspicious) {
+        return true;
+      }
+      // If baseline check passed, still run heuristic checks as second layer
+    }
+
     // --- httpbin.org/headers ---
     if (url && url.includes('httpbin.org/headers')) {
       const userAgent = headers['user-agent'] || headers['User-Agent'] || '';
@@ -211,6 +227,61 @@ class TamperDetector {
     }
 
     return false;
+  }
+
+  /**
+   * Compare a proxy response result against a stored direct-connection baseline.
+   * @param {Object} result - { content, headers, status, url }
+   * @param {Object} baseline - { content, headers, status } from fetchDirect
+   * @returns {{ suspicious: boolean, reason: string }}
+   */
+  _compareToBaseline(result, baseline) {
+    // Compare HTTP status
+    if (result.status !== baseline.status) {
+      return {
+        suspicious: true,
+        reason: `HTTP status differs (baseline: ${baseline.status}, got: ${result.status})`
+      };
+    }
+
+    // Compare content length — flag >20% difference
+    const resultLen = result.content.length;
+    const baselineLen = baseline.content.length;
+    if (baselineLen > 0) {
+      const diffPercent = Math.abs(resultLen - baselineLen) / baselineLen;
+      if (diffPercent > 0.20) {
+        return {
+          suspicious: true,
+          reason: `Content length differs by ${Math.round(diffPercent * 100)}% (baseline: ${baselineLen}, got: ${resultLen})`
+        };
+      }
+    }
+
+    // Compare structural JSON integrity for known JSON endpoints
+    if (result.url && (result.url.includes('httpbin.org/ip') || result.url.includes('api.ipify.org'))) {
+      try {
+        const resultJson = JSON.parse(result.content);
+        const baselineJson = JSON.parse(baseline.content);
+        // Verify expected key fields are present
+        const expectedField = result.url.includes('ipify') ? 'ip' : 'origin';
+        if (baselineJson[expectedField] && !resultJson[expectedField]) {
+          return {
+            suspicious: true,
+            reason: `Missing expected field '${expectedField}' in JSON response`
+          };
+        }
+      } catch {
+        // If baseline was valid JSON but result isn't → suspicious
+        try {
+          JSON.parse(baseline.content);
+          return { suspicious: true, reason: 'Expected JSON response is not valid JSON' };
+        } catch {
+          // Baseline wasn't valid JSON either — skip this check
+        }
+      }
+    }
+
+    return { suspicious: false, reason: '' };
   }
 
   /**
@@ -257,16 +328,18 @@ class TamperDetector {
    * Establish content baselines by fetching all endpoints WITHOUT proxy.
    * Uses proxyConfig.fetchDirect to safely clear proxy, fetch, and restore.
    * Runs all endpoint fetches in parallel.
+   * Returns baselines as an object keyed by URL.
    */
   async establishBaseline() {
     try {
-      const results = await Promise.all(
+      const baselineObj = {};
+      await Promise.all(
         ENDPOINTS.map(async url => {
           const result = await this.fetchDirect(url);
-          return result;
+          baselineObj[url] = result;
         })
       );
-      this.baselines = results;
+      this.baselines = baselineObj;
       await this.save();
       return this.baselines;
     } catch (error) {

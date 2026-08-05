@@ -364,8 +364,8 @@ async function checkIpAddresses() {
       showToast('⚠️ Warning: Proxy IP matches real IP!', 'warning');
     } else if (proxyIp && proxyIp !== 'Not connected' && proxyIp !== 'Proxy blocked') {
       // Run DNS leak test when connected
-      const settings = getSettings();
-      if (settings.dnsLeakProtection) {
+      const securityStatus = getSecurityStatus();
+      if (securityStatus.dnsLeakProtection) {
         try {
           const dnsResult = await chrome.runtime.sendMessage({ 
             action: 'testDnsLeak', 

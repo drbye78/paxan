@@ -6,8 +6,6 @@ import { ReputationEngine } from '../src/core/reputation-engine.js';
 
 import { TamperDetector, ENDPOINTS, TEST_ENDPOINTS } from '../src/security/tamper-detection.js';
 
-import { VirtualScroller } from '../src/popup/virtual-scroller.js';
-
 // Import proxy-fetcher utility functions for unit testing
 import {
   parseSpeed,
@@ -96,9 +94,6 @@ export {
   TamperDetector,
   ENDPOINTS,
   TEST_ENDPOINTS,
-  
-  // Virtual Scroller
-  VirtualScroller,
   
   // Proxy Fetcher utilities
   parseSpeed,

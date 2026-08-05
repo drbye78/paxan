@@ -12,17 +12,9 @@ import com.peasyproxy.app.data.local.entity.ProxyEntity
 import com.peasyproxy.app.data.local.entity.StatisticsEntity
 
 /**
- * Main Room database for PeasyProxy.
- * 
- * Features:
- * - Proxy storage with encryption support
- * - Connection logging
- * - Statistics tracking
- * - Proper migration support
- * 
- * Security:
- * - Database encrypted with SQLCipher
- * - Credentials encrypted at rest via SecurityManager
+ * Room database for proxy data.
+ * Note: This database uses plaintext SQLite. Field-level encryption is handled
+ * at the repository/service layer via SecurityManager for sensitive fields.
  */
 @Database(
     entities = [
@@ -44,8 +36,6 @@ abstract class PeasyProxyDatabase : RoomDatabase() {
         /**
          * Migration from version 1 to 2.
          * No-op migration: schema unchanged, version bump only.
-         * Encryption is handled at the database level by SQLCipher
-         * and at the field level by SecurityManager.
          */
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {

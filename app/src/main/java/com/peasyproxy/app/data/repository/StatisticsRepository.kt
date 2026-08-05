@@ -56,27 +56,25 @@ class StatisticsRepository @Inject constructor(
         wasSuccessful: Boolean,
         errorMessage: String?
     ) {
-        database.runInTransaction {
-            val timestamp = System.currentTimeMillis()
-            
-            connectionLogDao.updateLogCompletion(
-                id = logId,
-                disconnectedAt = timestamp,
-                bytesReceived = bytesReceived,
-                bytesSent = bytesSent,
-                wasSuccessful = wasSuccessful,
-                errorMessage = errorMessage
-            )
+        val timestamp = System.currentTimeMillis()
 
-            if (wasSuccessful) {
-                statisticsDao.incrementSuccessCount(timestamp)
-            } else {
-                statisticsDao.incrementFailureCount(timestamp)
-            }
+        connectionLogDao.updateLogCompletion(
+            id = logId,
+            disconnectedAt = timestamp,
+            bytesReceived = bytesReceived,
+            bytesSent = bytesSent,
+            wasSuccessful = wasSuccessful,
+            errorMessage = errorMessage
+        )
 
-            statisticsDao.addDataReceived(bytesReceived, timestamp)
-            statisticsDao.addDataSent(bytesSent, timestamp)
+        if (wasSuccessful) {
+            statisticsDao.incrementSuccessCount(timestamp)
+        } else {
+            statisticsDao.incrementFailureCount(timestamp)
         }
+
+        statisticsDao.addDataReceived(bytesReceived, timestamp)
+        statisticsDao.addDataSent(bytesSent, timestamp)
     }
 
     suspend fun updateAverageLatency(latency: Long) {

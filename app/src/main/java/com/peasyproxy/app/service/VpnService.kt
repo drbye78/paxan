@@ -177,7 +177,7 @@ class VpnService : VpnService() {
         }
     }
 
-    private fun setupVpnInterface(config: ConnectionConfig) {
+    private suspend fun setupVpnInterface(config: ConnectionConfig) {
         val builder = Builder()
             .setSession("PeasyProxy")
             .setMtu(VPN_MTU)
@@ -268,15 +268,17 @@ class VpnService : VpnService() {
                 ))
                 .build()
 
-            client.use { c ->
+            try {
                 val request = Request.Builder()
                     .url(TEST_CONNECTIVITY_URL)
                     .head()
                     .build()
 
-                val response = c.newCall(request).execute()
+                val response = client.newCall(request).execute()
                 response.close()
                 response.isSuccessful
+            } catch (e: Exception) {
+                false
             }
         } catch (e: Exception) {
             false

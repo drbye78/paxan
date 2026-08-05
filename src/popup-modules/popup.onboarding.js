@@ -10,7 +10,8 @@ import { THRESHOLDS } from '../popup/constants.js';
 
 let onboardingState = {
   completed: false,
-  currentStep: 0,
+  currentStepIndex: 0,
+  version: '3.0.0',
   skipped: false,
   completedAt: null
 };
@@ -242,7 +243,8 @@ async function startOnboarding() {
   try {
     onboardingState = {
       completed: false,
-      currentStep: 0,
+      currentStepIndex: 0,
+      version: '3.0.0',
       skipped: false,
       completedAt: null
     };
@@ -252,8 +254,7 @@ async function startOnboarding() {
     return {
       success: true,
       step: ONBOARDING_STEPS[0]
-    };
-  } catch (error) {
+    };  } catch (error) {
     console.error('Failed to start onboarding:', error);
     return { success: false, error: error.message };
   }
@@ -261,20 +262,20 @@ async function startOnboarding() {
 
 // Get current step
 function getCurrentStep() {
-  return ONBOARDING_STEPS[onboardingState.currentStep] || null;
+  return ONBOARDING_STEPS[onboardingState.currentStepIndex] || null;
 }
 
 // Go to next step
 async function nextStep() {
   try {
-    if (onboardingState.currentStep < ONBOARDING_STEPS.length - 1) {
-      onboardingState.currentStep++;
+    if (onboardingState.currentStepIndex < ONBOARDING_STEPS.length - 1) {
+      onboardingState.currentStepIndex++;
       await saveOnboardingState();
       
       return {
         success: true,
-        step: ONBOARDING_STEPS[onboardingState.currentStep],
-        isLast: onboardingState.currentStep === ONBOARDING_STEPS.length - 1
+        step: ONBOARDING_STEPS[onboardingState.currentStepIndex],
+        isLast: onboardingState.currentStepIndex === ONBOARDING_STEPS.length - 1
       };
     }
     
@@ -289,13 +290,13 @@ async function nextStep() {
 // Go to previous step
 async function previousStep() {
   try {
-    if (onboardingState.currentStep > 0) {
-      onboardingState.currentStep--;
+    if (onboardingState.currentStepIndex > 0) {
+      onboardingState.currentStepIndex--;
       await saveOnboardingState();
       
       return {
         success: true,
-        step: ONBOARDING_STEPS[onboardingState.currentStep]
+        step: ONBOARDING_STEPS[onboardingState.currentStepIndex]
       };
     }
     
@@ -313,7 +314,7 @@ async function previousStep() {
 async function goToStep(stepIndex) {
   try {
     if (stepIndex >= 0 && stepIndex < ONBOARDING_STEPS.length) {
-      onboardingState.currentStep = stepIndex;
+      onboardingState.currentStepIndex = stepIndex;
       await saveOnboardingState();
       
       return {
@@ -337,7 +338,8 @@ async function skipOnboarding() {
   try {
     onboardingState = {
       completed: false,
-      currentStep: 0,
+      currentStepIndex: 0,
+      version: '3.0.0',
       skipped: true,
       completedAt: Date.now()
     };
@@ -359,7 +361,8 @@ async function completeOnboarding() {
   try {
     onboardingState = {
       completed: true,
-      currentStep: ONBOARDING_STEPS.length - 1,
+      currentStepIndex: ONBOARDING_STEPS.length - 1,
+      version: '3.0.0',
       skipped: false,
       completedAt: Date.now()
     };
@@ -381,7 +384,8 @@ async function resetOnboarding() {
   try {
     onboardingState = {
       completed: false,
-      currentStep: 0,
+      currentStepIndex: 0,
+      version: '3.0.0',
       skipped: false,
       completedAt: null
     };
@@ -570,7 +574,7 @@ function removeHighlight() {
 // Show a specific onboarding step
 function showOnboardingStep(stepIndex) {
   if (stepIndex >= 0 && stepIndex < ONBOARDING_STEPS.length) {
-    onboardingState.currentStep = stepIndex;
+    onboardingState.currentStepIndex = stepIndex;
     onboardingState.skipped = false;
     saveOnboardingState();
     
@@ -630,7 +634,7 @@ function setupOnboardingModalListeners() {
       const result = await previousStep();
       if (result.success) {
         hideOnboarding();
-        showOnboardingStep(onboardingState.currentStep);
+        showOnboardingStep(onboardingState.currentStepIndex);
       }
     });
   }
@@ -644,7 +648,7 @@ function setupOnboardingModalListeners() {
           hideOnboarding();
         } else {
           hideOnboarding();
-          showOnboardingStep(onboardingState.currentStep);
+          showOnboardingStep(onboardingState.currentStepIndex);
         }
       }
     });

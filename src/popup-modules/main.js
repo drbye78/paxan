@@ -73,7 +73,7 @@ import {
 } from './popup.connection.js';
 
 import { setLanguage } from '../popup/i18n.js';
-import { initOnboarding } from './popup.onboarding.js';
+import { initOnboarding, showOnboardingStep, shouldShowOnboarding } from './popup.onboarding.js';
 
 // ============================================================================
 // INITIALIZATION
@@ -126,10 +126,15 @@ async function init() {
     startAutoRefresh();
     
     // 9. Show onboarding if needed
-    const onboardingState = getOnboardingState();
-    if (!onboardingState.completed) {
-      console.log('📚 Showing onboarding...');
-      initOnboarding();
+    try {
+      const onboardingState = getOnboardingState();
+      if (!onboardingState.completed && !onboardingState.skipped) {
+        console.log('📚 Showing onboarding...');
+        await initOnboarding();
+        showOnboardingStep(onboardingState.currentStepIndex || 0);
+      }
+    } catch (e) {
+      console.log('Onboarding skipped:', e.message);
     }
     
     // 10. Start connection timer if already connected

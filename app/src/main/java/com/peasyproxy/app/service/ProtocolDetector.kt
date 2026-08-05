@@ -97,14 +97,14 @@ class ProtocolDetector @Inject constructor(
                 .proxy(javaProxy)
                 .build()
 
-            client.use { testClient ->
+            try {
                 val url = if (protocol == ProxyProtocol.HTTPS) "https://www.google.com" else "http://www.google.com"
                 val request = Request.Builder()
                     .url(url)
                     .head()
                     .build()
 
-                val response = testClient.newCall(request).execute()
+                val response = client.newCall(request).execute()
                 val latency = System.currentTimeMillis() - startTime
                 
                 response.close()
@@ -114,6 +114,13 @@ class ProtocolDetector @Inject constructor(
                     success = response.isSuccessful || response.code == 405, // 405 = method not allowed but proxy works
                     latency = latency,
                     error = null
+                )
+            } catch (e: Exception) {
+                ProtocolTestResult(
+                    protocol = protocol,
+                    success = false,
+                    latency = timeoutMs.toLong(),
+                    error = e.message
                 )
             }
         } catch (e: Exception) {

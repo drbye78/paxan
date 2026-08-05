@@ -8,6 +8,7 @@ import {
   getSettings,
   getFavorites,
   getProxyStats,
+  setProxyStats,
   getProxyReputation,
   setProxies,
   getProxies,
@@ -30,9 +31,6 @@ import {
   connectToProxy
 } from './popup.connection.js';
 
-// Virtual scroller instance
-let virtualScroller = null;
-
 // ============================================================================
 // PROXY LOADING & PROCESSING
 // ============================================================================
@@ -48,7 +46,8 @@ async function loadProxies(forceRefresh = false) {
     
     if (cached.proxies?.length > 0 && !forceRefresh) {
       setProxies(cached.proxies);
-      await loadProxyStats();
+      const stats = await loadProxyStats();
+      setProxyStats(stats);
       populateCountryFilter();
       filterProxies();
       updateProxyCount();
@@ -88,7 +87,8 @@ async function loadProxies(forceRefresh = false) {
         proxies: mergedProxies, 
         proxiesTimestamp: Date.now() 
       });
-      await loadProxyStats();
+      const stats = await loadProxyStats();
+      setProxyStats(stats);
       populateCountryFilter();
       filterProxies();
       updateProxyCount();
@@ -386,16 +386,12 @@ function renderProxyList(proxyItems) {
   }
   hideEmptyState();
   
-  if (virtualScroller) {
-    virtualScroller.setItems(proxyItems);
-  } else {
-    // Render all items (fallback)
-    proxyList.innerHTML = '';
-    proxyItems.forEach((proxy, index) => {
-      const item = createProxyItem(proxy, proxyItems);
-      proxyList.appendChild(item);
-    });
-  }
+  // Render all items directly
+  proxyList.innerHTML = '';
+  proxyItems.forEach((proxy, index) => {
+    const item = createProxyItem(proxy, proxyItems);
+    proxyList.appendChild(item);
+  });
   
   // Update selection state after rendering
   updateSelectionState();

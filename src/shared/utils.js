@@ -53,6 +53,13 @@ const STANDARD_BYPASS_LIST = [
  * @returns {{ mode: 'fixed_servers', rules: { singleProxy: { scheme: string, host: string, port: number }, bypassList: string[] } }}
  */
 export function buildProxyConfig(proxy, opts = {}) {
+  if (!proxy || typeof proxy !== 'object') {
+    throw new Error('buildProxyConfig: proxy must be a non-null object with { ip, port, type }');
+  }
+  if (!proxy.ip || !proxy.port || !proxy.type) {
+    throw new Error('buildProxyConfig: proxy must have ip, port, and type fields');
+  }
+
   const bypassList = opts.bypassList || STANDARD_BYPASS_LIST;
   let scheme = 'http';
   if (proxy.type === 'HTTPS' || proxy.type === 'https') scheme = 'https';
@@ -80,11 +87,23 @@ const MAX_REGEX_LENGTH = 200;
 const MAX_REGEX_COMPLEXITY = 10;
 
 /**
- * Returns true if the regex pattern is safe to compile and execute.
- * Rejects: excessive length, high operator count, lookarounds.
+ * Checks for ReDoS-prone patterns (nested quantifiers) and excessive complexity.
+ * - Detects nested quantifier patterns like (a+)+, (a*)*, (a+)*, (a*)+
+ * - Rejects excessive length (>200 chars) and operator count (>10)
+ * - Rejects lookarounds (which can also cause backtracking issues)
+ *
+ * @param {string} pattern - regex pattern to validate
+ * @returns {boolean} true if the pattern is safe to compile and execute
  */
 export function isRegexSafe(pattern) {
   if (!pattern || pattern.length > MAX_REGEX_LENGTH) return false;
+
+  // Detect nested quantifiers — classic exponential backtracking pattern.
+  // Matches any quantifier (+ or *) inside a group (...) where the group
+  // itself is also quantified with + or *.
+  // Examples caught: (a+)+, (a*)*, (a+)*, (a*)+, ((a)+)+, (a+b)+
+  if (/[+*][^()]*\)[+*]/.test(pattern)) return false;
+
   const complexityIndicators = (pattern.match(/[()*+?[\]{}|]/g) || []).length;
   if (complexityIndicators > MAX_REGEX_COMPLEXITY) return false;
   if (/(\(\?[<=!])/.test(pattern)) return false;
@@ -120,12 +139,20 @@ export function escapeRegex(str) {
 }
 
 /**
- * Convert a wildcard pattern (using * as the only wildcard) into a regex.
- * Safe for user-supplied patterns because * is the only metacharacter honored.
+ * Convert a wildcard pattern into a regex.
+ * Supports * (any characters) and ? (single character) wildcards.
+ * Safe for user-supplied patterns because only * and ? are honored as wildcards.
  */
 export function wildcardToRegex(pattern) {
-  const escaped = escapeRegex(pattern);
-  const regexStr = escaped.replace(/\\\*/g, '.*');
+  const str = String(pattern);
+  // Replace ? wildcard with a sentinel before escaping regex specials
+  const SENTINEL = '\x00WILDQM\x00';
+  const withSentinel = str.replace(/\?/g, SENTINEL);
+  const escaped = escapeRegex(withSentinel);
+  // Restore ? as . (single character wildcard)
+  const withDot = escaped.replace(new RegExp(SENTINEL, 'g'), '.');
+  // Convert escaped * back to .* (any characters wildcard)
+  const regexStr = withDot.replace(/\\\*/g, '.*');
   return new RegExp(`^${regexStr}$`, 'i');
 }
 
@@ -134,20 +161,40 @@ export function wildcardToRegex(pattern) {
 // ============================================================================
 
 /**
- * Compare two semver strings. Returns:
+ * Compare two semver strings. Handles pre-release tags per semver 2.0:
+ * pre-release versions (e.g., "1.2.3-alpha") sort LOWER than the
+ * corresponding release version ("1.2.3"). Returns:
  *   1 if a > b
  *  -1 if a < b
  *   0 if equal
  */
 export function compareVersions(a, b) {
-  const parse = (v) => v.split('.').map(n => parseInt(n, 10) || 0);
-  const aParts = parse(a);
-  const bParts = parse(b);
-  for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-    const aPart = aParts[i] || 0;
-    const bPart = bParts[i] || 0;
-    if (aPart > bPart) return 1;
-    if (aPart < bPart) return -1;
+  const aParts = a.split('.');
+  const bParts = b.split('.');
+  const maxLen = Math.max(aParts.length, bParts.length);
+
+  for (let i = 0; i < maxLen; i++) {
+    const aSeg = aParts[i] || '0';
+    const bSeg = bParts[i] || '0';
+
+    // Split on first '-' to separate numeric part from pre-release tag
+    const [aNum, aPre] = aSeg.split('-', 2);
+    const [bNum, bPre] = bSeg.split('-', 2);
+
+    const aVal = parseInt(aNum, 10) || 0;
+    const bVal = parseInt(bNum, 10) || 0;
+
+    if (aVal > bVal) return 1;
+    if (aVal < bVal) return -1;
+
+    // Numeric parts equal — compare pre-release tags
+    if (aPre && !bPre) return -1;
+    if (!aPre && bPre) return 1;
+    if (aPre && bPre) {
+      // Both have pre-release — compare lexicographically
+      if (aPre > bPre) return 1;
+      if (aPre < bPre) return -1;
+    }
   }
   return 0;
 }

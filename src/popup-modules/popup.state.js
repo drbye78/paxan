@@ -94,7 +94,9 @@ let autoRotation = {
 let onboardingState = {
   completed: false,
   currentStepIndex: 0,
-  version: '3.0.0'
+  version: '3.0.0',
+  skipped: false,
+  completedAt: null
 };
 
 // ============================================================================
@@ -109,6 +111,7 @@ async function loadAllState() {
       'recentlyUsed',
       'proxyStats',
       'dailyStats',
+      'popupDailyStats',
       'activeProxy',
       'connectionStartTime',
       'security',
@@ -129,7 +132,7 @@ async function loadAllState() {
 
     // Load stats
     proxyStats = result.proxyStats || {};
-    dailyStats = result.dailyStats || { proxiesUsed: 0, connectionTime: 0, attempts: 0, successes: 0 };
+    dailyStats = result.popupDailyStats || result.dailyStats || { proxiesUsed: 0, connectionTime: 0, attempts: 0, successes: 0 };
 
     // Load connection state
     currentProxy = result.activeProxy || null;
@@ -194,7 +197,6 @@ async function saveAllState() {
       favorites,
       recentlyUsed,
       proxyStats,
-      dailyStats,
       activeProxy: currentProxy,
       connectionStartTime,
       security: securityStatus,
@@ -253,13 +255,18 @@ function getProxyStats() {
   return proxyStats;
 }
 
+function setProxyStats(newStats) {
+  proxyStats = { ...proxyStats, ...newStats };
+}
+
 function getDailyStats() {
   return dailyStats;
 }
 
 function updateDailyStats(updates) {
   dailyStats = { ...dailyStats, ...updates };
-  chrome.storage.local.set({ dailyStats }).catch(console.error);
+  // Use a separate storage key to avoid racing with saveAllState()
+  chrome.storage.local.set({ popupDailyStats: dailyStats }).catch(console.error);
 }
 
 function getSecurityStatus() {
@@ -460,6 +467,7 @@ export {
   getFavorites,
   getRecentlyUsed,
   getProxyStats,
+  setProxyStats,
   getDailyStats,
   updateDailyStats,
   getSecurityStatus,

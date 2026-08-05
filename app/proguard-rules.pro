@@ -38,3 +38,19 @@
 -keep class dagger.hilt.** { *; }
 -keep class javax.inject.** { *; }
 -keep class * extends dagger.hilt.android.lifecycle.HiltViewModel
+-keep class com.peasyproxy.app.**_Factory { *; }
+-keep class com.peasyproxy.app.**_MembersInjector { *; }
+
+# MMKV (JNI-based persistent storage)
+-keep class com.tencent.mmkv.** { *; }
+
+# Timber logging
+-keep class timber.log.Timber* { *; }
+
+# Room generated DAO implementations
+-keep class com.peasyproxy.app.data.local.dao.*_Impl { *; }
+
+# Coroutine continuations (prevent stripping)
+-keepclassmembers class kotlinx.coroutines.** {
+    volatile <fields>;
+}

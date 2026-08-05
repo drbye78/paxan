@@ -77,7 +77,6 @@ class ProxyTester @Inject constructor(
 
         return if (isSocks && !proxy.username.isNullOrEmpty()) {
             synchronized(socksAuthLock) {
-                val previousAuthenticator = JavaAuthenticator.getDefault()
                 try {
                     JavaAuthenticator.setDefault(object : JavaAuthenticator() {
                         override fun getPasswordAuthentication(): PasswordAuthentication {
@@ -108,7 +107,7 @@ class ProxyTester @Inject constructor(
                 } catch (e: Exception) {
                     Result.failure(e)
                 } finally {
-                    JavaAuthenticator.setDefault(previousAuthenticator)
+                    JavaAuthenticator.setDefault(null)
                 }
             }
         } else {

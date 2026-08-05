@@ -31,9 +31,28 @@ class ReputationEngine {
   }
 
   async recordTest(proxy, success, latency) {
-    const key = typeof proxy === 'string' ? proxy : proxy.ipPort;
+    const key = typeof proxy === 'string' ? proxy : (proxy.ipPort || 'unknown');
 
     if (!this.reputation[key]) {
+      // Parse string proxies so field accessors don't crash on undefined
+      let ip, port, ipPort, country, type, httpsOnly;
+      if (typeof proxy === 'string') {
+        const colonIdx = proxy.lastIndexOf(':');
+        ip = colonIdx > 0 ? proxy.substring(0, colonIdx) : 'unknown';
+        port = colonIdx > 0 ? parseInt(proxy.substring(colonIdx + 1), 10) || 0 : 0;
+        ipPort = proxy;
+        country = 'unknown';
+        type = 'unknown';
+        httpsOnly = false;
+      } else {
+        ip = proxy.ip != null ? proxy.ip : 'unknown';
+        port = proxy.port != null ? proxy.port : 0;
+        ipPort = proxy.ipPort || key;
+        country = proxy.country || 'unknown';
+        type = proxy.type || 'unknown';
+        httpsOnly = proxy.type === 'HTTPS';
+      }
+
       this.reputation[key] = {
         trustScore: 50,
         latencyHistory: [],
@@ -42,13 +61,13 @@ class ReputationEngine {
         consecutiveFailures: 0,
         lastTested: null,
         tampered: false,
-        ip: proxy.ip,
-        port: proxy.port,
-        ipPort: proxy.ipPort || key,
-        country: proxy.country || null,
-        type: proxy.type || null,
+        ip,
+        port,
+        ipPort,
+        country,
+        type,
         successRate: 0,
-        httpsOnly: proxy.type === 'HTTPS',
+        httpsOnly,
         firstSeen: Date.now()
       };
     }
@@ -85,12 +104,12 @@ class ReputationEngine {
     rep.totalTests = totalTests;
     rep.successes = rep.successCount;
     rep.failures = rep.failureCount;
-    rep.tamperDetected = rep.tampered;
+    rep.tamperDetected = rep.tamperDetected || rep.tampered;
 
     // Recalculate trust score
     rep.trustScore = this.calculateScore(key);
 
-    // Debounce: save at most once per 5 seconds
+    // Debounce: save at most once per 1 second
     this._scheduleSave();
 
     return rep;
@@ -101,7 +120,15 @@ class ReputationEngine {
     this._saveTimer = setTimeout(() => {
       this._saveTimer = null;
       this.save().catch(() => {});
-    }, 5000);
+    }, 1000);
+  }
+
+  async flush() {
+    if (this._saveTimer) {
+      clearTimeout(this._saveTimer);
+      this._saveTimer = null;
+    }
+    await this.save();
   }
 
   async recordFailure(proxy, error) {
@@ -140,7 +167,7 @@ class ReputationEngine {
   }
 
   calculateSpeedScore(latency) {
-    if (latency == null || Number.isNaN(latency)) return 50;
+    if (latency == null || typeof latency !== 'number' || Number.isNaN(latency)) return 50;
     if (latency < 50) return 100;
     if (latency > 2000) return 0;
     return Math.max(0, Math.round(100 - latency / 20));
@@ -149,8 +176,11 @@ class ReputationEngine {
   calculateTrustScore(rep) {
     let score = 50;
 
-    if (rep.httpsOnly) score += 20;
-    if (!rep.tamperDetected) score += 15;
+    const httpsOnly = rep.httpsOnly === true;
+    const tamperDetected = rep.tamperDetected === true;
+
+    if (httpsOnly) score += 20;
+    if (!tamperDetected) score += 15;
     if (rep.successRate > 90) score += 10;
     if (rep.totalTests > 10) score += 5;
 
@@ -186,6 +216,7 @@ class ReputationEngine {
     const key = this.getKey(proxyIpPort);
     if (this.reputation[key]) {
       this.reputation[key].tamperDetected = tampered;
+      this.reputation[key].tampered = tampered;
       await this.save();
     }
   }
@@ -215,11 +246,25 @@ class ReputationEngine {
   async clearOldData() {
     const now = Date.now();
     const maxAge = MAX_TEST_AGE_DAYS * 24 * 3600000;
+    const MAX_ENTRIES = 500;
 
+    // First, remove stale entries by age
     for (const [key, rep] of Object.entries(this.reputation)) {
       // Also remove entries where lastTested is null/undefined (they accumulate forever)
       if (!rep.lastTested || (now - rep.lastTested > maxAge)) {
         delete this.reputation[key];
+      }
+    }
+
+    // Then, enforce max entry cap: remove lowest-scored excess entries
+    const keys = Object.keys(this.reputation);
+    if (keys.length > MAX_ENTRIES) {
+      const sorted = keys
+        .map(k => ({ key: k, score: this.reputation[k].reputationScore || 0 }))
+        .sort((a, b) => a.score - b.score);
+      const toRemove = sorted.slice(0, keys.length - MAX_ENTRIES);
+      for (const entry of toRemove) {
+        delete this.reputation[entry.key];
       }
     }
 

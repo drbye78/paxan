@@ -662,6 +662,9 @@ function setupSettingsListeners() {
 }
 
 // Message listener
+// Note: chrome.runtime.onMessage listeners in popups do not need removal —
+// popups are re-created each time they open, so the listener is automatically
+// discarded when the popup closes.
 function setupMessageListener() {
   chrome.runtime.onMessage.addListener((message) => {
     if (message.action === 'proxyDegraded') handleProxyDegraded(message);

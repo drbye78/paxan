@@ -328,7 +328,9 @@ async function startQualityMonitoring(proxy, intervalMinutes = 0.5) {
     // Persist initial history
     try {
       await chrome.storage.local.set({ [QUALITY_HISTORY_STORAGE_KEY]: qualityMonitor.history });
-    } catch {}
+    } catch (e) {
+      console.warn('[quality-monitor] Storage write for initial history failed:', e);
+    }
 
     // Also persist to storage for SW restart resilience
     await chrome.storage.local.set({ [QUALITY_METRICS_STORAGE_KEY]: qualityMonitor.getMetrics() });
@@ -350,7 +352,9 @@ async function startQualityMonitoring(proxy, intervalMinutes = 0.5) {
 function stopQualityMonitoring() {
   chrome.alarms.clear(QUALITY_MONITOR_ALARM);
   qualityMonitor.reset();
-  chrome.storage.local.remove([QUALITY_HISTORY_STORAGE_KEY]).catch(() => {});
+  chrome.storage.local.remove([QUALITY_HISTORY_STORAGE_KEY]).catch((e) => {
+    console.warn('[quality-monitor] Storage remove for history failed:', e);
+  });
   return { success: true };
 }
 
@@ -372,7 +376,9 @@ async function handleQualityAlarm() {
       if (stored[QUALITY_METRICS_STORAGE_KEY]?.bandwidth) {
         bandwidth = stored[QUALITY_METRICS_STORAGE_KEY].bandwidth;
       }
-    } catch {}
+    } catch (e) {
+      console.warn('[quality-monitor] Storage read for bandwidth failed, using in-memory value:', e);
+    }
     if (Math.random() < 0.1) {
       const bwResult = await estimateBandwidth(qualityMonitorProxy);
       bandwidth = bwResult.bandwidth || 0;
@@ -396,13 +402,17 @@ async function handleQualityAlarm() {
         if (stored[QUALITY_HISTORY_STORAGE_KEY]) {
           qualityMonitor.history = stored[QUALITY_HISTORY_STORAGE_KEY];
         }
-      } catch {}
+    } catch (e) {
+      console.warn('[quality-monitor] Storage read for history failed, using defaults:', e);
+    }
     }
 
     // Persist history so it survives SW restarts
     try {
       await chrome.storage.local.set({ [QUALITY_HISTORY_STORAGE_KEY]: qualityMonitor.history });
-    } catch {}
+    } catch (e) {
+      console.warn('[quality-monitor] Storage write for history failed:', e);
+    }
 
     // Persist to storage so metrics survive service worker restarts
     await chrome.storage.local.set({ [QUALITY_METRICS_STORAGE_KEY]: qualityMonitor.getMetrics() });

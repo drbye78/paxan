@@ -47,7 +47,9 @@ async function startProxyMonitoring(proxy) {
   // Persist monitoring state for SW restart resilience
   chrome.storage.session.set({
     [MONITORING_STATE_KEY]: { proxyIpPort: proxy.ipPort, active: true }
-  }).catch(() => {});
+  }).catch((e) => {
+    console.warn('[health-monitor] Failed to persist monitoring state:', e);
+  });
   
   try {
     await chrome.alarms.create(MONITORING_ALARM_NAME, {
@@ -68,7 +70,9 @@ function stopProxyMonitoring() {
   });
   currentMonitoringProxy = null;
   monitoringActive = false;
-  chrome.storage.session.remove([MONITORING_STATE_KEY]).catch(() => {});
+  chrome.storage.session.remove([MONITORING_STATE_KEY]).catch((e) => {
+    console.warn('[health-monitor] Failed to remove monitoring state:', e);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -119,8 +123,9 @@ async function performProxyMonitoring() {
         });
         clearTimeout(timeoutId);
         return { success: response.ok, latency: Date.now() - startTime };
-      } catch {
+      } catch (e) {
         clearTimeout(timeoutId);
+        console.warn('[health-monitor] Monitoring test failed:', e);
         return { success: false, latency: null };
       }
     }, { timeoutMs: 8000, settleMs: 50 });
@@ -137,7 +142,9 @@ async function performProxyMonitoring() {
         latency: result.latency,
         success: result.success,
         monitoringTime: Date.now()
-      }).catch(() => {});
+      }).catch((e) => {
+        console.warn('[health-monitor] Failed to send proxyDegraded message:', e);
+      });
     }
   } catch (error) {
     console.error('Monitoring error:', error);
@@ -158,7 +165,9 @@ async function performHealthCheck() {
       quality: quality,
       avgLatency: healthResult.latency,
       lastCheck: Date.now()
-    }).catch(() => {});
+    }).catch((e) => {
+      console.warn('[health-monitor] Failed to send healthStatusUpdate message:', e);
+    });
   } catch (error) {
     console.error('Health check error:', error);
   }
@@ -176,7 +185,9 @@ async function performSecurityCheck() {
       dnsLeakProtection,
       webRtcProtection,
       lastCheck: Date.now()
-    }).catch(() => {});
+    }).catch((e) => {
+      console.warn('[health-monitor] Failed to send securityStatusUpdate message:', e);
+    });
   } catch (error) {
     console.error('Security check error:', error);
   }
@@ -268,7 +279,9 @@ async function updateProxyStats(proxy, success, latency) {
     } catch (error) {
       console.error('Error updating proxy stats:', error);
     }
-  }).catch(() => {});
+  }).catch((e) => {
+    console.warn('[health-monitor] Stats update failed:', e);
+  });
 }
 
 // ---------------------------------------------------------------------------

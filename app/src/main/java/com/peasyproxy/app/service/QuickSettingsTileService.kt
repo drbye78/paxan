@@ -8,6 +8,7 @@ import com.peasyproxy.app.data.repository.ProxyRepository
 import com.peasyproxy.app.data.repository.VpnStateRepository
 import com.peasyproxy.app.domain.model.ProxyProtocol
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

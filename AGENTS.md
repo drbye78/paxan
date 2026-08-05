@@ -86,22 +86,20 @@ src/
 │   ├── index.js         # Central message router (40+ action handlers)
 │   ├── proxy-config-manager.js  # SINGLE authority for chrome.proxy.settings
 │   ├── proxy-manager.js # setProxy/clearProxy wrappers → delegates to proxyConfig
-│   ├── proxy-fetcher.js # Fetch & parse from ProxyMania/ProxyScrape
+│   ├── proxy-fetcher.js # Fetch & parse from proxymania.su/ProxyScrape
 │   ├── health-monitor.js    # Alarm-based health checks
 │   ├── quality-monitor.js   # Latency/jitter/bandwidth/packet-loss
 │   ├── dns-leak-test.js     # DNS leak detection (captureRealIp, testDnsLeak)
 │   ├── proxy-chain.js       # Chain CRUD + testing
-│   ├── pac-engine.js        # PAC script parsing (safe evaluator, no new Function)
-│   └── url-rules.js         # Whitelist/blacklist URL matching
+│   └── pac-engine.js        # PAC script parsing (safe evaluator, no new Function)
 ├── popup-modules/       # Popup UI modules (bundled by esbuild)
 │   ├── main.js          # Entry point — init() orchestrator
 │   ├── popup.state.js   # All app state + chrome.storage persistence
 │   ├── popup.events.js  # DOM event listeners
-│   └── popup.{connection,proxy-list,ui,analytics,backup,onboarding,performance,search,rules,tabs}.js
+│   └── popup.{connection,proxy-list,ui,backup,onboarding,search}.js
 ├── popup/               # Utility modules (imported by popup-modules/)
 │   ├── i18n.js          # RU/EN translations (ES exports for prod, CommonJS require for tests)
-│   ├── constants.js     # Scoring weights, thresholds
-│   └── virtual-scroller.js  # VirtualScroller class
+│   └── constants.js     # Scoring weights, thresholds
 ├── shared/
 │   └── utils.js         # Shared zero-dependency utilities
 ├── core/
@@ -152,7 +150,7 @@ pnpm test:coverage     # with coverage
 |-------|-----------|
 | UI | Jetpack Compose (BOM 2024.02.00), Material 3, Navigation Compose |
 | DI | Hilt 2.48.1 (annotation processing via KSP 1.9.22-1.0.17) |
-| Network | OkHttp 4.12.0, Retrofit 2.9.0 |
+| Network | OkHttp 4.12.0 |
 | Database | Room 2.6.1 |
 | Async | Kotlin Coroutines 1.7.3, StateFlow |
 | Settings | MMKV (multi-process safe) |
@@ -162,7 +160,7 @@ pnpm test:coverage     # with coverage
 
 ### Architecture
 
-- **MVVM + Clean Architecture**: UI → ViewModel → Repository → Service/Data layers
+- **MVVM + Repository architecture**: UI → ViewModel → Repository → Service/Data layers
 - Package: `com.peasyproxy.app`
 - Min SDK: 26 (Android 8.0 Oreo), Target/Compile SDK: 34
 - Kotlin 1.9.22, JVM target 17
@@ -170,13 +168,13 @@ pnpm test:coverage     # with coverage
 
 ### Key architecture facts
 
-- `VpnService.kt` extends Android's `VpnService` — requires VPN permission from user on first launch. This is the core system-level proxy/VPN tunnel that runs in the `:vpn` process.
+- `VpnService.kt` extends Android's `VpnService` — requires VPN permission from user on first launch. This is the core system-level proxy/VPN tunnel.
 - `VpnController` manages protocol handlers: HTTP, HTTPS (CONNECT), SOCKS4, SOCKS5
 - `PacketProcessor` routes packets through the VPN tunnel
-- `ProxyRepository` fetches proxies (ProxyMania/ProxyScrape), tests them, and caches in Room
+- `ProxyRepository` fetches proxies (proxymania.su/ProxyScrape), tests them, and caches in Room
 - `HealthWorker` (WorkManager) + foreground service timer — dual health check mechanism; inline polling in VpnService for sub-15-minute checks
 - `SplitTunnelManager` and `PerAppRoutingManager` handle per-app VPN routing via `builder.addAllowedApplication()` / `addDisallowedApplication()` (API 29+)
-- `VpnStateRepository` — single source of truth for VPN connection state (`Idle → Connecting → Connected → Unstable → Error`)
+- `VpnStateRepository` — single source of truth for VPN connection state (`Idle → Connecting → Connected → Unstable → Disconnecting → Error`)
 - `KillSwitchService` manages VPN kill-switch with proper scope lifecycle
 - Hilt DI wiring is in `app/src/main/java/com/peasyproxy/app/di/`
 - Architecture follows standard Android layering: `ui/` → `domain/` → `data/`

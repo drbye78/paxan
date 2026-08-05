@@ -16,7 +16,9 @@
   // Shared by both createOffer and createAnswer
   function filterSDP(sdp) {
     if (!sdp || !sdp.sdp) return sdp;
-    const lines = sdp.sdp.split('\r\n');
+    // Normalize line endings in case browser uses \n only
+    const normalizedSdp = sdp.sdp.replace(/\r\n/g, '\n');
+    const lines = normalizedSdp.split('\n');
     const filtered = lines.filter(line => {
       if (line.startsWith('a=candidate:')) {
         // Extract candidate type from the line
@@ -44,19 +46,24 @@
     
     window.RTCPeerConnection = function(config, constraints) {
       // Filter out non-STUN servers to prevent IP discovery
-      if (config && config.iceServers) {
-        config.iceServers = config.iceServers.filter(server => {
-          // Only allow Google's public STUN servers
-          if (server.urls) {
-            const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
-            return urls.some(url => url.includes('stun:stun.l.google.com'));
-          }
-          return false;
-        });
-        
-        // If all filtered out, add default STUN
-        if (config.iceServers.length === 0) {
+      if (config) {
+        if (!config.iceServers) {
+          // No iceServers provided — apply safe default
           config.iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+        } else {
+          config.iceServers = config.iceServers.filter(server => {
+            // Only allow Google's public STUN servers
+            if (server.urls) {
+              const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
+              return urls.some(url => url.includes('stun:stun.l.google.com'));
+            }
+            return false;
+          });
+
+          // If all filtered out, add default STUN
+          if (config.iceServers.length === 0) {
+            config.iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+          }
         }
       }
       
@@ -82,6 +89,14 @@
     // Preserve prototype chain and fix constructor bypass
     window.RTCPeerConnection.prototype = originalRTCPeerConnection.prototype;
     window.RTCPeerConnection.prototype.constructor = window.RTCPeerConnection;
+
+    // Override vendor-prefixed RTCPeerConnection aliases
+    if (typeof window.webkitRTCPeerConnection !== 'undefined') {
+      window.webkitRTCPeerConnection = window.RTCPeerConnection;
+    }
+    if (typeof window.mozRTCPeerConnection !== 'undefined') {
+      window.mozRTCPeerConnection = window.RTCPeerConnection;
+    }
     
     // Override enumerateDevices to filter sensitive info
     const originalEnumerateDevices = navigator.mediaDevices?.enumerateDevices;

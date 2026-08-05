@@ -20,12 +20,12 @@ import com.peasyproxy.app.data.repository.VpnStateRepository
 import com.peasyproxy.app.domain.model.VpnState
 import com.peasyproxy.app.ui.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -248,9 +248,17 @@ class KillSwitchService : Service() {
     }
 
     override fun onDestroy() {
-        runBlocking { disableKillSwitch() }
-        scope.cancel()
         super.onDestroy()
+        // Fire-and-forget to avoid ANR — service will be destroyed before coroutine completes,
+        // but disableKillSwitch() is a best-effort cleanup that doesn't need to block
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                disableKillSwitch()
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to disable kill switch during destroy")
+            }
+        }
+        scope.cancel()
         Timber.d("KillSwitchService destroyed")
     }
 }

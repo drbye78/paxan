@@ -25,7 +25,6 @@
 │        ▼                             │  │ DnsLeakTest       │  ││
 │  ┌────────────────┐                  │  │ ProxyChain        │  ││
 │  │ Shared Utils   │                  │  │ PacEngine         │  ││
-│  │ (shared/)      │                  │  │ UrlRules          │  ││
 │  └────────────────┘                  │  │ ReputationEngine  │  ││
 │                                      │  │ TamperDetector    │  ││
 │  ┌────────────────┐                  │  └───────────────────┘  ││
@@ -35,7 +34,7 @@
 │  └────────────────┘                            ▼                │
 │                          ┌────────────────────────────────────┐ │
 │                          │  External Sources:                 │ │
-│                          │  ProxyMania, ProxyScrape,          │ │
+│                          │  proxymania.su, ProxyScrape,          │ │
 │                          │  httpbin.org, ipify.org,           │ │
 │                          │  dnsleaktest.com, whoer.net        │ │
 │                          └────────────────────────────────────┘ │
@@ -53,13 +52,12 @@ src/
 │   ├── index.js               # Central message router (45 action handlers)
 │   ├── proxy-config-manager.js # SINGLE authority for chrome.proxy.settings
 │   ├── proxy-manager.js       # setProxy/clearProxy → delegates to proxyConfig
-│   ├── proxy-fetcher.js       # Fetch & parse from ProxyMania/ProxyScrape
+│   ├── proxy-fetcher.js       # Fetch & parse from proxymania.su/ProxyScrape
 │   ├── health-monitor.js      # Alarm-based health checks (30s interval)
 │   ├── quality-monitor.js     # Latency, jitter, bandwidth, packet loss
 │   ├── dns-leak-test.js       # DNS leak detection via resolver IP comparison
 │   ├── proxy-chain.js         # Chain CRUD + sequential proxy testing
-│   ├── pac-engine.js          # PAC script parser (safe evaluator, no eval)
-│   └── url-rules.js           # Whitelist/blacklist URL matching
+│   └── pac-engine.js          # PAC script parser (safe evaluator, no eval)
 ├── popup-modules/             # Popup UI (bundled by esbuild → popup.js)
 │   ├── main.js                # Entry point — init() orchestrator
 │   ├── popup.state.js         # App state + chrome.storage persistence
@@ -67,11 +65,10 @@ src/
 │   ├── popup.connection.js    # Connect/disconnect, monitoring, failover
 │   ├── popup.proxy-list.js    # Proxy filtering, scoring, rendering
 │   ├── popup.ui.js            # UI rendering, toast, stats, settings
-│   └── popup.{analytics,backup,onboarding,performance,search,rules,tabs}.js
+│   └── popup.{backup,onboarding,search}.js
 ├── popup/                     # Utilities (imported by popup-modules/)
 │   ├── i18n.js                # RU/EN translations
-│   ├── constants.js           # Scoring weights, thresholds
-│   └── virtual-scroller.js    # Efficient proxy list rendering
+│   └── constants.js           # Scoring weights, thresholds
 ├── shared/
 │   └── utils.js               # Zero-dependency utilities (escapeHtml, buildProxyConfig, etc.)
 ├── core/
@@ -92,9 +89,9 @@ src/
 
 ## Data Flow
 
-1. **Proxy Fetch**: Background fetches from ProxyMania (HTML, up to 5 pages) or ProxyScrape (CSV API)
+1. **Proxy Fetch**: Background fetches from proxymania.su (HTML, up to 5 pages) or ProxyScrape (CSV API)
 2. **Storage**: Proxies cached in `chrome.storage.local` with 5-min TTL
-3. **Display**: Popup renders proxy list via virtual scroller, scored and filtered
+3. **Display**: Popup renders proxy list via direct rendering, scored and filtered
 4. **Connection**: User connects → `proxyConfig.setUserProxy(proxy)` via serial queue
 5. **Monitoring**: Health checks every 30s, quality checks measure latency/jitter/packet-loss
 6. **Failover**: `ProxyFailoverManager` rotates through ranked proxy queue on failure

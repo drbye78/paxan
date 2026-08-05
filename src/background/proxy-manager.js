@@ -146,7 +146,9 @@ class ProxyFailoverManager {
           lastFailoverTime: this.lastFailoverTime
         }
       });
-    } catch {}
+    } catch (e) {
+      console.error('[proxy-manager] Failed to persist failover state:', e);
+    }
   }
 
   async restoreState() {
@@ -163,7 +165,14 @@ class ProxyFailoverManager {
             .filter(Boolean);
         }
       }
-    } catch {}
+    } catch (e) {
+      console.error('[proxy-manager] Failed to restore failover state:', e);
+      // Safe fallback to prevent desync
+      this.currentIndex = 0;
+      this.failoverQueue = [];
+      this.retryCount = 0;
+      this.lastFailoverTime = null;
+    }
   }
 
   getStatus() {

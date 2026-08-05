@@ -67,8 +67,8 @@
 ### Reputation System
 Scoring algorithm based on:
 - **Speed (40%)** - Connection latency
-- **Reliability (35%)** - Historical uptime
-- **Trust (25%)** - Source verification
+- **Reliability (40%)** - Historical uptime
+- **Trust (10%)** - Source verification / tamper detection
 - **Freshness (10%)** - Last checked time
 
 ### Split Tunneling
@@ -126,7 +126,7 @@ Route specific apps through VPN or bypass it:
 
 ### Data Storage
 - **Room Database**: Proxies, connection logs, statistics
-- **DataStore Preferences**: Settings, VPN state
+- **MMKV**: Settings, VPN state (multi-process safe)
 - **In-memory Cache**: Active proxy list (5-min TTL)
 
 ---
